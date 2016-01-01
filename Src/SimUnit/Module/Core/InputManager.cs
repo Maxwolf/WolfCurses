@@ -1,5 +1,5 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
-// Timestamp 11/19/2015@11:20 PM
+// Timestamp 12/31/2015@2:38 PM
 
 namespace SimUnit
 {
@@ -16,7 +16,12 @@ namespace SimUnit
         ///     Holds a constant representation of the string telling the user to press enter key to continue so we don't repeat
         ///     ourselves.
         /// </summary>
-        public const string PRESS_ENTER = "Press ENTER KEY to continue";
+        public const string PRESSENTER = "Press ENTER KEY to continue";
+
+        /// <summary>
+        ///     Reference to simulation that is controlling the input manager.
+        /// </summary>
+        private readonly SimulationApp _simUnit;
 
         /// <summary>
         ///     Holds a series of commands that need to be executed in the order they come out of the collection.
@@ -25,10 +30,11 @@ namespace SimUnit
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="InputManager" /> class.
-        ///     Initializes a new instance of the <see cref="T:TrailSimulation.Core.ModuleProduct" /> class.
         /// </summary>
-        public InputManager()
+        /// <param name="simUnit">Core simulation which is controlling the window manager.</param>
+        public InputManager(SimulationApp simUnit)
         {
+            _simUnit = simUnit;
             _commandQueue = new Queue<string>();
             InputBuffer = string.Empty;
         }
@@ -36,7 +42,7 @@ namespace SimUnit
         /// <summary>
         ///     Input buffer that we will use to hold characters until need to send them to simulation.
         /// </summary>
-        internal string InputBuffer { get; private set; }
+        public string InputBuffer { get; private set; }
 
         /// <summary>
         ///     Fired when the simulation is closing and needs to clear out any data structures that it created so the program can
@@ -73,7 +79,7 @@ namespace SimUnit
                 return;
 
             // Dequeue the next command to send and pass along to currently active game Windows if it exists.
-            WindowManager.FocusedWindow?.SendCommand(_commandQueue.Dequeue());
+            _simUnit.WindowManager.FocusedWindow?.SendCommand(_commandQueue.Dequeue());
         }
 
         /// <summary>
@@ -86,7 +92,7 @@ namespace SimUnit
             var lineBufferTrimmed = InputBuffer.Trim();
 
             // Destroy the input buffer if we are not accepting commands but return is pressed anyway.
-            if (!WindowManager.AcceptingInput)
+            if (!_simUnit.WindowManager.AcceptingInput)
                 InputBuffer = string.Empty;
 
             // Send trimmed line buffer to game simulation, if not accepting input we just pass along empty string.
@@ -104,7 +110,7 @@ namespace SimUnit
         private void OnCharacterAddedToInputBuffer(string addedKeyString)
         {
             // Disable passing along input buffer if the simulation is not currently accepting input from the user.
-            if (!WindowManager.AcceptingInput)
+            if (!_simUnit.WindowManager.AcceptingInput)
                 return;
 
             // Add the character to the end of the input buffer.

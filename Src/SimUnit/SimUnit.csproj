@@ -37,13 +37,13 @@
     <Compile Include="Module\IModule.cs" />
     <Compile Include="ITick.cs" />
     <Compile Include="Module\Module.cs" />
-    <Compile Include="Module\InputManager.cs" />
-    <Compile Include="Module\Randomizer.cs" />
-    <Compile Include="Module\SceneGraph.cs" />
-    <Compile Include="Module\WindowManager.cs" />
+    <Compile Include="Module\Core\InputManager.cs" />
+    <Compile Include="Module\Core\Randomizer.cs" />
+    <Compile Include="Module\Core\SceneGraph.cs" />
+    <Compile Include="Module\Core\WindowManager.cs" />
     <Compile Include="SimulationApp.cs" />
     <Compile Include="Utility\ArrayExtensions.cs" />
-    <Compile Include="Utility\AttributeHelper.cs" />
+    <Compile Include="Utility\AttributeExtensions.cs" />
     <Compile Include="Utility\EnumerableExtensions.cs" />
     <Compile Include="Utility\StringExtensions.cs" />
     <Compile Include="Utility\TypeExtensions.cs" />
@@ -62,7 +62,6 @@
     <Compile Include="Window\Menu\IMenuChoice.cs" />
     <Compile Include="Window\Menu\MenuChoice.cs" />
     <Compile Include="Window\Window.cs" />
-    <Compile Include="Window\WindowAttribute.cs" />
     <Compile Include="Window\WindowData.cs" />
     <Compile Include="Window\WindowFactory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

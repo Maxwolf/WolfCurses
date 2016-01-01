@@ -1,5 +1,5 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
-// Timestamp 11/19/2015@11:20 PM
+// Timestamp 12/31/2015@2:38 PM
 
 namespace SimUnit
 {

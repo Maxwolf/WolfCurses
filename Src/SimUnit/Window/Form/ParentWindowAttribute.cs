@@ -1,5 +1,5 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
-// Timestamp 11/19/2015@7:03 PM
+// Timestamp 12/31/2015@4:49 AM
 
 namespace SimUnit.Form
 {
@@ -18,7 +18,7 @@ namespace SimUnit.Form
     {
         /// <summary>Initializes a new instance of the <see cref="T:SimUnit.Form.ParentWindowAttribute" /> class.</summary>
         /// <param name="parentWindow">The parent Window.</param>
-        public ParentWindowAttribute(GameWindow parentWindow)
+        public ParentWindowAttribute(Type parentWindow)
         {
             ParentWindow = parentWindow;
         }
@@ -26,6 +26,6 @@ namespace SimUnit.Form
         /// <summary>
         ///     Defines what the parent game mode of this particular state should be.
         /// </summary>
-        public GameWindow ParentWindow { get; private set; }
+        public Type ParentWindow { get; private set; }
     }
 }

@@ -1,5 +1,5 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
-// Timestamp 11/19/2015@11:20 PM
+// Timestamp 12/31/2015@2:38 PM
 
 namespace SimUnit
 {
@@ -15,12 +15,6 @@ namespace SimUnit
     public sealed class WindowManager : Module
     {
         /// <summary>
-        ///     Current list of all game modes, only the last one added gets ticked this is so game modes can attach things on-top
-        ///     of themselves like stores and trades.
-        /// </summary>
-        private static Dictionary<GameWindow, IWindow> windowList = new Dictionary<GameWindow, IWindow>();
-
-        /// <summary>
         ///     Keeps track of all the possible states a given game mode can have by using attributes and reflection to keep track
         ///     of which user data object gets mapped to which particular state.
         /// </summary>
@@ -33,20 +27,27 @@ namespace SimUnit
         private WindowFactory windowFactory;
 
         /// <summary>
+        ///     Current list of all game modes, only the last one added gets ticked this is so game modes can attach things on-top
+        ///     of themselves like stores and trades.
+        /// </summary>
+        private Dictionary<Type, IWindow> windowList = new Dictionary<Type, IWindow>();
+
+        /// <summary>
         ///     Initializes a new instance of the <see cref="WindowManager" /> class.
         ///     Initializes a new instance of the <see cref="T:TrailSimulation.Core.ModuleProduct" /> class.
         /// </summary>
-        public WindowManager()
+        /// <param name="simUnit">Core simulation which is controlling the window manager.</param>
+        public WindowManager(SimulationApp simUnit)
         {
             // Factories for modes and states that can be attached to them during runtime.
-            windowFactory = new WindowFactory();
+            windowFactory = new WindowFactory(simUnit);
             formFactory = new FormFactory();
         }
 
         /// <summary>
         ///     References the current active game Windows, or the last attached game Windows in the simulation.
         /// </summary>
-        public static IWindow FocusedWindow
+        public IWindow FocusedWindow
         {
             get
             {
@@ -60,7 +61,7 @@ namespace SimUnit
         /// <summary>
         ///     Retrieves the total number of windows that the manager is currently handling.
         /// </summary>
-        internal static int Count
+        internal int Count
         {
             get { return windowList.Count; }
         }
@@ -70,7 +71,7 @@ namespace SimUnit
         ///     Windows
         ///     to be attached and or active move to not be null.
         /// </summary>
-        internal static bool AcceptingInput
+        internal bool AcceptingInput
         {
             get
             {
@@ -157,7 +158,7 @@ namespace SimUnit
         ///     TRUE if modes were removes, changing the active Windows or nulling it. FALSE if nothing changed because nothing
         ///     was removed or no modes.
         /// </returns>
-        private static bool CleanWindows()
+        private bool CleanWindows()
         {
             lock (windowList)
             {
@@ -166,7 +167,7 @@ namespace SimUnit
                     return false;
 
                 // Create copy of all modes so we can destroy while iterating.
-                var tempWindowList = new Dictionary<GameWindow, IWindow>(windowList);
+                var tempWindowList = new Dictionary<Type, IWindow>(windowList);
                 var updatedWindowList = false;
                 foreach (var mode in tempWindowList)
                 {
@@ -190,14 +191,14 @@ namespace SimUnit
         /// <summary>
         ///     Tell all the other game modes that we added another Windows.
         /// </summary>
-        private static void NotifyWindowAdd()
+        private void OnWindowAdded()
         {
             lock (windowList)
             {
-                var tempWindowList = new Dictionary<GameWindow, IWindow>(windowList);
+                var tempWindowList = new Dictionary<Type, IWindow>(windowList);
                 foreach (var loadedMode in tempWindowList)
                 {
-                    if (loadedMode.Key == FocusedWindow.WindowCategory)
+                    if (loadedMode.Key == FocusedWindow.GetType())
                     {
                         // Only call post create on the newly added active game Windows.
                         loadedMode.Value.OnWindowPostCreate();
@@ -217,25 +218,25 @@ namespace SimUnit
         ///     Creates and adds the specified game Windows to the simulation if it does not already exist in the list of
         ///     modes.
         /// </summary>
-        /// <param name="windows">Enumeration value of the Windows which should be created.</param>
-        public void Add(GameWindow windows)
+        /// <param name="window">Enumeration value of the Windows which should be created.</param>
+        public void Add(Type window)
         {
             lock (windowList)
             {
                 // Check if any other modes match the one we are adding.
-                if (windowList.ContainsKey(windows))
+                if (windowList.ContainsKey(window))
                 {
                     // If Windows is attempted to be added we will fire activate for it so Windows knows it was added again without having to call post create.
-                    windowList[windows].OnWindowActivate();
+                    windowList[window].OnWindowActivate();
                     return;
                 }
 
                 // Create the game Windows using factory.
-                var modeProduct = windowFactory.CreateWindow(windows);
+                var modeProduct = windowFactory.CreateWindow(window);
 
                 // Add the game Windows to the simulation now that we know it does not exist in the stack yet.
-                windowList.Add(windows, modeProduct);
-                NotifyWindowAdd();
+                windowList.Add(window, modeProduct);
+                OnWindowAdded();
             }
         }
 
@@ -243,7 +244,7 @@ namespace SimUnit
         ///     Removes every window and form from the simulation and makes it a blank slate. Use with caution, if there is an
         ///     operation in progress, or waiting for user input this will not respect that and just forcefully destroy everything.
         /// </summary>
-        public static void Clear()
+        public void Clear()
         {
             lock (windowList)
             {

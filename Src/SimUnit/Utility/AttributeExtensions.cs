@@ -1,5 +1,5 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
-// Timestamp 12/07/2015@3:40 AM
+// Timestamp 12/31/2015@4:49 AM
 
 namespace SimUnit
 {
@@ -13,7 +13,7 @@ namespace SimUnit
     ///     Meant for dealing with attributes and grabbing all the available classes of a given type with specified attribute
     ///     using generics.
     /// </summary>
-    public static class AttributeHelper
+    public static class AttributeExtensions
     {
         /// <summary>
         ///     Find all the classes which have a custom attribute I've defined on them, and I want to be able to find them

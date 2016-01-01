@@ -1,5 +1,5 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
-// Timestamp 11/19/2015@11:20 PM
+// Timestamp 12/31/2015@2:38 PM
 
 namespace SimUnit
 {
@@ -12,7 +12,7 @@ namespace SimUnit
     ///     console only view of the simulation which is intended to be the lowest level of visualization but theoretically
     ///     anything could be a renderer for the simulation.
     /// </summary>
-    public sealed class SceneGraph : Module
+    public class SceneGraph : Module
     {
         /// <summary>
         ///     Fired when the screen back buffer has changed from what is currently being shown, this forces a redraw.
@@ -30,11 +30,18 @@ namespace SimUnit
         private const string GAMEMODE_EMPTY_TUI = "[NO WINDOW ATTACHED]";
 
         /// <summary>
-        ///     Initializes a new instance of the <see cref="SceneGraph" /> class.
-        ///     Initializes a new instance of the <see cref="T:TrailSimulation.Core.ModuleProduct" /> class.
+        ///     Reference to simulation that is controlling the text user interface and actually filling the screen buffer with
+        ///     data.
         /// </summary>
-        public SceneGraph()
+        private readonly SimulationApp _simUnit;
+
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="SceneGraph" /> class.
+        /// </summary>
+        /// <param name="simUnit">Core simulation which is controlling the window manager.</param>
+        public SceneGraph(SimulationApp simUnit)
         {
+            _simUnit = simUnit;
             ScreenBuffer = string.Empty;
         }
 
@@ -86,31 +93,27 @@ namespace SimUnit
         /// <returns>
         ///     The text user interface that is the game simulation.<see cref="string" />.
         /// </returns>
-        private static string OnRender()
+        private string OnRender()
         {
             // Spinning ticker that shows activity, lets us know if application hangs or freezes.
             var tui = new StringBuilder();
-            tui.Append($"[ {GameSimulationApp.Instance.TickPhase} ] - ");
+            tui.Append($"[ {_simUnit.TickPhase} ] - ");
 
             // Keeps track of active Windows name and active Windows current state name for debugging purposes.
-            tui.Append(WindowManager.FocusedWindow?.CurrentForm != null
-                ? $"Window({WindowManager.Count}): {WindowManager.FocusedWindow}({WindowManager.FocusedWindow.CurrentForm}) - "
-                : $"Window({WindowManager.Count}): {WindowManager.FocusedWindow}() - ");
+            tui.Append(_simUnit.WindowManager.FocusedWindow?.CurrentForm != null
+                ? $"Window({_simUnit.WindowManager.Count}): {_simUnit.WindowManager.FocusedWindow}({_simUnit.WindowManager.FocusedWindow.CurrentForm}) - "
+                : $"Window({_simUnit.WindowManager.Count}): {_simUnit.WindowManager.FocusedWindow}() - ");
 
-            // Total number of turns that have passed in the simulation.
-            tui.AppendLine($"Turns: {GameSimulationApp.Instance.TotalTurns.ToString("D4")}");
-
-            // Vehicle and location status.
-            tui.AppendLine(
-                $"Vehicle: {GameSimulationApp.Instance.Vehicle?.Status} - Location:{GameSimulationApp.Instance.Trail?.CurrentLocation?.Status}");
+            // Allows the implementing simulation to control text before window is rendered out.
+            tui.AppendLine(_simUnit.OnPreRender());
 
             // Prints game Windows specific text and options. This typically is menus from commands, or states showing some information.
             tui.Append($"{RenderWindow()}{Environment.NewLine}");
 
-            if (WindowManager.AcceptingInput)
+            if (_simUnit.WindowManager.AcceptingInput)
             {
                 // Allow user to see their input from buffer.
-                tui.Append($"What is your choice? {GameSimulationApp.Instance.InputManager.InputBuffer}");
+                tui.Append($"What is your choice? {_simUnit.InputManager.InputBuffer}");
             }
 
             // Outputs the result of the string builder to TUI builder above.
@@ -119,20 +122,28 @@ namespace SimUnit
 
         /// <summary>Prints game Windows specific text and options.</summary>
         /// <returns>The current window text to be rendered out.<see cref="string" />.</returns>
-        private static string RenderWindow()
+        private string RenderWindow()
         {
             // If TUI for active game Windows is not null or empty then use it.
-            var activeWindowText = WindowManager.FocusedWindow?.OnRenderWindow();
+            var activeWindowText = _simUnit.WindowManager.FocusedWindow?.OnRenderWindow();
             if (!string.IsNullOrEmpty(activeWindowText) && !string.IsNullOrWhiteSpace(activeWindowText))
                 return activeWindowText;
 
             // Otherwise, display default message if null for Windows.
-            return WindowManager.FocusedWindow == null ? GAMEMODE_EMPTY_TUI : GAMEMODE_DEFAULT_TUI;
+            return _simUnit.WindowManager.FocusedWindow == null ? GAMEMODE_EMPTY_TUI : GAMEMODE_DEFAULT_TUI;
         }
 
         /// <summary>
         ///     Fired when the screen back buffer has changed from what is currently being shown, this forces a redraw.
         /// </summary>
         public event ScreenBufferDirty ScreenBufferDirtyEvent;
+
+        /// <summary>
+        ///     Removes any and all data from the text user interface renderer.
+        /// </summary>
+        public void Clear()
+        {
+            ScreenBuffer = string.Empty;
+        }
     }
 }

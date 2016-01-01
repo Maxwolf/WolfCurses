@@ -28,6 +28,11 @@ namespace SimUnit
         where TData : WindowData, new()
     {
         /// <summary>
+        /// Reference to simulation core which houses the window manager and other core modules.
+        /// </summary>
+        private readonly SimulationApp _simUnit;
+
+        /// <summary>
         ///     Reference for mappings to go from enumeration value to action.
         /// </summary>
         private Dictionary<TCommands, Action> _menuActions;
@@ -66,8 +71,12 @@ namespace SimUnit
         /// <summary>
         ///     Initializes a new instance of the <see cref="Window{TCommands,TData}" /> class.
         /// </summary>
-        protected Window()
+        /// <param name="simUnit">Core simulation which is controlling the form factory.</param>
+        protected Window(SimulationApp simUnit)
         {
+            // Copy over reference for simulation core.
+            _simUnit = simUnit;
+
             // Reference for our text user interface data so we can build it up in pieces.
             _menuPrompt = new StringBuilder();
 
@@ -203,13 +212,8 @@ namespace SimUnit
                 return false;
             }
 
-            if (WindowCategory.Equals(other.WindowCategory) &&
-                Form.Equals(other.Form))
-            {
-                return true;
-            }
-
-            return false;
+            return GetType().Name.Equals(other.GetType().Name) &&
+                   Form.Equals(other.Form);
         }
 
         /// <summary>
@@ -241,12 +245,6 @@ namespace SimUnit
             // Allows any data structures that care about themselves to save before the next tick comes.
             OnModeRemoved();
         }
-
-        /// <summary>
-        ///     Defines the current game Windows the inheriting class is going to take responsibility for when attached to the
-        ///     simulation.
-        /// </summary>
-        public abstract GameWindow WindowCategory { get; }
 
         /// <summary>
         ///     Determines if user input is currently allowed to be typed and filled into the input buffer.
@@ -398,12 +396,10 @@ namespace SimUnit
         public override int Compare(IWindow x, IWindow y)
         {
             // ReSharper disable once PossibleNullReferenceException
-            var result = x.WindowCategory.CompareTo(y.WindowCategory);
+            var result = string.Compare(x.GetType().Name, y.GetType().Name, StringComparison.Ordinal);
             if (result != 0) return result;
 
             result = x.CurrentForm.CompareTo(y.CurrentForm);
-            if (result != 0) return result;
-
             return result;
         }
 
@@ -412,12 +408,10 @@ namespace SimUnit
         /// <returns>The <see cref="int" />.</returns>
         public int CompareTo(IWindow other)
         {
-            var result = other.WindowCategory.CompareTo(WindowCategory);
+            var result = string.Compare(other.GetType().Name, GetType().Name, StringComparison.Ordinal);
             if (result != 0) return result;
 
             result = other.CurrentForm.CompareTo(Form);
-            if (result != 0) return result;
-
             return result;
         }
 
@@ -431,7 +425,7 @@ namespace SimUnit
                 ClearForm();
 
             // States and modes both direct calls to window manager for adding a state.
-            Form = GameSimulationApp.Instance.WindowManager.CreateStateFromType(this, stateType);
+            Form = _simUnit.WindowManager.CreateStateFromType(this, stateType);
 
             // Fire method that will allow attaching state to know it is ready for work.
             Form.OnFormPostCreate();
@@ -554,7 +548,7 @@ namespace SimUnit
         /// </returns>
         public override string ToString()
         {
-            return WindowCategory.ToString();
+            return GetType().Name;
         }
 
         /// <summary>
@@ -566,7 +560,7 @@ namespace SimUnit
         public override int GetHashCode()
         {
             var hash = 23;
-            hash = (hash*31) + WindowCategory.GetHashCode();
+            hash = (hash*31) + GetType().Name.GetHashCode();
             return hash;
         }
     }

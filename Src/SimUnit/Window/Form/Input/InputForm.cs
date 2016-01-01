@@ -1,5 +1,5 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
-// Timestamp 11/19/2015@7:03 PM
+// Timestamp 12/31/2015@4:49 AM
 
 namespace SimUnit.Form.Input
 {
@@ -78,7 +78,7 @@ namespace SimUnit.Form.Input
             switch (DialogType)
             {
                 case DialogType.Prompt:
-                    _prompt.Append((string) InputManager.PRESS_ENTER);
+                    _prompt.Append((string) InputManager.PRESSENTER);
                     break;
                 case DialogType.YesNo:
                 case DialogType.Custom:

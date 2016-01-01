@@ -1,5 +1,5 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
-// Timestamp 11/19/2015@6:59 PM
+// Timestamp 12/31/2015@4:49 AM
 
 namespace SimUnit
 {
@@ -23,11 +23,6 @@ namespace SimUnit
         ///     and then it will be removed.
         /// </summary>
         bool ShouldRemoveMode { get; }
-
-        /// <summary>
-        ///     Defines the type of game Windows this is and what it's purpose will be intended for.
-        /// </summary>
-        GameWindow WindowCategory { get; }
 
         /// <summary>
         ///     Determines if user input is currently allowed to be typed and filled into the input buffer.

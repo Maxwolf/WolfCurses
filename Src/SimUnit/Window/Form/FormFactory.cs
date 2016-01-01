@@ -1,18 +1,15 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
-// Timestamp 11/19/2015@7:03 PM
+// Timestamp 12/31/2015@4:49 AM
 
 namespace SimUnit.Form
 {
     using System;
     using System.Collections.Generic;
-    using System.Globalization;
     using System.Linq;
-    using System.Reflection;
 
     /// <summary>
     ///     Keeps track of all the possible states a given game Windows can have by using attributes and reflection to keep
-    ///     track
-    ///     of which user data object gets mapped to which particular state.
+    ///     track of which user data object gets mapped to which particular state.
     /// </summary>
     public sealed class FormFactory
     {
@@ -22,10 +19,10 @@ namespace SimUnit.Form
         public FormFactory()
         {
             // Create dictionaries for reference tracking for what states belong to what game modes.
-            LoadedForms = new Dictionary<Type, GameWindow>();
+            LoadedForms = new Dictionary<Type, Type>();
 
             // Collect all of the states with the custom attribute decorated on them.
-            var foundStates = AttributeHelper.GetTypesWith<ParentWindowAttribute>(false);
+            var foundStates = AttributeExtensions.GetTypesWith<ParentWindowAttribute>(false);
             foreach (var stateType in foundStates)
             {
                 // GetModule the attribute itself from the state we are working on, which gives us the game Windows enum.
@@ -40,7 +37,7 @@ namespace SimUnit.Form
         /// <summary>
         ///     Reference dictionary for all the reflected state types.
         /// </summary>
-        private Dictionary<Type, GameWindow> LoadedForms { get; set; }
+        private Dictionary<Type, Type> LoadedForms { get; set; }
 
         /// <summary>Creates and adds the specified type of state to currently active game Windows.</summary>
         /// <param name="stateType">Role object that is the actual type of state that needs created.</param>
@@ -59,16 +56,7 @@ namespace SimUnit.Form
                 return null;
 
             // Create the state, it will have constructor with one parameter.
-            var stateInstance = Activator.CreateInstance(
-                stateType,
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
-                null,
-                new object[]
-                {
-                    // Grab the user data object from active Windows
-                    activeMode
-                },
-                CultureInfo.InvariantCulture);
+            var stateInstance = Activator.CreateInstance(stateType, activeMode);
 
             // Pass the created state back to caller.
             return stateInstance as IForm;

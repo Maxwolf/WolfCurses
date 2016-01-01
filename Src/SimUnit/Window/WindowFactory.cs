@@ -1,5 +1,5 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
-// Timestamp 11/19/2015@6:59 PM
+// Timestamp 12/31/2015@4:49 AM
 
 namespace SimUnit
 {
@@ -12,29 +12,29 @@ namespace SimUnit
     public sealed class WindowFactory
     {
         /// <summary>
+        ///     Reference to running game simulation we will need to pass along to created window instances.
+        /// </summary>
+        private readonly SimulationApp _simUnit;
+
+        /// <summary>
         ///     Initializes a new instance of the <see cref="WindowFactory" /> class.
         ///     Creates a new Windows factory that will look over the application for all known game types and create reference
-        ///     list
-        ///     which we can use to get instances of a given Windows by asking for it.
+        ///     list which we can use to get instances of a given Windows by asking for it.
         /// </summary>
-        public WindowFactory()
+        /// <param name="simUnit">Core simulation which is controlling the window factory.</param>
+        public WindowFactory(SimulationApp simUnit)
         {
+            // Copy over reference for simulation core.
+            _simUnit = simUnit;
+
             // Create dictionaries for holding statistics about times run and for reference loading.
-            AttachCount = new Dictionary<GameWindow, int>();
-            Windows = new Dictionary<GameWindow, Type>();
+            Windows = new Dictionary<string, Type>();
 
             // Loop through every possible game Windows type defined in enumeration.
-            foreach (var modeValue in Enum.GetValues(typeof (GameWindow)))
+            foreach (var window in simUnit.AllowedWindows)
             {
-                // Initialize the Windows history dictionary with every game Windows type from enumeration.
-                AttachCount.Add((GameWindow) modeValue, 0);
-
-                // GetModule the attribute itself from the Windows we are working on, which gives us the game Windows enum.
-                var modeAttribute = ((GameWindow) modeValue).GetEnumAttribute<WindowAttribute>();
-                var modeType = modeAttribute.ModeType;
-
                 // Add the game Windows to reference list for lookup and instancing later during runtime.
-                Windows.Add((GameWindow) modeValue, modeType);
+                Windows.Add(window.Name, window);
             }
         }
 
@@ -42,36 +42,25 @@ namespace SimUnit
         ///     Reference dictionary for all the found game modes that have the game Windows attribute on top of them which the
         ///     simulation will want to be able to create instances of when running.
         /// </summary>
-        private Dictionary<GameWindow, Type> Windows { get; }
-
-        /// <summary>
-        ///     Statistics for Windows runtime. Keeps track of how many times a given Windows type was attached to the simulation
-        ///     for
-        ///     record keeping purposes.
-        /// </summary>
-        public Dictionary<GameWindow, int> AttachCount { get; }
+        private Dictionary<string, Type> Windows { get; }
 
         /// <summary>
         ///     Change to new view Windows when told that internal logic wants to display view options to player for a specific set
-        ///     of
-        ///     data in the simulation.
+        ///     of data in the simulation.
         /// </summary>
-        /// <param name="windows">The windows.</param>
+        /// <param name="window">The windows.</param>
         /// <returns>New game Windows instance based on the Windows input parameter.</returns>
-        public IWindow CreateWindow(GameWindow windows)
+        public IWindow CreateWindow(Type window)
         {
             // Grab the game Windows type reference from inputted Windows type enum.
-            var modeType = Windows[windows];
+            var modeType = Windows[window.Name];
 
             // Check if the class is abstract base class, we don't want to add that.
             if (modeType.IsAbstract)
                 return null;
 
-            // Increment the history for loading this type of Windows.
-            AttachCount[windows]++;
-
             // Create the game Windows, it will have single parameter for user data.
-            var gameModeInstance = Activator.CreateInstance(modeType);
+            var gameModeInstance = Activator.CreateInstance(modeType, _simUnit);
             return gameModeInstance as IWindow;
         }
 
@@ -81,7 +70,6 @@ namespace SimUnit
         public void Destroy()
         {
             Windows.Clear();
-            AttachCount.Clear();
         }
     }
 }

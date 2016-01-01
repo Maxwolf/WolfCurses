@@ -1,5 +1,5 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
-// Timestamp 11/19/2015@7:03 PM
+// Timestamp 12/31/2015@4:49 AM
 
 namespace SimUnit.Form
 {
@@ -31,7 +31,7 @@ namespace SimUnit.Form
         ///     Intended to be overridden in abstract class by generics to provide method to return object that contains all the
         ///     data for parent game Windows.
         /// </summary>
-        protected internal TData UserData
+        public TData UserData
         {
             get { return ParentWindow.UserData as TData; }
         }
@@ -214,7 +214,7 @@ namespace SimUnit.Form
 
         /// <summary>Creates and adds the specified type of state to currently active game Windows.</summary>
         /// <param name="stateType">The state Type.</param>
-        protected internal void SetForm(Type stateType)
+        public void SetForm(Type stateType)
         {
             // Pass the state wanted to the parent game Windows.
             ParentWindow.SetForm(stateType);

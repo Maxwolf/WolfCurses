@@ -1,9 +1,11 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
-// Timestamp 11/14/2015@3:40 AM
+// Timestamp 12/31/2015@4:49 AM
 
 namespace SimUnit
 {
     using System;
+    using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
     using Control;
 
     /// <summary>
@@ -62,11 +64,11 @@ namespace SimUnit
 
             // Create modules needed for managing simulation.
             Random = new Randomizer();
-            WindowManager = new WindowManager();
-            SceneGraph = new SceneGraph();
+            WindowManager = new WindowManager(this);
+            SceneGraph = new SceneGraph(this);
 
             // Input manager needs event hook for knowing when buffer is sent.
-            InputManager = new InputManager();
+            InputManager = new InputManager(this);
         }
 
         /// <summary>
@@ -91,7 +93,7 @@ namespace SimUnit
         /// <summary>
         ///     Used for rolling the virtual dice in the simulation to determine the outcome of various events.
         /// </summary>
-        internal Randomizer Random { get; private set; }
+        public Randomizer Random { get; private set; }
 
         /// <summary>
         ///     Keeps track of the currently attached game Windows, which one is active, and getting text user interface data.
@@ -112,6 +114,11 @@ namespace SimUnit
         public SceneGraph SceneGraph { get; private set; }
 
         /// <summary>
+        ///     Determines what windows the simulation will be capable of using and creating using the window managers factory.
+        /// </summary>
+        public abstract IEnumerable<Type> AllowedWindows { get; }
+
+        /// <summary>
         ///     Called when the simulation is ticked by underlying operating system, game engine, or potato. Each of these system
         ///     ticks is called at unpredictable rates, however if not a system tick that means the simulation has processed enough
         ///     of them to fire off event for fixed interval that is set in the core simulation by constant in milliseconds.
@@ -125,6 +132,7 @@ namespace SimUnit
         ///     Determines if the simulation has force ticked without advancing time or down the trail. Used by
         ///     special events that want to simulate passage of time without actually any actual time moving by.
         /// </param>
+        [SuppressMessage("ReSharper", "TailRecursiveCall")]
         public void OnTick(bool systemTick, bool skipDay = false)
         {
             // No ticks allowed if simulation is shutting down.
@@ -157,11 +165,8 @@ namespace SimUnit
                 // Reset last tick time to current time for measuring towards next second tick.
                 _lastTickTime = _currentTickTime;
 
-                // ReSharper disable TailRecursiveCall
+                // Recursive call on ourselves to process non-system ticks.
                 OnTick(false, skipDay);
-
-
-// ReSharper restore TailRecursiveCall
             }
             else
             {
@@ -192,7 +197,7 @@ namespace SimUnit
             IsClosing = true;
 
             // Allows game simulation above us to cleanup any data structures it cares about.
-            OnBeforeDestroy();
+            OnPreDestroy();
 
             // Remove simulation presentation variables.
             _lastTickTime = DateTime.MinValue;
@@ -209,8 +214,30 @@ namespace SimUnit
         }
 
         /// <summary>
+        ///     Creates and or clears data sets required for game simulation and attaches the travel menu and the main menu to make
+        ///     the program completely restarted as if fresh.
+        /// </summary>
+        public virtual void Restart()
+        {
+            // Resets the window manager and clears out all windows and forms from previous session.
+            WindowManager.Clear();
+
+            // Clears the input buffer of any left over input from last play session.
+            InputManager.ClearBuffer();
+
+            // Removes any text from the interface from previous session.
+            SceneGraph.Clear();
+        }
+
+        /// <summary>
         ///     Called when simulation is about to destroy itself, but right before it actually does it.
         /// </summary>
-        protected abstract void OnBeforeDestroy();
+        protected abstract void OnPreDestroy();
+
+        /// <summary>
+        ///     Called by the text user interface scene graph renderer before it asks the active window to render itself out for
+        ///     display.
+        /// </summary>
+        public abstract string OnPreRender();
     }
 }

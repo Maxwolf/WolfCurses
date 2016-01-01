@@ -1,5 +1,5 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
-// Timestamp 12/07/2015@3:38 AM
+// Timestamp 12/31/2015@4:49 AM
 
 namespace SimUnit.Control
 {
@@ -141,7 +141,7 @@ namespace SimUnit.Control
         }
 
         /// <summary>The get property.</summary>
-        /// <param name="expresstion">The expresstion.</param>
+        /// <param name="expresstion">The expression.</param>
         /// <typeparam name="T"></typeparam>
         /// <returns>The <see cref="PropertyInfo" />.</returns>
         private static PropertyInfo GetProperty<T>(Expression<Func<T, object>> expresstion)
