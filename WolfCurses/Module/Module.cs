@@ -1,5 +1,5 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
-// Timestamp 12/31/2015@4:49 AM
+// Timestamp 01/01/2016@5:26 AM
 
 namespace WolfCurses.Module
 {
