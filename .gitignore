@@ -4,32 +4,28 @@
 # User-specific files
 *.suo
 *.user
-*.userosscache
 *.sln.docstates
-
-# User-specific files (MonoDevelop/Xamarin Studio)
-*.userprefs
 
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
-x64/
-x86/
+#x64/
+#x86/
 build/
 bld/
-[Bb]in/
+#[Bb]in/
 [Oo]bj/
 
-# Visual Studo 2015 cache/options directory
-.vs/
+# Roslyn cache directories
+*.ide/
 
 # MSTest test Results
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
 
-# NUNIT
+#NUNIT
 *.VisualState.xml
 TestResult.xml
 
@@ -140,7 +136,7 @@ publish/
 **/packages/*
 # except build/, which is used as an MSBuild target.
 !**/packages/build/
-# Uncomment if necessary however generally it will be regenerated when needed
+# If using the old MSBuild-Integrated Package Restore, uncomment this:
 #!**/packages/repositories.config
 
 # Windows Azure Build Output
@@ -151,7 +147,8 @@ csx/
 AppPackages/
 
 # Others
-*.[Cc]ache
+sql/
+*.Cache
 ClientBin/
 [Ss]tyle[Cc]op.*
 ~$*
@@ -161,7 +158,6 @@ ClientBin/
 *.pfx
 *.publishsettings
 node_modules/
-bower_components/
 
 # RIA/Silverlight projects
 Generated_Code/
@@ -186,11 +182,44 @@ UpgradeLog*.htm
 # Microsoft Fakes
 FakesAssemblies/
 
-# Node.js Tools for Visual Studio
-.ntvs_analysis.dat
+# Ignore Executables but keep NuGet for package restore purposes.
+!NuGet.exe
 
-# Visual Studio 6 build log
-*.plg
+# Open Office temporary files.
+*.odt#
+*.ods#
 
-# Visual Studio 6 workspace options file
-*.opt
+# OS generated
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+ehthumbs.db
+Thumbs.db
+
+# SpaceTrucker Binaries
+Bin/ChatExample.exe
+Bin/ChatExample.xml
+Bin/Configurator.exe
+Bin/DedicatedServer.exe
+Bin/DedicatedServer.xml
+Bin/Game.exe
+Bin/Game.xml
+Bin/ProjectCommon.dll
+Bin/ProjectCommon.xml
+Bin/ProjectEntities.Editor.dll
+Bin/ProjectEntities.dll
+Bin/ProjectEntities.xml
+Bin/UserSettings/Caches/Maps/SpaceTruck/StaticMeshCache/
+Bin/OregonTrail.exe
+Bin/OregonTrail.exe.config
+Bin/OregonTrail.vshost.exe
+Bin/OregonTrail.vshost.exe.config
+Bin/OregonTrail.vshost.exe.manifest
+Bin/TrailCommon.dll
+Bin/TrailEntities.dll
+Bin/TrailGame.exe
+Bin/TrailGame.vshost.exe
+Bin/TrailGame.vshost.exe.manifest
