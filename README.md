@@ -22,13 +22,6 @@ If script execution fail due to the execution policy, you might have to tell Pow
 bash build.sh
 ```
 
-When this have been done, you should be able to run your Cake script
-by invoking the bootstrapper.
-
-```bash
-./build.sh
-```
-
 ## Features ##
 
 ### Stuff ###
