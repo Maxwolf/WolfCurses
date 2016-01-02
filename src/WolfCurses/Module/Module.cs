@@ -1,7 +1,7 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@4:49 AM
 
-namespace SimUnit
+namespace WolfCurses
 {
     /// <summary>
     ///     Base implementation of the IModule interface which allows for some overrides to be virtual so every implementation
@@ -15,7 +15,7 @@ namespace SimUnit
         private bool _moduleCreated;
 
         /// <summary>
-        ///     Initializes a new instance of the <see cref="T:SimUnit.Module" /> class.
+        ///     Initializes a new instance of the <see cref="T:WolfCurses.Module" /> class.
         /// </summary>
         protected Module()
         {

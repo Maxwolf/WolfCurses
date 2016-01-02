@@ -1,7 +1,7 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@2:38 PM
 
-namespace SimUnit
+namespace WolfCurses
 {
     using System;
     using System.Collections.Generic;

@@ -1,7 +1,7 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@4:49 AM
 
-namespace SimUnit.Form
+namespace WolfCurses.Form
 {
     using System;
 
@@ -16,7 +16,7 @@ namespace SimUnit.Form
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
     public sealed class ParentWindowAttribute : Attribute
     {
-        /// <summary>Initializes a new instance of the <see cref="T:SimUnit.Form.ParentWindowAttribute" /> class.</summary>
+        /// <summary>Initializes a new instance of the <see cref="T:WolfCurses.Form.ParentWindowAttribute" /> class.</summary>
         /// <param name="parentWindow">The parent Window.</param>
         public ParentWindowAttribute(Type parentWindow)
         {

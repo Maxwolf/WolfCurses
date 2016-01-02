@@ -1,7 +1,7 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@4:49 AM
 
-namespace SimUnit.Form
+namespace WolfCurses.Form
 {
     using System;
     using System.Collections.Generic;
@@ -14,7 +14,7 @@ namespace SimUnit.Form
     public sealed class FormFactory
     {
         /// <summary>
-        ///     Initializes a new instance of the <see cref="T:SimUnit.Form.FormFactory" /> class.
+        ///     Initializes a new instance of the <see cref="T:WolfCurses.Form.FormFactory" /> class.
         /// </summary>
         public FormFactory()
         {
