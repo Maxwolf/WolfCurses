@@ -62,4 +62,4 @@ Curses is most commonly associated with Unix-like operating systems, although im
 
 There are several other projects that have come after curses such as pcurses, PDCurses, and more recently ncurses which is used by most Linux text-mode installers to this day (2016 time of writing).
 
-I am not affiliated with these other projects in any way, and am just the guy that wanted similar functionality in managed code, meaning no wrappers or P/Invoke to native code because that is ugly.
+I am not affiliated with these other projects at all. I wanted to re-imagine these libraries for modern object-oriented languages without using a wrapper.
