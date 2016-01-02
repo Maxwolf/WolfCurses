@@ -1,0 +1,105 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Wolf Curses by Maxwolf</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/github-light.css">
+    <meta name="viewport" content="width=device-width">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Wolf Curses</h1>
+        <p>Wolf curses is a console control library for .Net/Mono, enabling the construction of text user interface (TUI) applications. The name is a pun on the term &quot;cursor optimization&quot;. It is a library of functions that manage an application&#39;s display on character-cell terminals (e.g., Windows Console, Linux/OS X Terminal).</p>
+
+        <p class="view"><a href="https://github.com/Maxwolf/WolfCurses">View the Project on GitHub <small>Maxwolf/WolfCurses</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/Maxwolf/WolfCurses/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/Maxwolf/WolfCurses/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/Maxwolf/WolfCurses">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h1>
+<a id="wolf-curses" class="anchor" href="#wolf-curses" aria-hidden="true"><span class="octicon octicon-link"></span></a>Wolf Curses</h1>
+
+<p>Provides an abstraction of one or more windows that maps onto the console. Each window is represented by a character matrix. The programmer sets up each window to look as they want the display to look, and then tells wolf curses to update the screen. The library determines a minimal set of changes needed to update the display and then executes these using the terminal's specific capabilities and control sequences.</p>
+
+<p>In short, this means that the programmer simply creates a character matrix of how the screen should look and lets wolf curses handle the work.</p>
+
+<h2>
+<a id="compilation-instructions" class="anchor" href="#compilation-instructions" aria-hidden="true"><span class="octicon octicon-link"></span></a>Compilation Instructions</h2>
+
+<p>You <em>should</em> be able to run the Cake build script by invoking the bootstrapper with a script tailored to the target platform.</p>
+
+<h3>
+<a id="windows" class="anchor" href="#windows" aria-hidden="true"><span class="octicon octicon-link"></span></a>Windows</h3>
+
+<div class="highlight highlight-source-dosbatch"><pre>build.bat</pre></div>
+
+<p>If script execution fail due to the execution policy, you might have to tell PowerShell to allow running scripts. You do this by <a href="https://technet.microsoft.com/en-us/library/ee176961.aspx">changing the execution policy</a>.</p>
+
+<h3>
+<a id="linuxos-x" class="anchor" href="#linuxos-x" aria-hidden="true"><span class="octicon octicon-link"></span></a>Linux/OS X</h3>
+
+<div class="highlight highlight-source-shell"><pre>bash build.sh</pre></div>
+
+<h2>
+<a id="features" class="anchor" href="#features" aria-hidden="true"><span class="octicon octicon-link"></span></a>Features</h2>
+
+<h3>
+<a id="stuff" class="anchor" href="#stuff" aria-hidden="true"><span class="octicon octicon-link"></span></a>Stuff</h3>
+
+<ul>
+<li>Things</li>
+<li>Stuff with things</li>
+</ul>
+
+<h3>
+<a id="things" class="anchor" href="#things" aria-hidden="true"><span class="octicon octicon-link"></span></a>Things</h3>
+
+<ul>
+<li>Stuff</li>
+<li>Things with stuff </li>
+</ul>
+
+<h2>
+<a id="purpose" class="anchor" href="#purpose" aria-hidden="true"><span class="octicon octicon-link"></span></a>Purpose</h2>
+
+<p>The purpose of this project was to replicate the concept of the curses library created by Ken Arnold and originally released with BSD UNIX, where it was used for several games, most notably <a href="https://en.wikipedia.org/wiki/Rogue_(video_game)" title="Rogue (video game)">Rogue</a>.</p>
+
+<h2>
+<a id="curses-based-software" class="anchor" href="#curses-based-software" aria-hidden="true"><span class="octicon octicon-link"></span></a>Curses-based software</h2>
+
+<p>The original curses project was designed to facilitate GUI-like functionality on a text-only device, such as a PC running in console mode, a hardware ANSI terminal, a <a href="https://en.wikipedia.org/wiki/Telnet" title="Telnet">Telnet</a> or <a href="https://en.wikipedia.org/wiki/Secure_Shell" title="Secure Shell">SSH</a> client, or similar.</p>
+
+<p>Curses-based programs often have a <a href="https://en.wikipedia.org/wiki/User_interface" title="User interface">user interface</a> that resembles a traditional graphical user interface, including '<a href="https://en.wikipedia.org/wiki/Widget_(computing)" title="Widget (GUI)">widgets</a>' such as text boxes and scrollable lists, rather than the <a href="https://en.wikipedia.org/wiki/Command-line_interface" title="Command-line interface">command line interface</a> (CLI) most commonly found on text-only devices. This can make them more user-friendly than a CLI-based program, while still being able to run on text-only devices. Curses-based software can also have a lighter resource footprint and operate on a wider range of systems (both in terms of hardware and software) than their GUI-based counterparts. This includes old pre-1990 machines along with modern embedded systems using text-only displays.</p>
+
+<p>However, not all Curses-based software employs a <a href="https://en.wikipedia.org/wiki/Text-based_user_interface" title="Text-based user interface">text user interface</a> which resembles a graphical user interface. One counterexample would be the popular vi text editor, which while not being CLI-based, uses memorized keyboard commands almost exclusively, rather than the prompting TUI/GUI style, which relies more on recognition than recall.</p>
+
+<p>Curses is most commonly associated with Unix-like operating systems, although implementations for Microsoft Windows also exist.</p>
+
+<h2>
+<a id="history" class="anchor" href="#history" aria-hidden="true"><span class="octicon octicon-link"></span></a>History</h2>
+
+<p>There are several other projects that have come after curses such as pcurses, PDCurses, and more recently ncurses which is used by most Linux text-mode installers to this day (2016 time of writing).</p>
+
+<p>I am not affiliated with these other projects at all. I wanted to re-imagine these libraries for modern object-oriented languages without using a wrapper.</p>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/Maxwolf">Maxwolf</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
