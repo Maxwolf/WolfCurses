@@ -4,7 +4,7 @@ Provides an abstraction of one or more windows that maps onto the console. Each 
 
 In short, this means that the programmer simply creates a character matrix of how the screen should look and lets wolf curses handle the work.
 
-![A cursing wolf.](https://github.com/Maxwolf/WolfCurses/blob/master/media/logo.jpg)
+![A cursing wolf.](https://raw.githubusercontent.com/Maxwolf/WolfCurses/master/media/logo.jpg)
 
 ## Compilation Instructions ##
 
