@@ -105,7 +105,7 @@ namespace WolfCurses
                 : $"Window({_simUnit.WindowManager.Count}): {_simUnit.WindowManager.FocusedWindow}() - ");
 
             // Allows the implementing simulation to control text before window is rendered out.
-            tui.AppendLine(_simUnit.OnPreRender());
+            tui.Append(_simUnit.OnPreRender());
 
             // Prints game Windows specific text and options. This typically is menus from commands, or states showing some information.
             tui.Append($"{RenderWindow()}{Environment.NewLine}");
