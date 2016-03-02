@@ -32,16 +32,6 @@ If script execution fail due to the execution policy, you might have to tell Pow
 bash build.sh
 ```
 
-## Features ##
-
-### Stuff ###
- * Things
- * Stuff with things
-
-### Things ###
- * Stuff
- * Things with stuff 
-
 ## Purpose ##
 
 The purpose of this project was to replicate the concept of the curses library created by Ken Arnold and originally released with BSD UNIX, where it was used for several games, most notably [Rogue](https://en.wikipedia.org/wiki/Rogue_(video_game) "Rogue (video game)").
