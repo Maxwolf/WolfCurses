@@ -1,0 +1,27 @@
+{
+  "title": "Wolf Curses",
+  "copyright": "Maxwolf",
+  "description": "Console control library",
+  "version": "1.0.0-*",
+  "buildOptions": {
+    "debugType": "portable",
+    "emitEntryPoint": true,
+    "optimize": true
+  },
+  "dependencies": {
+    "Microsoft.NETCore.App": "1.0.*"
+  },
+
+  "frameworks": {
+    "netcoreapp1.0": {
+    }
+  },
+
+  "configurations": {
+  },
+
+  "runtimes": {
+    "win7-x64": {}
+  }
+
+}
