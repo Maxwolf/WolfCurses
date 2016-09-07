@@ -6,7 +6,7 @@
   "buildOptions": {
     "debugType": "portable",
     "emitEntryPoint": true,
-    "optimize": true
+    "optimize": false
   },
   "dependencies": {
     "Microsoft.NETCore.App": "1.0.*"
