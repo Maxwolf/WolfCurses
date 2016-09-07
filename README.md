@@ -4,6 +4,10 @@ Provides an abstraction of one or more windows that maps onto the console. Each 
 
 In short, this means that the programmer simply creates a character matrix of how the screen should look and lets wolf curses handle the work.
 
+Contains example implementation of a console application using the Wolf curses library. A menu is displayed with a list of choices the user can make.
+
+Fork this repository and use it as the base for your next application or just look at the code and cherry pick from it as you please.
+
 ![A cursing wolf.](https://raw.githubusercontent.com/Maxwolf/WolfCurses/master/media/logo.jpg)
 
 ## Cloning Instructions ##
