@@ -1,16 +1,18 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@4:49 AM
 
-namespace WolfCurses
-{
-    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics.CodeAnalysis;
-    using System.Globalization;
-    using System.Text;
-    using Form;
-    using Menu;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
+using System.Reflection;
+using System.Text;
+using OregonTrailDotNet.WolfCurses.Utility;
+using OregonTrailDotNet.WolfCurses.Window.Form;
+using OregonTrailDotNet.WolfCurses.Window.Menu;
 
+namespace OregonTrailDotNet.WolfCurses.Window
+{
     /// <summary>
     ///     Facilitates the ability to control the entire simulation with the passes interface reference. Server simulation
     ///     keeps track of all currently loaded game modes and will only tick the top-most one so they can be stacked and clear
@@ -81,13 +83,13 @@ namespace WolfCurses
             _menuPrompt = new StringBuilder();
 
             // Create the user data object casted to correct type from generics while still adhering to common base class.
-            UserData = TypeExtensions.New<TData>.Instance();
+            UserData = FactoryExtensions.New<TData>.Instance();
 
             // Determines if the menu system should show raw input names in the menu rendering or just number selections by enum value.
             ShowCommandNamesInMenu = SimulationApp.SHOW_COMMANDS;
 
             // Complain the generics implemented is not of an enum type.
-            if (!typeof (TCommands).IsEnum)
+            if (!typeof (TCommands).GetTypeInfo().IsEnum)
             {
                 throw new InvalidCastException("TCommands must be an enumerated type!");
             }
@@ -157,7 +159,7 @@ namespace WolfCurses
             get
             {
                 // Complain the generics implemented is not of an enum type.
-                if (!typeof (TCommands).IsEnum)
+                if (!typeof (TCommands).GetTypeInfo().IsEnum)
                 {
                     throw new InvalidCastException("T must be an enumerated type!");
                 }

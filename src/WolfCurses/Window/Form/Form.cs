@@ -1,12 +1,12 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@4:49 AM
 
-namespace WolfCurses.Form
-{
-    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics.CodeAnalysis;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
+namespace OregonTrailDotNet.WolfCurses.Window.Form
+{
     /// <summary>Forms are attached to windows.</summary>
     /// <typeparam name="TData">UserData type.</typeparam>
     public abstract class Form<TData> :

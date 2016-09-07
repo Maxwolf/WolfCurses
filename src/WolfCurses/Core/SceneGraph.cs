@@ -1,18 +1,18 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@2:38 PM
 
-namespace WolfCurses
-{
-    using System;
-    using System.Text;
+using System;
+using System.Text;
 
+namespace OregonTrailDotNet.WolfCurses.Core
+{
     /// <summary>
     ///     Provides base functionality for rendering out the simulation state via text user interface (TUI). This class has no
     ///     idea about how other modules work and only serves to query them for string data which will be compiled into a
     ///     console only view of the simulation which is intended to be the lowest level of visualization but theoretically
     ///     anything could be a renderer for the simulation.
     /// </summary>
-    public class SceneGraph : Module
+    public class SceneGraph : Module.Module
     {
         /// <summary>
         ///     Fired when the screen back buffer has changed from what is currently being shown, this forces a redraw.
@@ -79,7 +79,7 @@ namespace WolfCurses
         {
             // GetModule the current text user interface data from inheriting class.
             var tuiContent = OnRender();
-            if (ScreenBuffer.Equals(tuiContent, StringComparison.InvariantCultureIgnoreCase))
+            if (ScreenBuffer.Equals(tuiContent, StringComparison.OrdinalIgnoreCase))
                 return;
 
             // Update the screen buffer with altered data.

@@ -1,11 +1,11 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@4:49 AM
 
-namespace WolfCurses.Control
-{
-    using System;
-    using System.Text;
+using System;
+using System.Text;
 
+namespace OregonTrailDotNet.WolfCurses.Window.Control
+{
     /// <summary>
     ///     Text manipulation utilities for dealing with displaying progress visually as text in a console application.
     /// </summary>

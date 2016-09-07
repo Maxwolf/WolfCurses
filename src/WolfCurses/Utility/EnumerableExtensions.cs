@@ -1,12 +1,12 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@4:49 AM
 
-namespace WolfCurses
-{
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
+namespace OregonTrailDotNet.WolfCurses.Utility
+{
     /// <summary>
     ///     Collection of extension methods used for manipulating a enumerable collection of objects.
     /// </summary>

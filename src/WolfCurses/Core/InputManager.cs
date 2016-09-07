@@ -1,16 +1,16 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@2:38 PM
 
-namespace WolfCurses
-{
-    using System.Collections.Generic;
+using System.Collections.Generic;
 
+namespace OregonTrailDotNet.WolfCurses.Core
+{
     /// <summary>
     ///     Deals with keep track of input to the simulation via whatever form that may end up taking. The default
     ///     implementation is a text user interface (TUI) which allows for the currently accepted commands to be seen and only
     ///     then accepted.
     /// </summary>
-    public sealed class InputManager : Module
+    public sealed class InputManager : Module.Module
     {
         /// <summary>
         ///     Holds a constant representation of the string telling the user to press enter key to continue so we don't repeat

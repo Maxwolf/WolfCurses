@@ -1,11 +1,11 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@4:49 AM
 
-namespace WolfCurses
-{
-    using System;
-    using System.Text;
+using System;
+using System.Text;
 
+namespace OregonTrailDotNet.WolfCurses.Utility
+{
     /// <summary>
     ///     Utility class that contains useful extension methods that make working with strings a little easier and less
     ///     repetitive.

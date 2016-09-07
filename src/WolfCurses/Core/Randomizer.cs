@@ -1,14 +1,14 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@2:38 PM
 
-namespace WolfCurses
-{
-    using System;
+using System;
 
+namespace OregonTrailDotNet.WolfCurses.Core
+{
     /// <summary>
     ///     Used for rolling the virtual dice in the simulation to determine the outcome of various events.
     /// </summary>
-    public sealed class Randomizer : Module
+    public sealed class Randomizer : Module.Module
     {
         /// <summary>
         ///     Game logic objects.

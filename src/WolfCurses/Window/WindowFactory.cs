@@ -1,11 +1,12 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@4:49 AM
 
-namespace WolfCurses
-{
-    using System;
-    using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
+using System.Reflection;
 
+namespace OregonTrailDotNet.WolfCurses.Window
+{
     /// <summary>
     ///     Factory pattern for creating game modes on the fly during runtime based on enumeration input parameter.
     /// </summary>
@@ -56,7 +57,7 @@ namespace WolfCurses
             var modeType = Windows[window.Name];
 
             // Check if the class is abstract base class, we don't want to add that.
-            if (modeType.IsAbstract)
+            if (modeType.GetTypeInfo().IsAbstract)
                 return null;
 
             // Create the game Windows, it will have single parameter for user data.

@@ -1,11 +1,11 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@4:49 AM
 
-namespace WolfCurses.Control
-{
-    using System;
-    using System.Text;
+using System;
+using System.Text;
 
+namespace OregonTrailDotNet.WolfCurses.Window.Control
+{
     /// <summary>
     ///     Progress bar that is drawn in characters and is a ping-pong marquee action bouncing back and fourth.
     /// </summary>

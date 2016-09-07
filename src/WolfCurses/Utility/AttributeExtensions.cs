@@ -1,14 +1,13 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@4:49 AM
 
-namespace WolfCurses
-{
-    using System;
-    using System.Collections.Generic;
-    using System.ComponentModel;
-    using System.Linq;
-    using System.Reflection;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 
+namespace OregonTrailDotNet.WolfCurses.Utility
+{
     /// <summary>
     ///     Meant for dealing with attributes and grabbing all the available classes of a given type with specified attribute
     ///     using generics.
@@ -21,14 +20,12 @@ namespace WolfCurses
         /// </summary>
         /// <param name="inherit">The inherit.</param>
         /// <remarks>http://stackoverflow.com/a/720171</remarks>
-        /// <returns>The <see cref="IEnumerable" />.</returns>
         public static IEnumerable<Type> GetTypesWith<TAttribute>(bool inherit)
             where TAttribute : Attribute
         {
-            return from a in AppDomain.CurrentDomain.GetAssemblies()
-                from t in a.GetTypes()
-                where t.IsDefined(typeof (TAttribute), inherit)
-                select t;
+            return from a in typeof(Program).GetTypeInfo().Assembly.DefinedTypes
+                   where a.IsDefined(typeof(TAttribute), inherit)
+                   select a.AsType();
         }
 
         /// <summary>Determine if a type implements a specific generic interface type.</summary>
@@ -62,9 +59,10 @@ namespace WolfCurses
             var attribs = field.GetCustomAttributes(typeof (T), false);
             var result = default(T);
 
-            if (attribs.Length > 0)
+            var attributes = attribs as IList<Attribute> ?? attribs.ToList();
+            if (attributes.Any())
             {
-                result = attribs[0] as T;
+                result = attributes.FirstOrDefault() as T;
             }
 
             return result;

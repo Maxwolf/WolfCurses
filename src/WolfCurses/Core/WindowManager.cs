@@ -1,18 +1,19 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@2:38 PM
 
-namespace WolfCurses
-{
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using Form;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using OregonTrailDotNet.WolfCurses.Window;
+using OregonTrailDotNet.WolfCurses.Window.Form;
 
+namespace OregonTrailDotNet.WolfCurses.Core
+{
     /// <summary>
     ///     Builds up a list of game modes and their states using reflection and attributes. Contains methods to add game modes
     ///     to running simulation. Can also remove modes and modify them further with states.
     /// </summary>
-    public sealed class WindowManager : Module
+    public sealed class WindowManager : Module.Module
     {
         /// <summary>
         ///     Keeps track of all the possible states a given game mode can have by using attributes and reflection to keep track

@@ -1,11 +1,12 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@4:49 AM
 
-namespace WolfCurses.Form.Input
-{
-    using System;
-    using System.Text;
+using System;
+using System.Text;
+using OregonTrailDotNet.WolfCurses.Core;
 
+namespace OregonTrailDotNet.WolfCurses.Window.Form.Input
+{
     /// <summary>
     ///     Represents a dialog box that acts like a pop-up where it displays some piece of data, accepts any key for input and
     ///     then closes.

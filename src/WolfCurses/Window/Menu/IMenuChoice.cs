@@ -1,10 +1,10 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@4:49 AM
 
-namespace WolfCurses.Menu
-{
-    using System;
+using System;
 
+namespace OregonTrailDotNet.WolfCurses.Window.Menu
+{
     /// <summary>
     ///     Defines a choice in the dynamic action selection system for a given game Windows. This is intended to be used by a
     ///     wrapper for menu choices that aggregates all of the possible actions a given game Windows can make while it is

@@ -1,12 +1,12 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@4:49 AM
 
-namespace WolfCurses.Form
-{
-    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics.CodeAnalysis;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
+namespace OregonTrailDotNet.WolfCurses.Window.Form
+{
     /// <summary>
     ///     Defines interface for game mode state which can show data, accept input, add new game modes, set new state, and
     ///     have user data custom per implementation.

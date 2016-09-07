@@ -1,7 +1,7 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@4:49 AM
 
-namespace WolfCurses
+namespace OregonTrailDotNet.WolfCurses
 {
     /// <summary>
     ///     Used by simulation and all attached modes and their states. Allows them to receive ticks and understand the

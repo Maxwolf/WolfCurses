@@ -1,12 +1,14 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@4:49 AM
 
-namespace WolfCurses.Form
-{
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
+using System;
+using System.Collections.Generic;
+using System.Reflection;
+using OregonTrailDotNet.WolfCurses.Utility;
+using System.Linq;
 
+namespace OregonTrailDotNet.WolfCurses.Window.Form
+{
     /// <summary>
     ///     Keeps track of all the possible states a given game Windows can have by using attributes and reflection to keep
     ///     track of which user data object gets mapped to which particular state.
@@ -14,7 +16,7 @@ namespace WolfCurses.Form
     public sealed class FormFactory
     {
         /// <summary>
-        ///     Initializes a new instance of the <see cref="T:WolfCurses.Form.FormFactory" /> class.
+        ///     Initializes a new instance of the <see cref="T:OregonTrailDotNet.WolfCurses.Window.Form.FormFactory" /> class.
         /// </summary>
         public FormFactory()
         {
@@ -26,7 +28,7 @@ namespace WolfCurses.Form
             foreach (var stateType in foundStates)
             {
                 // GetModule the attribute itself from the state we are working on, which gives us the game Windows enum.
-                var stateAttribute = stateType.GetAttributes<ParentWindowAttribute>(false).First();
+                var stateAttribute = stateType.GetTypeInfo().GetAttributes<ParentWindowAttribute>(false).First();
                 var stateParentMode = stateAttribute.ParentWindow;
 
                 // Add the state reference list for lookup and instancing later during runtime.
@@ -52,7 +54,7 @@ namespace WolfCurses.Form
                     "Perhaps developer forgot [RequiredMode] attribute on state?!");
 
             // States are based on abstract class, but never should be one.
-            if (stateType.IsAbstract)
+            if (stateType.GetTypeInfo().IsAbstract)
                 return null;
 
             // Create the state, it will have constructor with one parameter.

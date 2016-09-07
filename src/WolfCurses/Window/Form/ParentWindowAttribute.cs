@@ -1,10 +1,10 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@4:49 AM
 
-namespace WolfCurses.Form
-{
-    using System;
+using System;
 
+namespace OregonTrailDotNet.WolfCurses.Window.Form
+{
     /// <summary>
     ///     Used to map game Windows states to their respective parent modes by Windows type enumeration value. All of this is
     ///     done
@@ -16,7 +16,7 @@ namespace WolfCurses.Form
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
     public sealed class ParentWindowAttribute : Attribute
     {
-        /// <summary>Initializes a new instance of the <see cref="T:WolfCurses.Form.ParentWindowAttribute" /> class.</summary>
+        /// <summary>Initializes a new instance of the <see cref="T:OregonTrailDotNet.WolfCurses.Window.Form.ParentWindowAttribute" /> class.</summary>
         /// <param name="parentWindow">The parent Window.</param>
         public ParentWindowAttribute(Type parentWindow)
         {

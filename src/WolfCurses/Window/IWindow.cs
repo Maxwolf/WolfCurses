@@ -1,12 +1,12 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@4:49 AM
 
-namespace WolfCurses
-{
-    using System;
-    using System.Collections.Generic;
-    using Form;
+using System;
+using System.Collections.Generic;
+using OregonTrailDotNet.WolfCurses.Window.Form;
 
+namespace OregonTrailDotNet.WolfCurses.Window
+{
     /// <summary>
     ///     Underlying game Windows interface, used by base simulation to keep track of what data should currently have control
     ///     over the simulation details. Only top most game Windows will ever be ticked.

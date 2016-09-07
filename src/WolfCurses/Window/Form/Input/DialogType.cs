@@ -1,7 +1,7 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@4:49 AM
 
-namespace WolfCurses.Form.Input
+namespace OregonTrailDotNet.WolfCurses.Window.Form.Input
 {
     /// <summary>
     ///     Determines what type of dialog this will be, as in should it just display a message and wait for any input before

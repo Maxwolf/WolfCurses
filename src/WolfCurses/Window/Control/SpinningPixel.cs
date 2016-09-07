@@ -1,10 +1,10 @@
 ﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
 // Timestamp 12/31/2015@4:49 AM
 
-namespace WolfCurses.Control
-{
-    using System.Collections.Generic;
+using System.Collections.Generic;
 
+namespace OregonTrailDotNet.WolfCurses.Window.Control
+{
     /// <summary>
     ///     Old school spinning pixel progress, normally used to show the thread is not locked by some running process.
     /// </summary>
