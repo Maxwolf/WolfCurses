@@ -23,9 +23,9 @@ namespace WolfCurses.Utility
         public static IEnumerable<Type> GetTypesWith<TAttribute>(bool inherit)
             where TAttribute : Attribute
         {
-            return from a in typeof(Program).GetTypeInfo().Assembly.DefinedTypes
-                   where a.IsDefined(typeof(TAttribute), inherit)
-                   select a.AsType();
+            return from a in typeof (Program).GetTypeInfo().Assembly.DefinedTypes
+                where a.IsDefined(typeof (TAttribute), inherit)
+                select a.AsType();
         }
 
         /// <summary>Determine if a type implements a specific generic interface type.</summary>

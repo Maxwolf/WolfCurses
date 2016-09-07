@@ -67,8 +67,7 @@ namespace WolfCurses.Utility
                         pos += len;
                         while (pos < eol && char.IsWhiteSpace(text[pos]))
                             pos++;
-                    }
-                    while (eol > pos);
+                    } while (eol > pos);
                 }
                 else sb.Append(Environment.NewLine); // Empty line
             }

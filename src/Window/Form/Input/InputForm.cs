@@ -79,7 +79,7 @@ namespace WolfCurses.Window.Form.Input
             switch (DialogType)
             {
                 case DialogType.Prompt:
-                    _prompt.Append((string) InputManager.PRESSENTER);
+                    _prompt.Append(InputManager.PRESSENTER);
                     break;
                 case DialogType.YesNo:
                 case DialogType.Custom:

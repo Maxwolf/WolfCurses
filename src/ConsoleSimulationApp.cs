@@ -14,13 +14,6 @@ namespace WolfCurses
     public sealed class ConsoleSimulationApp : SimulationApp
     {
         /// <summary>
-        ///     Initializes a new instance of the <see cref="T:TrailGame.SimulationApp" /> class.
-        /// </summary>
-        public ConsoleSimulationApp()
-        {
-        }
-
-        /// <summary>
         ///     Provides stub implementation of a module that ticks along with the simulation, allows logic to be ticked all the
         ///     time and to manipulate windows and forms without being apart of current view.
         /// </summary>
