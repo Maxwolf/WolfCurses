@@ -9,7 +9,7 @@
     "xmlDoc": true
   },
   "dependencies": {
-    "Microsoft.Extensions.DependencyModel": "1.0.1-beta-003206",
+    "Microsoft.Extensions.DependencyModel": "1.0.0",
     "NETStandard.Library": "1.6.0",
     "System.Linq": "4.1.0",
     "System.Reflection": "4.1.0",
