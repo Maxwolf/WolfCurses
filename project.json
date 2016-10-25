@@ -2,26 +2,24 @@
   "title": "Wolf Curses",
   "copyright": "Maxwolf",
   "description": "Console control library",
+  "language": "en-US",
   "version": "1.0.0-*",
   "buildOptions": {
-    "debugType": "portable",
-    "emitEntryPoint": true,
-    "optimize": false
+    "optimize": true,
+    "xmlDoc": true
   },
   "dependencies": {
-    "Microsoft.NETCore.App": "1.0.*"
+    "Microsoft.Extensions.DependencyModel": "1.0.1-beta-003206",
+    "NETStandard.Library": "1.6.0",
+    "System.Linq": "4.1.0",
+    "System.Reflection": "4.1.0",
+    "System.Reflection.TypeExtensions": "4.1.0",
+    "System.Threading.Thread": "4.0.0"
   },
 
   "frameworks": {
-    "netcoreapp1.0": {
+    "netstandard1.6": {
+      "imports": "dnxcore50"
     }
-  },
-
-  "configurations": {
-  },
-
-  "runtimes": {
-    "win7-x64": {}
   }
-
 }

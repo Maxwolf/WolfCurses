@@ -5,6 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Microsoft.DotNet.InternalAbstractions;
+using Microsoft.Extensions.DependencyModel;
 
 namespace WolfCurses.Utility
 {
@@ -23,9 +25,27 @@ namespace WolfCurses.Utility
         public static IEnumerable<Type> GetTypesWith<TAttribute>(bool inherit)
             where TAttribute : Attribute
         {
-            return from a in typeof (Program).GetTypeInfo().Assembly.DefinedTypes
-                where a.IsDefined(typeof (TAttribute), inherit)
-                select a.AsType();
+            // Collection of types we have found.
+            var foundTypes = new List<Type>();
+
+            // Loop through every defined type in current running assembly.
+            foreach (var t in Assembly.GetEntryAssembly().DefinedTypes)
+            {
+                // Loop through every custom attribute based on type we are looking for.
+                foreach (var attr in t.GetCustomAttributes<TAttribute>())
+                {
+                    // Use reflection to figure out object information.
+                    var typeInfo = ((IReflectableType) t).GetTypeInfo();
+
+                    // Check if the type if defined following inheritance rules.
+                    if (typeInfo != null && typeInfo.IsDefined(typeof(TAttribute), inherit))
+                    {
+                        foundTypes.Add(typeInfo.UnderlyingSystemType);
+                    }
+                }
+            }
+
+            return foundTypes;
         }
 
         /// <summary>Determine if a type implements a specific generic interface type.</summary>

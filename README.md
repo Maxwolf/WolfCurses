@@ -22,6 +22,10 @@ Make sure your git client recursively grabs all the sub-modules for the repo. Mo
 
 You *should* be able to run the Cake build script by invoking the bootstrapper with a script tailored to the target platform.
 
+## Example Implementation ##
+
+You can find an example implementation of the WolfCurses library being used with a simple console application with a few different menus, windows, and forms. The source code can be [found here](https://github.com/Maxwolf/WolfCurses.Example "WolfCurses.Example").
+
 ### Windows ###
 
 ```cmd
