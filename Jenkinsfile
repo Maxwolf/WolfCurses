@@ -1,0 +1,1 @@
+git url: "https://github.com/Maxwolf/WolfCurses.git"
