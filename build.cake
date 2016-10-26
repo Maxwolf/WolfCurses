@@ -1,71 +1,53 @@
-#tool nuget:?package=NUnit.ConsoleRunner&version=3.4.0
-//////////////////////////////////////////////////////////////////////
-// ARGUMENTS
-//////////////////////////////////////////////////////////////////////
+var sln = "./WolfCurses.sln";
+var nuspec = "./WolfCurses.nuspec";
 
-var target = Argument("target", "Default");
-var configuration = Argument("configuration", "Release");
+var target = Argument ("target", "Default");
 
-//////////////////////////////////////////////////////////////////////
-// PREPARATION
-//////////////////////////////////////////////////////////////////////
+Task ("Default").IsDependentOn ("build").IsDependentOn ("nuget");
 
-// Define directories.
-var buildDir = Directory("./bin") + Directory(configuration);
-
-//////////////////////////////////////////////////////////////////////
-// TASKS
-//////////////////////////////////////////////////////////////////////
-
-Task("Clean")
-    .Does(() =>
+Task ("build").IsDependentOn ("clean").Does (() => 
 {
-    CleanDirectory(buildDir);
+	NuGetRestore (sln);
+
+	DotNetBuild (sln, c => c.Configuration = "Release");
 });
 
-Task("Restore-NuGet-Packages")
-    .IsDependentOn("Clean")
-    .Does(() =>
+Task ("nuget").IsDependentOn ("build").Does (() => 
 {
-    NuGetRestore("./WolfCurses.sln");
+	CreateDirectory ("./nupkg/");
+
+	NuGetPack (nuspec, new NuGetPackSettings { 
+		Verbosity = NuGetVerbosity.Detailed,
+		OutputDirectory = "./nupkg/",
+		// NuGet messes up path on mac, so let's add ./ in front again
+		BasePath = "././",
+	});	
 });
 
-Task("Build")
-    .IsDependentOn("Restore-NuGet-Packages")
-    .Does(() =>
+Task ("push").IsDependentOn ("nuget").Does (() =>
 {
-    if(IsRunningOnWindows())
-    {
-      // Use MSBuild
-      MSBuild("./WolfCurses.sln", settings =>
-        settings.SetConfiguration(configuration));
-    }
-    else
-    {
-      // Use XBuild
-      XBuild("./WolfCurses.sln", settings =>
-        settings.SetConfiguration(configuration));
-    }
+	// Get the newest (by last write time) to publish
+	var newestNupkg = GetFiles ("nupkg/*.nupkg")
+		.OrderBy (f => new System.IO.FileInfo (f.FullPath).LastWriteTimeUtc)
+		.LastOrDefault ();
+
+	var apiKey = TransformTextFile ("./**/.nugetapi.key").ToString ();
+
+	NuGetPush (newestNupkg, new NuGetPushSettings { 
+		Verbosity = NuGetVerbosity.Detailed,
+		ApiKey = apiKey
+	});
 });
 
-Task("Run-Unit-Tests")
-    .IsDependentOn("Build")
-    .Does(() =>
+Task ("clean").Does (() => 
 {
-    NUnit3("./src/**/bin/" + configuration + "/*.Tests.dll", new NUnit3Settings {
-        NoResults = true
-        });
+	CleanDirectories ("./**/bin");
+	CleanDirectories ("./**/obj");
+
+	CleanDirectories ("./**/Components");
+	//CleanDirectories ("./**/tools");
+
+	DeleteFiles ("./**/*.apk");
 });
 
-//////////////////////////////////////////////////////////////////////
-// TASK TARGETS
-//////////////////////////////////////////////////////////////////////
-
-Task("Default")
-    .IsDependentOn("Run-Unit-Tests");
-
-//////////////////////////////////////////////////////////////////////
-// EXECUTION
-//////////////////////////////////////////////////////////////////////
-
-RunTarget(target);
+RunTarget (target);

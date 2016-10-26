@@ -23,9 +23,16 @@
     }
   },
 
+  "runtimes": {
+    "win7-x64": {},
+    "osx.10.10-x64": {},
+    "ubuntu.14.04-x64": {}
+  },
+
   "scripts": {
     "postcompile": [
-      "dotnet pack --no-build --configuration %compile:Configuration%"
+      "dotnet pack --no-build --output nupkg --configuration %compile:Configuration%",
+      "dotnet publish --no-build --output lib"
     ]
   }
 }
