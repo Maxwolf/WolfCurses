@@ -13,7 +13,7 @@ Fork this repository and use it as the base for your next application or just lo
 ## Cloning Instructions ##
 
 ```cmd
-git clone --recursive https://github.com/Maxwolf/OregonTrail.git
+git clone --recursive https://github.com/Maxwolf/WolfCurses.git
 ```
 
 Make sure your git client recursively grabs all the sub-modules for the repo. Most Git GUI's (e.g, SourceTree, SmartGit, GitEye) will all do this automatically for you.
