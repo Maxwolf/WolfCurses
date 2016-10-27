@@ -16,7 +16,7 @@ Task ("build").IsDependentOn ("clean").Does (() =>
 		OutputDirectory = "nupkg",
 		Verbose = true,
 		NoBuild = true,
-		VersionSuffix = "ci-" + (EnvironmentVariable("BUILD_NUMBER") ?? "0")
+		VersionSuffix = EnvironmentVariable("BUILD_NUMBER") ?? "0"
 	};
             
 	DotNetCorePack(json, packSettings);

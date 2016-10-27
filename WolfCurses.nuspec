@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>wolfcurses</id>
-    <version>2.0.0-*</version>
+    <version>2.0.0.*</version>
     <authors>Maxwolf</authors>
 	<description>Wolf curses is a console control library for .Net/Mono, enabling the construction of text user interface (TUI) applications.</description>
     <language>en-US</language>
