@@ -3,7 +3,7 @@
   "copyright": "Maxwolf",
   "description": "Console control library",
   "language": "en-US",
-  "version": "2.0.0-*",
+  "version": "2.1.0.8",
   "buildOptions": {
     "optimize": true,
     "xmlDoc": true
@@ -17,13 +17,25 @@
     "System.Reflection.TypeExtensions": "4.1.0",
     "System.Threading.Thread": "4.0.0"
   },
-
   "frameworks": {
     "netstandard1.6": {
       "imports": "dnxcore50"
     }
   },
-
+  "tools": {
+    "dotnet-bump": "1.0.1"
+  },
+  "scripts": {
+    "postcompile": [
+      "dotnet bump revision -t Debug -c %compile:Configuration%",
+      "dotnet bump revision -t Release -c %compile:Configuration%"
+    ]
+  },
+  "configurations": {
+    "Release": {},
+    "Debug": {},
+    "Jenkins": {}
+  },
   "runtimes": {
     "win7-x64": {},
     "osx.10.10-x64": {},
