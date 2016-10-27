@@ -8,7 +8,14 @@ Task ("Default").IsDependentOn ("build").IsDependentOn ("push");
 Task ("build").IsDependentOn ("clean").Does (() => 
 {
 	DotNetCoreRestore();
-	DotNetCoreBuild(json);
+	
+	// Always use Jenkins configuration never Debug or Release they will bump version numbers.
+	var buildSettings = new DotNetCoreBuildSettings
+	{
+		Configuration = "Jenkins"
+	};
+	
+	DotNetCoreBuild(json, buildSettings);
 	
 	// Create packing settings for .NET core.
 	var packSettings = new DotNetCorePackSettings {
