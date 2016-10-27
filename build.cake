@@ -1,4 +1,5 @@
 var sln = "./WolfCurses.sln";
+var json = "./project.json";
 var nuspec = "./WolfCurses.nuspec";
 
 var target = Argument ("target", "Default");
@@ -16,10 +17,10 @@ Task ("build").IsDependentOn ("clean").Does (() =>
 		OutputDirectory = "nupkg",
 		Verbose = true,
 		NoBuild = true,
-		VersionSuffix = "ci-" + GetEnvironmentVariable("BUILD_NUMBER")
+		VersionSuffix = "ci-" + (EnvironmentVariable("BUILD_NUMBER") ?? "0")
 	};
             
-	DotNetCorePack(sln, settings);
+	DotNetCorePack(json, packSettings);
 });
 
 Task ("push").Does (() =>
