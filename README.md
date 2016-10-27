@@ -10,6 +10,14 @@ Fork this repository and use it as the base for your next application or just lo
 
 ![A cursing wolf.](https://raw.githubusercontent.com/Maxwolf/WolfCurses/master/media/logo.jpg)
 
+## NuGet Package ##
+
+To install Wolf Curses, run the following command in the [Package Manager Console](https://docs.nuget.org/docs/start-here/using-the-package-manager-console). If you would like to see the NuGet gallery page you can [find it here](https://www.nuget.org/packages/WolfCurses/).
+
+```cmd
+PM> Install-Package WolfCurses
+```
+
 ## Cloning Instructions ##
 
 ```cmd
