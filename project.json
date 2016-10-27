@@ -3,7 +3,7 @@
   "copyright": "Maxwolf",
   "description": "Console control library",
   "language": "en-US",
-  "version": "1.0.0-*",
+  "version": "2.0.0-*",
   "buildOptions": {
     "optimize": true,
     "xmlDoc": true
