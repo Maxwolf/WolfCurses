@@ -19,11 +19,10 @@ Task ("build").IsDependentOn ("clean").Does (() =>
 	
 	// Create packing settings for .NET core.
 	var packSettings = new DotNetCorePackSettings {
-		Configuration = "Release",
+		Configuration = "Jenkins",
 		OutputDirectory = "nupkg",
 		Verbose = true,
-		NoBuild = true,
-		VersionSuffix = EnvironmentVariable("BUILD_NUMBER") ?? "0"
+		NoBuild = true
 	};
             
 	DotNetCorePack(json, packSettings);
