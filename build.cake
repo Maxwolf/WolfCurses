@@ -1,4 +1,3 @@
-var sln = "./WolfCurses.sln";
 var json = "./project.json";
 var nuspec = "./WolfCurses.nuspec";
 
@@ -9,7 +8,7 @@ Task ("Default").IsDependentOn ("build").IsDependentOn ("push");
 Task ("build").IsDependentOn ("clean").Does (() => 
 {
 	DotNetCoreRestore();
-	DotNetBuild (sln);
+	DotNetBuild (json);
 	
 	// Create packing settings for .NET core.
 	var packSettings = new DotNetCorePackSettings {
