@@ -29,64 +29,54 @@
       </header>
       <section>
         <h1>
-<a id="wolf-curses" class="anchor" href="#wolf-curses" aria-hidden="true"><span class="octicon octicon-link"></span></a>Wolf Curses</h1>
+<a id="wolf-curses" class="anchor" href="#wolf-curses" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Wolf Curses</h1>
 
 <p>Provides an abstraction of one or more windows that maps onto the console. Each window is represented by a character matrix. The programmer sets up each window to look as they want the display to look, and then tells wolf curses to update the screen. The library determines a minimal set of changes needed to update the display and then executes these using the terminal's specific capabilities and control sequences.</p>
 
 <p>In short, this means that the programmer simply creates a character matrix of how the screen should look and lets wolf curses handle the work.</p>
 
+<p>Contains example implementation of a console application using the Wolf curses library. A menu is displayed with a list of choices the user can make.</p>
+
+<p>Fork this repository and use it as the base for your next application or just look at the code and cherry pick from it as you please.</p>
+
 <p><img src="https://raw.githubusercontent.com/Maxwolf/WolfCurses/master/media/logo.jpg" alt="A cursing wolf."></p>
 
 <h2>
-<a id="cloning-instructions" class="anchor" href="#cloning-instructions" aria-hidden="true"><span class="octicon octicon-link"></span></a>Cloning Instructions</h2>
+<a id="cloning-instructions" class="anchor" href="#cloning-instructions" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Cloning Instructions</h2>
 
-<div class="highlight highlight-source-dosbatch"><pre>git clone --recursive https://github.com/Maxwolf/OregonTrail.git</pre></div>
+<div class="highlight highlight-source-batchfile"><pre>git clone --recursive https://github.com/Maxwolf/WolfCurses.git</pre></div>
 
 <p>Make sure your git client recursively grabs all the sub-modules for the repo. Most Git GUI's (e.g, SourceTree, SmartGit, GitEye) will all do this automatically for you.</p>
 
 <h2>
-<a id="compilation-instructions" class="anchor" href="#compilation-instructions" aria-hidden="true"><span class="octicon octicon-link"></span></a>Compilation Instructions</h2>
+<a id="compilation-instructions" class="anchor" href="#compilation-instructions" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Compilation Instructions</h2>
 
 <p>You <em>should</em> be able to run the Cake build script by invoking the bootstrapper with a script tailored to the target platform.</p>
 
-<h3>
-<a id="windows" class="anchor" href="#windows" aria-hidden="true"><span class="octicon octicon-link"></span></a>Windows</h3>
+<h2>
+<a id="example-implementation" class="anchor" href="#example-implementation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Example Implementation</h2>
 
-<div class="highlight highlight-source-dosbatch"><pre>build.bat</pre></div>
+<p>You can find an example implementation of the WolfCurses library being used with a simple console application with a few different menus, windows, and forms. The source code can be <a href="https://github.com/Maxwolf/WolfCurses.Example" title="WolfCurses.Example">found here</a>.</p>
+
+<h3>
+<a id="windows" class="anchor" href="#windows" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Windows</h3>
+
+<div class="highlight highlight-source-batchfile"><pre>build.bat</pre></div>
 
 <p>If script execution fail due to the execution policy, you might have to tell PowerShell to allow running scripts. You do this by <a href="https://technet.microsoft.com/en-us/library/ee176961.aspx">changing the execution policy</a>.</p>
 
 <h3>
-<a id="linuxos-x" class="anchor" href="#linuxos-x" aria-hidden="true"><span class="octicon octicon-link"></span></a>Linux/OS X</h3>
+<a id="linuxos-x" class="anchor" href="#linuxos-x" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Linux/OS X</h3>
 
 <div class="highlight highlight-source-shell"><pre>bash build.sh</pre></div>
 
 <h2>
-<a id="features" class="anchor" href="#features" aria-hidden="true"><span class="octicon octicon-link"></span></a>Features</h2>
-
-<h3>
-<a id="stuff" class="anchor" href="#stuff" aria-hidden="true"><span class="octicon octicon-link"></span></a>Stuff</h3>
-
-<ul>
-<li>Things</li>
-<li>Stuff with things</li>
-</ul>
-
-<h3>
-<a id="things" class="anchor" href="#things" aria-hidden="true"><span class="octicon octicon-link"></span></a>Things</h3>
-
-<ul>
-<li>Stuff</li>
-<li>Things with stuff </li>
-</ul>
-
-<h2>
-<a id="purpose" class="anchor" href="#purpose" aria-hidden="true"><span class="octicon octicon-link"></span></a>Purpose</h2>
+<a id="purpose" class="anchor" href="#purpose" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Purpose</h2>
 
 <p>The purpose of this project was to replicate the concept of the curses library created by Ken Arnold and originally released with BSD UNIX, where it was used for several games, most notably <a href="https://en.wikipedia.org/wiki/Rogue_(video_game)" title="Rogue (video game)">Rogue</a>.</p>
 
 <h2>
-<a id="curses-based-software" class="anchor" href="#curses-based-software" aria-hidden="true"><span class="octicon octicon-link"></span></a>Curses-based software</h2>
+<a id="curses-based-software" class="anchor" href="#curses-based-software" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Curses-based software</h2>
 
 <p>The original curses project was designed to facilitate GUI-like functionality on a text-only device, such as a PC running in console mode, a hardware ANSI terminal, a <a href="https://en.wikipedia.org/wiki/Telnet" title="Telnet">Telnet</a> or <a href="https://en.wikipedia.org/wiki/Secure_Shell" title="Secure Shell">SSH</a> client, or similar.</p>
 
@@ -97,7 +87,7 @@
 <p>Curses is most commonly associated with Unix-like operating systems, although implementations for Microsoft Windows also exist.</p>
 
 <h2>
-<a id="history" class="anchor" href="#history" aria-hidden="true"><span class="octicon octicon-link"></span></a>History</h2>
+<a id="history" class="anchor" href="#history" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>History</h2>
 
 <p>There are several other projects that have come after curses such as pcurses, PDCurses, and more recently ncurses which is used by most Linux text-mode installers to this day (2016 time of writing).</p>
 
