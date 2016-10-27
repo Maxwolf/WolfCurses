@@ -3,10 +3,30 @@
   "copyright": "Maxwolf",
   "description": "Console control library",
   "language": "en-US",
-  "version": "2.1.0.9",
+  "version": "2.1.0.11",
   "buildOptions": {
     "optimize": true,
     "xmlDoc": true
+  },
+  "packOptions": {
+    "summary": "Console control library for .Net Core.",
+    "tags": [
+      "wolf",
+      "curses",
+      "wolfcurses"
+    ],
+    "owners": [
+      "Maxwolf"
+    ],
+    "releaseNotes": "Latest nightly Jenkins build.",
+    "iconUrl": "https://raw.githubusercontent.com/Maxwolf/WolfCurses/master/media/logo.jpg",
+    "projectUrl": "https://github.com/Maxwolf/WolfCurses",
+    "licenseUrl": "https://github.com/Maxwolf/WolfCurses/blob/master/LICENSE",
+    "requireLicenseAcceptance": false,
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/Maxwolf/WolfCurses.git"
+    }
   },
   "dependencies": {
     "Cake.Core": "0.16.2",
