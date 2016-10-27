@@ -8,7 +8,7 @@ Task ("Default").IsDependentOn ("build").IsDependentOn ("push");
 Task ("build").IsDependentOn ("clean").Does (() => 
 {
 	DotNetCoreRestore();
-	DotNetBuild (json);
+	DotNetCoreBuild(json);
 	
 	// Create packing settings for .NET core.
 	var packSettings = new DotNetCorePackSettings {
