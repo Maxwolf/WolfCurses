@@ -29,7 +29,6 @@
     }
   },
   "dependencies": {
-    "Cake.Core": "0.16.2",
     "Microsoft.Extensions.DependencyModel": "1.0.0",
     "NETStandard.Library": "1.6.0",
     "System.Linq": "4.1.0",
