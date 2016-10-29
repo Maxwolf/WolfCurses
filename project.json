@@ -3,7 +3,7 @@
   "copyright": "Maxwolf",
   "description": "Console control library",
   "language": "en-US",
-  "version": "2.1.0.13",
+  "version": "2.1.0.15",
   "buildOptions": {
     "optimize": true,
     "xmlDoc": true,
@@ -47,7 +47,7 @@
   },
   "scripts": {
     "postcompile": [
-      "dotnet bump revision -t Debug -c %compile:Configuration%",
+      //"dotnet bump revision -t Debug -c %compile:Configuration%",
       "dotnet bump revision -t Release -c %compile:Configuration%"
     ]
   },

@@ -489,10 +489,10 @@ namespace WolfCurses.Window
             foreach (var menuChoice in _menuCommands)
             {
                 // Figure out what enumeration integer value was given for this command.
-                var currentChoiceIndex = menuChoice.Command.ToString(CultureInfo.InvariantCulture);
+                var currentChoiceIndex = menuChoice.Command.ToInt32(new NumberFormatInfo());
 
                 // Add the input to the mapping dictionary, and the delegate for it's action invoker.
-                _menuMappings.Add(currentChoiceIndex, menuChoice.Command);
+                _menuMappings.Add(currentChoiceIndex.ToString(), menuChoice.Command);
 
                 // Adds the reverse mapping for actual enumeration value input to related action.
                 _menuActions.Add(menuChoice.Command, menuChoice.Action);
