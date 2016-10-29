@@ -40,11 +40,6 @@ namespace WolfCurses.Window
         private Dictionary<TCommands, Action> _menuActions;
 
         /// <summary>
-        ///     Keeps track of the total number of menu choices that are currently available to this window.
-        /// </summary>
-        private int _menuChoiceCount;
-
-        /// <summary>
         ///     Reference to all of the possible commands that this game Windows supports routing back to the game simulation that
         ///     spawned it.
         /// </summary>
@@ -489,24 +484,23 @@ namespace WolfCurses.Window
             // Clear out any previous mappings.
             _menuMappings.Clear();
             _menuActions.Clear();
-            _menuChoiceCount = 0;
 
             // Loop through every menu input we have.
             foreach (var menuChoice in _menuCommands)
             {
-                // Increment the total number of commands we have now.
-                _menuChoiceCount++;
+                // Figure out what enumeration integer value was given for this command.
+                var currentChoiceIndex = menuChoice.Command.ToString(CultureInfo.InvariantCulture);
 
                 // Add the input to the mapping dictionary, and the delegate for it's action invoker.
-                _menuMappings.Add(_menuChoiceCount.ToString(), menuChoice.Command);
+                _menuMappings.Add(currentChoiceIndex, menuChoice.Command);
 
                 // Adds the reverse mapping for actual enumeration value input to related action.
                 _menuActions.Add(menuChoice.Command, menuChoice.Action);
 
                 // Name of input and then description of what it does, the input is all we really care about.
                 _menuPrompt.Append(ShowCommandNamesInMenu
-                    ? $"  {_menuChoiceCount}. {menuChoice.Command} - {menuChoice.Description}{Environment.NewLine}"
-                    : $"  {_menuChoiceCount}. {menuChoice.Description}{Environment.NewLine}");
+                    ? $"  {currentChoiceIndex}. {menuChoice.Command} - {menuChoice.Description}{Environment.NewLine}"
+                    : $"  {currentChoiceIndex}. {menuChoice.Description}{Environment.NewLine}");
             }
         }
 
