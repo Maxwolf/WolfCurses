@@ -7,6 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Reflection;
 using System.Text;
+using WolfCurses.Core;
 using WolfCurses.Utility;
 using WolfCurses.Window.Form;
 using WolfCurses.Window.Menu;
@@ -137,6 +138,12 @@ namespace WolfCurses.Window
         ///     data for parent game Windows.
         /// </summary>
         protected TData UserData { get; }
+
+        /// <summary>
+        ///     Determines what is asked at the bottom of a windows menu system. By default this is "What is your choice?" and can
+        ///     be changed per window, and by any active forms.
+        /// </summary>
+        public string PromptText { get; set; } = SceneGraph.PROMPT_TEXT_DEFAULT;
 
         /// <summary>
         ///     Because of how generics work in C# we need to have the ability to override a method in implementing classes to get

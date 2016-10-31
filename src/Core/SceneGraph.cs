@@ -30,6 +30,11 @@ namespace WolfCurses.Core
         private const string GAMEMODE_EMPTY_TUI = "[NO WINDOW ATTACHED]";
 
         /// <summary>
+        ///     Default string that is used in menu generations when the user is given a choice. Can be changed per window or form.
+        /// </summary>
+        public const string PROMPT_TEXT_DEFAULT = "What is your choice?";
+
+        /// <summary>
         ///     Reference to simulation that is controlling the text user interface and actually filling the screen buffer with
         ///     data.
         /// </summary>
@@ -110,11 +115,11 @@ namespace WolfCurses.Core
             // Prints game Windows specific text and options. This typically is menus from commands, or states showing some information.
             tui.Append($"{RenderWindow()}{Environment.NewLine}");
 
+            // Determines if the user is allowed to see their input from buffer as they type it, or is it stored until they press enter.
             if (_simUnit.WindowManager.AcceptingInput)
-            {
-                // Allow user to see their input from buffer.
-                tui.Append($"What is your choice? {_simUnit.InputManager.InputBuffer}");
-            }
+                tui.Append(_simUnit.WindowManager.FocusedWindow != null
+                    ? $"{_simUnit.WindowManager.FocusedWindow.PromptText} {_simUnit.InputManager.InputBuffer}"
+                    : $"{PROMPT_TEXT_DEFAULT} {_simUnit.InputManager.InputBuffer}");
 
             // Outputs the result of the string builder to TUI builder above.
             return tui.ToString();

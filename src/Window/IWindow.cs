@@ -43,6 +43,12 @@ namespace WolfCurses.Window
         /// </summary>
         WindowData UserData { get; }
 
+        /// <summary>
+        ///     Determines what is asked at the bottom of a windows menu system. By default this is "What is your choice?" and can
+        ///     be changed per window, and by any active forms.
+        /// </summary>
+        string PromptText { get; set; }
+
         /// <summary>Creates and adds the specified type of state to currently active game Windows.</summary>
         /// <param name="stateType">The state Type.</param>
         void SetForm(Type stateType);
