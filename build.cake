@@ -1,5 +1,4 @@
 var json = "./project.json";
-var nuspec = "./WolfCurses.nuspec";
 
 var target = Argument ("target", "Default");
 
