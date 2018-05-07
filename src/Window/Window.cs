@@ -254,20 +254,14 @@ namespace WolfCurses.Window
         ///     Determines if user input is currently allowed to be typed and filled into the input buffer.
         /// </summary>
         /// <remarks>Default is FALSE. Setting to TRUE allows characters and input buffer to be read when submitted.</remarks>
-        public virtual bool AcceptsInput
-        {
-            get { return !ShouldRemoveMode; }
-        }
+        public virtual bool AcceptsInput => !ShouldRemoveMode;
 
         /// <summary>
         ///     Holds the current state which this Windows is in, a Windows will cycle through available states until it is
         ///     finished and
         ///     then detach.
         /// </summary>
-        public IForm CurrentForm
-        {
-            get { return Form; }
-        }
+        public IForm CurrentForm => Form;
 
         /// <summary>
         ///     Removes the current state from the active game Windows.
@@ -318,12 +312,13 @@ namespace WolfCurses.Window
             return _menuPrompt.ToString();
         }
 
+        /// <inheritdoc />
         /// <summary>
         ///     Fired by messaging system or user interface that wants to interact with the simulation by sending string input
         ///     that should be able to be parsed into a valid input that can be run on the current game Windows.
         /// </summary>
         /// <param name="input">Passed in input from controller, text was trimmed but nothing more.</param>
-        public void SendCommand(string input)
+        public virtual void SendCommand(string input)
         {
             // Only process menu items for game Windows when current state is null, or there are no menu choices to select from.
             if (Form == null &&
@@ -332,8 +327,7 @@ namespace WolfCurses.Window
                 !string.IsNullOrWhiteSpace(input))
             {
                 // Attempt to convert the returned line into generic enum.
-                TCommands parsedCommand;
-                Enum.TryParse(input, out parsedCommand);
+                Enum.TryParse(input, out TCommands parsedCommand);
                 if (!(Enum.IsDefined(typeof (TCommands), parsedCommand) |
                       parsedCommand.ToString(CultureInfo.InvariantCulture).Contains(",")))
                     return;
