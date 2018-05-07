@@ -2,11 +2,10 @@
 // Timestamp 12/31/2015@4:49 AM
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Microsoft.DotNet.InternalAbstractions;
-using Microsoft.Extensions.DependencyModel;
 
 namespace WolfCurses.Utility
 {
@@ -76,13 +75,12 @@ namespace WolfCurses.Utility
             where T : Attribute
         {
             var field = enumValue.GetType().GetField(enumValue.ToString());
-            var attribs = field.GetCustomAttributes(typeof (T), false);
+            var attribs = new List<Attribute>(field.GetCustomAttributes(typeof(T), false) as IEnumerable<Attribute>);
             var result = default(T);
 
-            var attributes = attribs as IList<Attribute> ?? attribs.ToList();
-            if (attributes.Any())
+            if (attribs.Any())
             {
-                result = attributes.FirstOrDefault() as T;
+                result = attribs.FirstOrDefault() as T;
             }
 
             return result;

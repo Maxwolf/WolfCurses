@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>WolfCurses</id>
+    <version>3.0.0</version>
+    <authors>Maxwolf</authors>
+    <owners>Maxwolf</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <licenseUrl>https://github.com/Maxwolf/WolfCurses/blob/master/LICENSE</licenseUrl>
+    <projectUrl>http://maxwolf.github.io/WolfCurses</projectUrl>
+    <description>Console control library</description>
+    <repository url="https://github.com/Maxwolf/WolfCurses" />
+    <dependencies>
+      <group targetFramework=".NETCoreApp2.0">
+        <dependency id="System.Linq" version="4.3.0" exclude="Build,Analyzers" />
+        <dependency id="System.Linq.Expressions" version="4.3.0" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="C:\WolfCurses\bin\netcoreapp2.0\WolfCurses.dll" target="lib\netcoreapp2.0\WolfCurses.dll" />
+  </files>
+</package>
