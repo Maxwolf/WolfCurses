@@ -99,14 +99,6 @@ namespace WolfCurses.Core
             return _random.NextDouble();
         }
 
-        /// <summary>Fills the elements of a specified array of bytes with random numbers.</summary>
-        /// <param name="buffer">An array of bytes to contain random numbers.</param>
-        /// <exception cref="T:System.ArgumentNullException"><paramref name="buffer" /> is null.</exception>
-        public void NextBytes(byte[] buffer)
-        {
-            _random.NextBytes(buffer);
-        }
-
         /// <summary>
         ///     Returns a random Boolean value.
         /// </summary>

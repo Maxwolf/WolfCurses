@@ -17,7 +17,7 @@ namespace WolfCurses.Window.Form.Input
         /// <summary>
         ///     Reference for all the text we will display for user to read when the state is activated.
         /// </summary>
-        private StringBuilder _prompt;
+        private readonly StringBuilder _prompt;
 
         /// <summary>
         ///     Keeps track if the player is done looking at this dialog prompt.
@@ -38,10 +38,7 @@ namespace WolfCurses.Window.Form.Input
         ///     Defines what type of dialog this will act like depending on this enumeration value. Up to implementation to define
         ///     desired behavior.
         /// </summary>
-        protected virtual DialogType DialogType
-        {
-            get { return DialogType.Prompt; }
-        }
+        protected virtual DialogType DialogType => DialogType.Prompt;
 
         /// <summary>
         ///     Determines if user input is currently allowed to be typed and filled into the input buffer.

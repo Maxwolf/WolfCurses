@@ -10,6 +10,7 @@ namespace WolfCurses.Utility
     ///     Utility class that contains useful extension methods that make working with strings a little easier and less
     ///     repetitive.
     /// </summary>
+    // ReSharper disable once UnusedMember.Global
     public static class StringExtensions
     {
         /// <summary>

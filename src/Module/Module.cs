@@ -10,19 +10,6 @@ namespace WolfCurses.Module
     public abstract class Module : IModule
     {
         /// <summary>
-        ///     Determines if the module has been created by the simulation.
-        /// </summary>
-        private bool _moduleCreated;
-
-        /// <summary>
-        ///     Initializes a new instance of the <see cref="T:WolfCurses.Module.Module" /> class.
-        /// </summary>
-        protected Module()
-        {
-            _moduleCreated = true;
-        }
-
-        /// <summary>
         ///     Fired when the simulation is closing and needs to clear out any data structures that it created so the program can
         ///     exit cleanly.
         /// </summary>

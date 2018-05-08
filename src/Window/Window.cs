@@ -64,7 +64,7 @@ namespace WolfCurses.Window
         /// <summary>
         ///     Holds the text user interface data that we are going to eventually render out to the user.
         /// </summary>
-        private StringBuilder _menuPrompt;
+        private readonly StringBuilder _menuPrompt;
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="Window{TCommands,TData}" /> class.
@@ -113,8 +113,8 @@ namespace WolfCurses.Window
         /// </summary>
         protected virtual string MenuHeader
         {
-            get { return _menuHeader; }
-            set { _menuHeader = value; }
+            get => _menuHeader;
+            set => _menuHeader = value;
         }
 
         /// <summary>
@@ -123,8 +123,8 @@ namespace WolfCurses.Window
         /// </summary>
         protected virtual string MenuFooter
         {
-            get { return _menuFooter; }
-            set { _menuFooter = value; }
+            get => _menuFooter;
+            set => _menuFooter = value;
         }
 
         /// <summary>
@@ -144,31 +144,6 @@ namespace WolfCurses.Window
         ///     be changed per window, and by any active forms.
         /// </summary>
         public string PromptText { get; set; } = SceneGraph.PROMPT_TEXT_DEFAULT;
-
-        /// <summary>
-        ///     Because of how generics work in C# we need to have the ability to override a method in implementing classes to get
-        ///     back the correct commands for the implementation from abstract class inheritance chain. On the bright side it
-        ///     enforces the commands returned to be of the specified enum in generics.
-        /// </summary>
-        /// <remarks>
-        ///     http://stackoverflow.com/a/5042675
-        /// </remarks>
-        /// <returns>
-        ///     Formatting list of enumeration values that can be iterated over as array.
-        /// </returns>
-        private static TCommands[] Commands
-        {
-            get
-            {
-                // Complain the generics implemented is not of an enum type.
-                if (!typeof (TCommands).GetTypeInfo().IsEnum)
-                {
-                    throw new InvalidCastException("T must be an enumerated type!");
-                }
-
-                return Enum.GetValues(typeof (TCommands)) as TCommands[];
-            }
-        }
 
         /// <summary>The compare to.</summary>
         /// <param name="other">The other.</param>
@@ -224,10 +199,7 @@ namespace WolfCurses.Window
         ///     Intended to be overridden in abstract class by generics to provide method to return object that contains all the
         ///     data for parent game Windows.
         /// </summary>
-        WindowData IWindow.UserData
-        {
-            get { return UserData; }
-        }
+        WindowData IWindow.UserData => UserData;
 
         /// <summary>
         ///     Determines if the game Windows should not be ticked if it is active but instead removed. The Windows when set to

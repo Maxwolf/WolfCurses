@@ -19,19 +19,19 @@ namespace WolfCurses.Core
         ///     Keeps track of all the possible states a given game mode can have by using attributes and reflection to keep track
         ///     of which user data object gets mapped to which particular state.
         /// </summary>
-        private FormFactory formFactory;
+        private FormFactory _formFactory;
 
         /// <summary>
         ///     Factory pattern that will create game modes for it based on attribute at the top of each one that defines what
         ///     window type it is responsible for.
         /// </summary>
-        private WindowFactory windowFactory;
+        private WindowFactory _windowFactory;
 
         /// <summary>
         ///     Current list of all game modes, only the last one added gets ticked this is so game modes can attach things on-top
         ///     of themselves like stores and trades.
         /// </summary>
-        private Dictionary<Type, IWindow> windowList = new Dictionary<Type, IWindow>();
+        private readonly Dictionary<Type, IWindow> _windowList = new Dictionary<Type, IWindow>();
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="WindowManager" /> class.
@@ -41,8 +41,8 @@ namespace WolfCurses.Core
         public WindowManager(SimulationApp simUnit)
         {
             // Factories for modes and states that can be attached to them during runtime.
-            windowFactory = new WindowFactory(simUnit);
-            formFactory = new FormFactory();
+            _windowFactory = new WindowFactory(simUnit);
+            _formFactory = new FormFactory();
         }
 
         /// <summary>
@@ -52,9 +52,9 @@ namespace WolfCurses.Core
         {
             get
             {
-                lock (windowList)
+                lock (_windowList)
                 {
-                    return windowList.LastOrDefault().Value;
+                    return _windowList.LastOrDefault().Value;
                 }
             }
         }
@@ -64,7 +64,13 @@ namespace WolfCurses.Core
         /// </summary>
         internal int Count
         {
-            get { return windowList.Count; }
+            get
+            {
+                lock (_windowList)
+                {
+                    return _windowList.Count;
+                }
+            }
         }
 
         /// <summary>
@@ -102,16 +108,16 @@ namespace WolfCurses.Core
         public override void Destroy()
         {
             // Windows factory and list of modes in simulation.
-            windowFactory.Destroy();
-            windowFactory = null;
-            lock (windowList)
+            _windowFactory.Destroy();
+            _windowFactory = null;
+            lock (_windowList)
             {
-                windowList.Clear();
+                _windowList.Clear();
             }
 
             // State factory only references parent Windows type, they are added directly to active Windows so no list of them here.
-            formFactory.Destroy();
-            formFactory = null;
+            _formFactory.Destroy();
+            _formFactory = null;
         }
 
         /// <summary>
@@ -149,7 +155,7 @@ namespace WolfCurses.Core
         /// <returns>The <see cref="IForm" />.</returns>
         public IForm CreateStateFromType(IWindow parentMode, Type stateType)
         {
-            return formFactory.CreateStateFromType(stateType, parentMode);
+            return _formFactory.CreateStateFromType(stateType, parentMode);
         }
 
         /// <summary>
@@ -161,14 +167,14 @@ namespace WolfCurses.Core
         /// </returns>
         private bool CleanWindows()
         {
-            lock (windowList)
+            lock (_windowList)
             {
                 // Ensure the Windows exists as active Windows.
                 if (FocusedWindow == null)
                     return false;
 
                 // Create copy of all modes so we can destroy while iterating.
-                var tempWindowList = new Dictionary<Type, IWindow>(windowList);
+                var tempWindowList = new Dictionary<Type, IWindow>(_windowList);
                 var updatedWindowList = false;
                 foreach (var mode in tempWindowList)
                 {
@@ -177,7 +183,7 @@ namespace WolfCurses.Core
                         continue;
 
                     // Remove the Windows from list if it is flagged for removal.
-                    windowList.Remove(mode.Key);
+                    _windowList.Remove(mode.Key);
                     updatedWindowList = true;
                 }
 
@@ -194,9 +200,9 @@ namespace WolfCurses.Core
         /// </summary>
         private void OnWindowAdded()
         {
-            lock (windowList)
+            lock (_windowList)
             {
-                var tempWindowList = new Dictionary<Type, IWindow>(windowList);
+                var tempWindowList = new Dictionary<Type, IWindow>(_windowList);
                 foreach (var loadedMode in tempWindowList)
                 {
                     if (loadedMode.Key == FocusedWindow.GetType())
@@ -222,21 +228,21 @@ namespace WolfCurses.Core
         /// <param name="window">Enumeration value of the Windows which should be created.</param>
         public void Add(Type window)
         {
-            lock (windowList)
+            lock (_windowList)
             {
                 // Check if any other modes match the one we are adding.
-                if (windowList.ContainsKey(window))
+                if (_windowList.ContainsKey(window))
                 {
                     // If Windows is attempted to be added we will fire activate for it so Windows knows it was added again without having to call post create.
-                    windowList[window].OnWindowActivate();
+                    _windowList[window].OnWindowActivate();
                     return;
                 }
 
                 // Create the game Windows using factory.
-                var modeProduct = windowFactory.CreateWindow(window);
+                var modeProduct = _windowFactory.CreateWindow(window);
 
                 // Add the game Windows to the simulation now that we know it does not exist in the stack yet.
-                windowList.Add(window, modeProduct);
+                _windowList.Add(window, modeProduct);
                 OnWindowAdded();
             }
         }
@@ -247,9 +253,9 @@ namespace WolfCurses.Core
         /// </summary>
         public void Clear()
         {
-            lock (windowList)
+            lock (_windowList)
             {
-                windowList.Clear();
+                _windowList.Clear();
             }
         }
     }

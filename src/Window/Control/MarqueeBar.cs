@@ -11,41 +11,26 @@ namespace WolfCurses.Window.Control
     /// </summary>
     public sealed class MarqueeBar
     {
-        /// <summary>
-        ///     The bar.
-        /// </summary>
-        private string bar;
+        private string _bar;
 
-        /// <summary>
-        ///     The blank pointer.
-        /// </summary>
-        private string blankPointer;
+        private readonly string _blankPointer;
 
-        /// <summary>
-        ///     The counter.
-        /// </summary>
-        private int counter;
+        private int _counter;
 
-        /// <summary>
-        ///     The current directory.
-        /// </summary>
-        private Direction currdir;
+        private Direction _currdir;
 
-        /// <summary>
-        ///     The pointer.
-        /// </summary>
-        private string pointer;
+        private readonly string _pointer;
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="MarqueeBar" /> class.
         /// </summary>
         public MarqueeBar()
         {
-            bar = "|                         |";
-            pointer = "***";
-            blankPointer = BlankPointer();
-            currdir = Direction.Right;
-            counter = 1;
+            _bar = "|                         |";
+            _pointer = "***";
+            _blankPointer = BlankPointer();
+            _currdir = Direction.Right;
+            _counter = 1;
         }
 
         /// <summary>
@@ -55,7 +40,7 @@ namespace WolfCurses.Window.Control
         private string BlankPointer()
         {
             var blank = new StringBuilder();
-            for (var cont = 0; cont < pointer.Length; cont++)
+            for (var cont = 0; cont < _pointer.Length; cont++)
                 blank.Append(" ");
             return blank.ToString();
         }
@@ -65,7 +50,7 @@ namespace WolfCurses.Window.Control
         /// </summary>
         private void ClearBar()
         {
-            bar = bar.Replace(pointer, blankPointer);
+            _bar = _bar.Replace(_pointer, _blankPointer);
         }
 
         /// <summary>remove the previous pointer and place it in a new position</summary>
@@ -74,8 +59,8 @@ namespace WolfCurses.Window.Control
         private void PlacePointer(int start, int end)
         {
             ClearBar();
-            bar = bar.Remove(start, end);
-            bar = bar.Insert(start, pointer);
+            _bar = _bar.Remove(start, end);
+            _bar = _bar.Insert(start, _pointer);
         }
 
         /// <summary>
@@ -86,22 +71,22 @@ namespace WolfCurses.Window.Control
         /// </returns>
         public string Step()
         {
-            if (currdir == Direction.Right)
+            if (_currdir == Direction.Right)
             {
-                PlacePointer(counter, pointer.Length);
-                counter++;
-                if (counter + pointer.Length == bar.Length)
-                    currdir = Direction.Left;
+                PlacePointer(_counter, _pointer.Length);
+                _counter++;
+                if (_counter + _pointer.Length == _bar.Length)
+                    _currdir = Direction.Left;
             }
             else
             {
-                PlacePointer(counter - pointer.Length, pointer.Length);
-                counter--;
-                if (counter == pointer.Length)
-                    currdir = Direction.Right;
+                PlacePointer(_counter - _pointer.Length, _pointer.Length);
+                _counter--;
+                if (_counter == _pointer.Length)
+                    _currdir = Direction.Right;
             }
 
-            return bar + Environment.NewLine;
+            return _bar + Environment.NewLine;
         }
 
         /// <summary>

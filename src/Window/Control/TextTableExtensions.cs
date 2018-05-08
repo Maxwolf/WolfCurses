@@ -98,7 +98,6 @@ namespace WolfCurses.Window.Control
 
         /// <summary>The get max columns width.</summary>
         /// <param name="arrValues">The arr values.</param>
-        /// <returns>The <see cref="int[]" />.</returns>
         private static int[] GetMaxColumnsWidth(string[,] arrValues)
         {
             var maxColumnsWidth = new int[arrValues.GetLength(1)];
@@ -146,9 +145,9 @@ namespace WolfCurses.Window.Control
         /// <returns>The <see cref="PropertyInfo" />.</returns>
         private static PropertyInfo GetProperty<T>(Expression<Func<T, object>> expresstion)
         {
-            if ((expresstion.Body as UnaryExpression)?.Operand is MemberExpression)
+            if ((expresstion.Body as UnaryExpression)?.Operand is MemberExpression expression)
             {
-                return (((UnaryExpression) expresstion.Body).Operand as MemberExpression)?.Member as PropertyInfo;
+                return expression.Member as PropertyInfo;
             }
 
             return (expresstion.Body as MemberExpression)?.Member as PropertyInfo;

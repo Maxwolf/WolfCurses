@@ -44,10 +44,9 @@ namespace WolfCurses.Utility
             /// <summary>The instance.</summary>
             public static readonly Func<T> Instance = Creator();
 
-            private static Func<Type, object> getUninitializedObject;
+            // ReSharper disable once StaticMemberInGenericType
+            private static Func<Type, object> _getUninitializedObject;
 
-            /// <summary>The creator.</summary>
-            /// <returns>The <see cref="Func" />.</returns>
             private static Func<T> Creator()
             {
                 var t = typeof (T);
@@ -78,8 +77,8 @@ namespace WolfCurses.Utility
             /// <remarks> https://github.com/mgravell/protobuf-net/blob/master/protobuf-net/BclHelpers.cs#L35 </remarks>
             internal static object TryGetUninitializedObjectWithFormatterServices(Type type)
             {
-                if (getUninitializedObject != null)
-                    return getUninitializedObject(type);
+                if (_getUninitializedObject != null)
+                    return _getUninitializedObject(type);
 
                 try
                 {
@@ -89,7 +88,7 @@ namespace WolfCurses.Utility
                         BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
                     if (method != null)
                     {
-                        getUninitializedObject = (Func<Type, object>) method.CreateDelegate(typeof (Func<Type, object>));
+                        _getUninitializedObject = (Func<Type, object>) method.CreateDelegate(typeof (Func<Type, object>));
                     }
                 }
                 catch
@@ -97,9 +96,9 @@ namespace WolfCurses.Utility
                     /* best efforts only */
                 }
 
-                if (getUninitializedObject == null)
-                    getUninitializedObject = x => null;
-                return getUninitializedObject(type);
+                if (_getUninitializedObject == null)
+                    _getUninitializedObject = x => null;
+                return _getUninitializedObject(type);
             }
         }
     }

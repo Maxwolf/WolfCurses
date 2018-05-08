@@ -26,6 +26,6 @@ namespace WolfCurses.Window.Form
         /// <summary>
         ///     Defines what the parent game mode of this particular state should be.
         /// </summary>
-        public Type ParentWindow { get; private set; }
+        public Type ParentWindow { get; }
     }
 }

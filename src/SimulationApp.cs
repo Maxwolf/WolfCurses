@@ -19,12 +19,14 @@ namespace WolfCurses
         ///     Determines if the dynamic menu system should show the command names or only numbers. If false then only numbers
         ///     will be shown.
         /// </summary>
+        // ReSharper disable once InconsistentNaming
         public const bool SHOW_COMMANDS = false;
 
         /// <summary>
         ///     Constant for the amount of time difference that should occur from last tick and current tick in milliseconds before
         ///     the simulation logic will be ticked.
         /// </summary>
+        // ReSharper disable once InconsistentNaming
         private const double TICK_INTERVAL = 1000.0d;
 
         /// <summary>

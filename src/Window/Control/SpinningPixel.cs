@@ -10,23 +10,17 @@ namespace WolfCurses.Window.Control
     /// </summary>
     internal sealed class SpinningPixel
     {
-        /// <summary>
-        ///     The animation.
-        /// </summary>
-        private List<string> animation;
+        private readonly List<string> _animation;
 
-        /// <summary>
-        ///     The counter.
-        /// </summary>
-        private int counter;
+        private int _counter;
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="SpinningPixel" /> class.
         /// </summary>
         public SpinningPixel()
         {
-            animation = new List<string> {"/", "-", @"\", "|"};
-            counter = 0;
+            _animation = new List<string> {"/", "-", @"\", "|"};
+            _counter = 0;
         }
 
         /// <summary>
@@ -37,10 +31,10 @@ namespace WolfCurses.Window.Control
         /// </returns>
         public string Step()
         {
-            var barText = animation[counter];
-            counter++;
-            if (counter == animation.Count)
-                counter = 0;
+            var barText = _animation[_counter];
+            _counter++;
+            if (_counter == _animation.Count)
+                _counter = 0;
 
             return barText;
         }

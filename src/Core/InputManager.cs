@@ -16,6 +16,7 @@ namespace WolfCurses.Core
         ///     Holds a constant representation of the string telling the user to press enter key to continue so we don't repeat
         ///     ourselves.
         /// </summary>
+        // ReSharper disable once InconsistentNaming
         public const string PRESSENTER = "Press ENTER KEY to continue";
 
         /// <summary>

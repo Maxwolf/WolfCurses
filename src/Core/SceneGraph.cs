@@ -22,16 +22,19 @@ namespace WolfCurses.Core
         /// <summary>
         ///     Default string used when game Windows has nothing better to say.
         /// </summary>
+        // ReSharper disable once InconsistentNaming
         private const string GAMEMODE_DEFAULT_TUI = "[DEFAULT WINDOW TEXT]";
 
         /// <summary>
         ///     Default string used when there are no game modes at all.
         /// </summary>
+        // ReSharper disable once InconsistentNaming
         private const string GAMEMODE_EMPTY_TUI = "[NO WINDOW ATTACHED]";
 
         /// <summary>
         ///     Default string that is used in menu generations when the user is given a choice. Can be changed per window or form.
         /// </summary>
+        // ReSharper disable once InconsistentNaming
         public const string PROMPT_TEXT_DEFAULT = "What is your choice?";
 
         /// <summary>

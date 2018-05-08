@@ -31,7 +31,7 @@ namespace WolfCurses.Utility
             foreach (var t in Assembly.GetEntryAssembly().DefinedTypes)
             {
                 // Loop through every custom attribute based on type we are looking for.
-                foreach (var attr in t.GetCustomAttributes<TAttribute>())
+                foreach (var unused in t.GetCustomAttributes<TAttribute>())
                 {
                     // Use reflection to figure out object information.
                     var typeInfo = ((IReflectableType) t).GetTypeInfo();
@@ -47,16 +47,6 @@ namespace WolfCurses.Utility
             return foundTypes;
         }
 
-        /// <summary>Determine if a type implements a specific generic interface type.</summary>
-        /// <param name="baseType">The base Type.</param>
-        /// <param name="interfaceType">The interface Type.</param>
-        /// <remarks>http://stackoverflow.com/a/503359</remarks>
-        /// <returns>The <see cref="bool" />.</returns>
-        public static bool IsImplementationOf(this Type baseType, Type interfaceType)
-        {
-            return baseType.GetInterfaces().Any(interfaceType.Equals);
-        }
-
         /// <summary>Find the fields in an enum that have a specific attribute with a specific value.</summary>
         /// <param name="source">The source.</param>
         /// <param name="inherit">The inherit.</param>
@@ -66,24 +56,6 @@ namespace WolfCurses.Utility
         {
             var attrs = source.GetCustomAttributes(typeof (T), inherit);
             return (attrs != null) ? (T[]) attrs : Enumerable.Empty<T>();
-        }
-
-        /// <summary>Extension method for enum's that helps with getting custom attributes off of enum values</summary>
-        /// <param name="enumValue">The enum Value.</param>
-        /// <returns>The <see cref="T" />.</returns>
-        public static T GetEnumAttribute<T>(this Enum enumValue)
-            where T : Attribute
-        {
-            var field = enumValue.GetType().GetField(enumValue.ToString());
-            var attribs = new List<Attribute>(field.GetCustomAttributes(typeof(T), false) as IEnumerable<Attribute>);
-            var result = default(T);
-
-            if (attribs.Any())
-            {
-                result = attribs.FirstOrDefault() as T;
-            }
-
-            return result;
         }
 
         /// <summary>Grabs first attribute from a given object and returns the first one in the enumeration.</summary>

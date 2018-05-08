@@ -31,10 +31,7 @@ namespace WolfCurses.Window.Form
         ///     Intended to be overridden in abstract class by generics to provide method to return object that contains all the
         ///     data for parent game Windows.
         /// </summary>
-        public TData UserData
-        {
-            get { return ParentWindow.UserData as TData; }
-        }
+        public TData UserData => ParentWindow.UserData as TData;
 
         /// <summary>
         ///     Current parent game Windows which this state is binded to and is doing work on behalf of.
@@ -104,28 +101,19 @@ namespace WolfCurses.Window.Form
         ///     Intended to be overridden in abstract class by generics to provide method to return object that contains all the
         ///     data for parent game Windows.
         /// </summary>
-        WindowData IForm.UserData
-        {
-            get { return UserData; }
-        }
+        WindowData IForm.UserData => UserData;
 
         /// <summary>
         ///     Determines if user input is currently allowed to be typed and filled into the input buffer.
         /// </summary>
         /// <remarks>Default is FALSE. Setting to TRUE allows characters and input buffer to be read when submitted.</remarks>
-        public virtual bool InputFillsBuffer
-        {
-            get { return !ParentWindow.ShouldRemoveMode; }
-        }
+        public virtual bool InputFillsBuffer => !ParentWindow.ShouldRemoveMode;
 
         /// <summary>
         ///     Determines if this dialog state is allowed to receive any input at all, even empty line returns. This is useful for
         ///     preventing the player from leaving a particular dialog until you are ready or finished processing some data.
         /// </summary>
-        public virtual bool AllowInput
-        {
-            get { return !ParentWindow.ShouldRemoveMode; }
-        }
+        public virtual bool AllowInput => !ParentWindow.ShouldRemoveMode;
 
         /// <summary>
         ///     Returns a text only representation of the current game Windows state. Could be a statement, information, question
@@ -173,7 +161,7 @@ namespace WolfCurses.Window.Form
         /// <param name="y">The second object to compare.</param>
         public int Compare(IForm x, IForm y)
         {
-            var result = string.Compare(x.GetType().Name, y.GetType().Name, StringComparison.Ordinal);
+            var result = string.Compare(x?.GetType().Name, y?.GetType().Name, StringComparison.Ordinal);
             if (result != 0)
                 return result;
 
