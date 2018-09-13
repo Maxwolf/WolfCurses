@@ -26,7 +26,7 @@ namespace WolfCurses
         ///     Constant for the amount of time difference that should occur from last tick and current tick in milliseconds before
         ///     the simulation logic will be ticked.
         /// </summary>
-        private readonly double _tickInterval;
+        private readonly double _tickIntervalInMillis;
 
         /// <summary>
         ///     Time and date of latest system tick, used to measure total elapsed time and tick simulation after each second.
@@ -55,9 +55,9 @@ namespace WolfCurses
         /// <summary>
         ///     Initializes a new instance of the <see cref="T:WolfCurses.SimulationApp" /> class with given tick interval.
         /// </summary>
-        protected SimulationApp(double tickInterval)
+        protected SimulationApp(double tickIntervalInMillis)
         {
-            _tickInterval = tickInterval;
+            _tickIntervalInMillis = tickIntervalInMillis;
 
             // We are not closing...
             IsClosing = false;
@@ -170,7 +170,7 @@ namespace WolfCurses
                 var elapsedSpan = new TimeSpan(elapsedTicks);
 
                 // Check if more than an entire second has gone by.
-                if (!(elapsedSpan.TotalMilliseconds > _tickInterval))
+                if (!(elapsedSpan.TotalMilliseconds > _tickIntervalInMillis))
                     return;
 
                 // Reset last tick time to current time for measuring towards next second tick.
