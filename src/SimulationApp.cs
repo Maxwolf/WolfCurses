@@ -46,14 +46,14 @@ namespace WolfCurses
         private SpinningPixel _spinningPixel;
 
         /// <summary>
-        ///     Initializes a new instance of the <see cref="T:TrailGame.SimulationApp" /> class with default tick interval (1000ms).
+        ///     Initializes a new instance of the <see cref="T:WolfCurses.SimulationApp" /> class with default tick interval (1000ms).
         /// </summary>
         protected SimulationApp() : this(1000.0d)
         {
         }
 
         /// <summary>
-        ///     Initializes a new instance of the <see cref="T:TrailGame.SimulationApp" /> class with given tick interval.
+        ///     Initializes a new instance of the <see cref="T:WolfCurses.SimulationApp" /> class with given tick interval.
         /// </summary>
         protected SimulationApp(double tickInterval)
         {
