@@ -31,7 +31,7 @@ namespace WolfCurses.Core
         ///     Current list of all game modes, only the last one added gets ticked this is so game modes can attach things on-top
         ///     of themselves like stores and trades.
         /// </summary>
-        private readonly Dictionary<Type, IWindow> _windowList = new Dictionary<Type, IWindow>();
+        private readonly Dictionary<Type, IWindow> _windowList = new();
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="WindowManager" /> class.

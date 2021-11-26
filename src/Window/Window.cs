@@ -362,7 +362,6 @@ namespace WolfCurses.Window
         /// <param name="x">The x.</param>
         /// <param name="y">The y.</param>
         /// <returns>The <see cref="int" />.</returns>
-        [SuppressMessage("ReSharper", "PossibleNullReferenceException")]
         public override int Compare(IWindow x, IWindow y)
         {
             // ReSharper disable once PossibleNullReferenceException
