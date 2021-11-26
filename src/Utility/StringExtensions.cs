@@ -23,7 +23,7 @@ namespace WolfCurses.Utility
         public static string Truncate(this string value, int maxLength)
         {
             if (string.IsNullOrEmpty(value)) return value;
-            return value.Length <= maxLength ? value : value.Substring(0, maxLength);
+            return value.Length <= maxLength ? value : value[..maxLength];
         }
 
         /// <summary>Word wraps the given text to fit within the specified width.</summary>

@@ -135,7 +135,6 @@ namespace WolfCurses
         ///     Determines if the simulation has force ticked without advancing time or down the trail. Used by
         ///     special events that want to simulate passage of time without actually any actual time moving by.
         /// </param>
-        [SuppressMessage("ReSharper", "TailRecursiveCall")]
         public virtual void OnTick(bool systemTick, bool skipDay = false)
         {
             // No ticks allowed if simulation is shutting down.
