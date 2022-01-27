@@ -26,8 +26,7 @@ namespace WolfCurses
         ///     Constant for the amount of time difference that should occur from last tick and current tick in milliseconds before
         ///     the simulation logic will be ticked.
         /// </summary>
-        // ReSharper disable once InconsistentNaming
-        private const double TICK_INTERVAL = 1000.0d;
+        private readonly double _tickIntervalInMillis;
 
         /// <summary>
         ///     Time and date of latest system tick, used to measure total elapsed time and tick simulation after each second.
@@ -47,10 +46,19 @@ namespace WolfCurses
         private SpinningPixel _spinningPixel;
 
         /// <summary>
-        ///     Initializes a new instance of the <see cref="T:TrailGame.SimulationApp" /> class.
+        ///     Initializes a new instance of the <see cref="T:WolfCurses.SimulationApp" /> class with default tick interval (1000ms).
         /// </summary>
-        protected SimulationApp()
+        protected SimulationApp() : this(1000.0d)
         {
+        }
+
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="T:WolfCurses.SimulationApp" /> class with given tick interval.
+        /// </summary>
+        protected SimulationApp(double tickIntervalInMillis)
+        {
+            _tickIntervalInMillis = tickIntervalInMillis;
+
             // We are not closing...
             IsClosing = false;
 
@@ -161,7 +169,7 @@ namespace WolfCurses
                 var elapsedSpan = new TimeSpan(elapsedTicks);
 
                 // Check if more than an entire second has gone by.
-                if (!(elapsedSpan.TotalMilliseconds > TICK_INTERVAL))
+                if (!(elapsedSpan.TotalMilliseconds > _tickIntervalInMillis))
                     return;
 
                 // Reset last tick time to current time for measuring towards next second tick.
