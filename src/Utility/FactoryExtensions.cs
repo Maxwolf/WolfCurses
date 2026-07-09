@@ -1,7 +1,7 @@
 ﻿//   !!  // WolfPuppy - TypeExtensions.cs
 // *.-". // Created: 2016-09-06 [1:19 PM]
 //  | |  // Copyright 2016 The Fox Council 
-// Modified by: Ron 'Maxwolf' McDowell on 2016-09-06 @ 3:30 PM
+// Modified by: Maxwolf on 2016-09-06 @ 3:30 PM
 
 #region Usings
 
