@@ -1,4 +1,4 @@
-﻿// Created by Ron 'Maxwolf' McDowell (ron.mcdowell@gmail.com) 
+﻿// Created by Maxwolf (bigmaxwolf.com)
 // Timestamp 12/31/2015@4:49 AM
 
 namespace WolfCurses
