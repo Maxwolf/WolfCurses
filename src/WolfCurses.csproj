@@ -6,7 +6,7 @@
     <Description>Console control library</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
-    <PackageProjectUrl>http://maxwolf.github.io/WolfCurses</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/Maxwolf/WolfCurses</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Maxwolf/WolfCurses</RepositoryUrl>
     <Authors>Maxwolf</Authors>
     <Version>10.0.0</Version>
