@@ -1,0 +1,57 @@
+using System.Linq;
+using WolfCurses.Tests.Support;
+using WolfCurses.Window.Control;
+using Xunit;
+
+namespace WolfCurses.Tests.Controls
+{
+    public class MarqueeBarTests
+    {
+        private const int BAR_LENGTH = 27;
+
+        [Fact]
+        public void Step_FirstCall_PlacesPointerAtLeftEdge()
+        {
+            var bar = new MarqueeBar();
+
+            Assert.Equal("|***" + new string(' ', 22) + "|" + Text.NL, bar.Step());
+        }
+
+        [Fact]
+        public void Step_IsDeterministicAcrossInstances()
+        {
+            var first = new MarqueeBar();
+            var second = new MarqueeBar();
+
+            for (var i = 0; i < 60; i++)
+                Assert.Equal(first.Step(), second.Step());
+        }
+
+        [Fact]
+        public void Step_EveryFrameHasConstantLengthAndTrailingNewline()
+        {
+            var bar = new MarqueeBar();
+
+            for (var i = 0; i < 100; i++)
+            {
+                var frame = bar.Step();
+                Assert.Equal(BAR_LENGTH + Text.NL.Length, frame.Length);
+                Assert.EndsWith(Text.NL, frame);
+                Assert.Contains("***", frame);
+            }
+        }
+
+        [Fact]
+        public void Step_PingPongs_ReachesRightEdgeAndReturnsToFirstFrame()
+        {
+            var bar = new MarqueeBar();
+            var frames = Enumerable.Range(0, 100).Select(_ => bar.Step()).ToList();
+
+            // Pointer touches the right edge on the way out...
+            Assert.Contains(frames, f => f.StartsWith("|" + new string(' ', 22) + "***|"));
+
+            // ...and the initial frame comes around again after the bounce.
+            Assert.Contains(frames.Skip(1), f => f == frames[0]);
+        }
+    }
+}
