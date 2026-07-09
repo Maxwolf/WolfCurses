@@ -18,4 +18,8 @@
     <None Include="NUGET_README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="WolfCurses.Tests" />
+  </ItemGroup>
+
 </Project>
