@@ -21,32 +21,20 @@ PM> Install-Package WolfCurses
 ## Cloning Instructions ##
 
 ```cmd
-git clone --recursive https://github.com/Maxwolf/WolfCurses.git
+git clone https://github.com/Maxwolf/WolfCurses.git
 ```
-
-Make sure your git client recursively grabs all the sub-modules for the repo. Most Git GUI's (e.g, SourceTree, SmartGit, GitEye) will all do this automatically for you.
 
 ## Compilation Instructions ##
 
-You *should* be able to run the Cake build script by invoking the bootstrapper with a script tailored to the target platform.
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download). From the repository root:
+
+```cmd
+dotnet build WolfCurses.sln
+```
 
 ## Example Implementation ##
 
 You can find an example implementation of the WolfCurses library being used with a simple console application with a few different menus, windows, and forms. The source code can be [found here](https://github.com/Maxwolf/WolfCurses.Example "WolfCurses.Example").
-
-### Windows ###
-
-```cmd
-build.bat
-```
-
-If script execution fail due to the execution policy, you might have to tell PowerShell to allow running scripts. You do this by [changing the execution policy](https://technet.microsoft.com/en-us/library/ee176961.aspx).
-
-### Linux/OS X ###
-
-```bash
-bash build.sh
-```
 
 ## Purpose ##
 
