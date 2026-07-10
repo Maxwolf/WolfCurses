@@ -16,8 +16,9 @@ namespace WolfCurses.Core
         private Random _random;
 
         /// <summary>
-        ///     Initializes a new instance of the <see cref="Randomizer" /> class.
-        ///     Initializes a new instance of the <see cref="T:TrailSimulation.Core.ModuleProduct" /> class.
+        ///     Initializes a new instance of the <see cref="Randomizer" /> class, seeding from the current system tick.
+        ///     The auto-generated seed is exposed via <see cref="RandomSeed" /> so a session can be recorded and later
+        ///     replayed by passing it back to <see cref="Randomizer(int)" />.
         /// </summary>
         public Randomizer()
         {
@@ -27,9 +28,21 @@ namespace WolfCurses.Core
         }
 
         /// <summary>
-        ///     Number used to seed the random number generator.
+        ///     Initializes a new instance of the <see cref="Randomizer" /> class with an explicit seed, making the
+        ///     sequence deterministic and reproducible across runs.
         /// </summary>
-        private int RandomSeed { get; }
+        /// <param name="seed">Seed for the underlying random number generator.</param>
+        public Randomizer(int seed)
+        {
+            RandomSeed = seed;
+            _random = new Random(seed);
+        }
+
+        /// <summary>
+        ///     Number used to seed the random number generator. Record it to reproduce a session later via
+        ///     <see cref="Randomizer(int)" />.
+        /// </summary>
+        public int RandomSeed { get; }
 
         /// <summary>
         ///     Fired when the simulation is closing and needs to clear out any data structures that it created so the program can

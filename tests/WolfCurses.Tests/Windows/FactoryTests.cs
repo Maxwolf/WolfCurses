@@ -75,5 +75,21 @@ namespace WolfCurses.Tests.Windows
 
             Assert.IsType<YesNoDialogForm>(window.CurrentForm);
         }
+
+        [Fact]
+        public void FormFactory_ReadsAdditionalFormAssemblies_ExactlyOnce_WithoutBreakingDiscovery()
+        {
+            // FormFactory must consult SimulationApp.AdditionalFormAssemblies while it builds (read exactly once),
+            // fold those assemblies into discovery, and de-duplicate — here the hook returns the already-scanned test
+            // assembly, so form discovery must still succeed with no duplicate-registration crash.
+            var app = new AdditionalAssembliesSimulationApp();
+
+            Assert.Equal(1, app.AdditionalFormAssembliesReadCount);
+
+            app.WindowManager.Add(typeof(TestWindow));
+            app.WindowManager.FocusedWindow.SetForm(typeof(TestForm));
+
+            Assert.IsType<TestForm>(app.WindowManager.FocusedWindow.CurrentForm);
+        }
     }
 }

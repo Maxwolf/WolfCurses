@@ -23,6 +23,24 @@ namespace WolfCurses.Tests.Core
         }
 
         [Fact]
+        public void SeededCtor_PlumbsSeedIntoRandomizer()
+        {
+            var app = new SeededSimulationApp(2024);
+
+            Assert.Equal(2024, app.Random.RandomSeed);
+        }
+
+        [Fact]
+        public void SeededCtor_SameSeed_MakesTheSharedRandomizerReproducible()
+        {
+            var a = new SeededSimulationApp(2024);
+            var b = new SeededSimulationApp(2024);
+
+            for (var i = 0; i < 100; i++)
+                Assert.Equal(a.Random.Next(), b.Random.Next());
+        }
+
+        [Fact]
         public void OnTickFalse_FiresOnFirstTickExactlyOnce()
         {
             var app = new TestSimulationApp();

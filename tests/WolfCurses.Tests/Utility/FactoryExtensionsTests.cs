@@ -1,3 +1,4 @@
+using System;
 using WolfCurses.Utility;
 using Xunit;
 
@@ -15,6 +16,14 @@ namespace WolfCurses.Tests.Utility
             public WithoutDefaultCtor(int ignored)
             {
                 _ = ignored;
+            }
+        }
+
+        private sealed class ConstructorThrows
+        {
+            public ConstructorThrows(int ignored)
+            {
+                throw new InvalidOperationException("constructor must be bypassed by GetUninitializedObject");
             }
         }
 
@@ -47,6 +56,29 @@ namespace WolfCurses.Tests.Utility
             var created = FactoryExtensions.New<WithoutDefaultCtor>.Instance();
 
             Assert.NotNull(created);
+        }
+
+        [Fact]
+        public void GetUninitializedObject_ReturnsNonNullInstanceOfExactType()
+        {
+            // Regression for the FormatterServices reflection hack that no longer resolves on modern .NET: it made
+            // this path silently return null for every type, which crashed downstream object factories. It must now
+            // return a real, correctly typed instance (RuntimeHelpers.GetUninitializedObject).
+            var created = FactoryExtensions.New<WithoutDefaultCtor>.GetUninitializedObject(typeof(WithoutDefaultCtor));
+
+            Assert.NotNull(created);
+            Assert.IsType<WithoutDefaultCtor>(created);
+        }
+
+        [Fact]
+        public void New_ConstructorHavingSideEffects_IsBypassedForTypeWithoutParameterlessCtor()
+        {
+            // The uninitialized-object path must skip the constructor entirely; if it fell back to Activator or the
+            // ctor ran, this would throw instead of handing back a blank instance.
+            var created = FactoryExtensions.New<ConstructorThrows>.Instance();
+
+            Assert.NotNull(created);
+            Assert.IsType<ConstructorThrows>(created);
         }
     }
 }
