@@ -132,6 +132,47 @@ namespace WolfCurses.Tests.Core
         }
 
         [Fact]
+        public void OnFirstTick_ThatCallsRestart_FiresOnceAndKeepsTheWindowAcrossTicks()
+        {
+            // Regression: the idiomatic "OnFirstTick attaches the initial window by calling Restart()" pattern (used
+            // by WolfCurses.Example) must not turn into an every-tick restart loop. Restart resets the tick counter to
+            // re-fire OnFirstTick for a new session, but when Restart is invoked from inside OnFirstTick the reset has
+            // to be suppressed or the "== 1" branch keeps re-firing, wiping the window (and any active form) each tick.
+            var app = new RestartOnFirstTickSimulationApp();
+
+            app.OnTick(false);
+            var windowAfterFirstTick = app.WindowManager.FocusedWindow;
+
+            for (var i = 0; i < 10; i++)
+                app.OnTick(false);
+
+            // OnFirstTick fired exactly once, and the single window it attached is the very same instance ten ticks
+            // later — proving nothing cleared and re-added it behind the scenes.
+            Assert.Equal(1, app.FirstTickCount);
+            Assert.Equal(1, app.WindowManager.Count);
+            Assert.Same(windowAfterFirstTick, app.WindowManager.FocusedWindow);
+        }
+
+        [Fact]
+        public void OnFirstTick_ThatCallsRestart_LetsAFormSurviveSubsequentTicks()
+        {
+            // The user-visible symptom of the restart loop: a form set in response to a menu command was destroyed on
+            // the next tick, so menus could never advance. Pin that a form set after first tick stays attached.
+            var app = new RestartOnFirstTickSimulationApp();
+            app.OnTick(false);
+
+            var window = (TestWindow)app.WindowManager.FocusedWindow;
+            window.SetForm(typeof(TestForm));
+            Assert.NotNull(window.CurrentForm);
+
+            app.OnTick(false);
+            app.OnTick(false);
+
+            Assert.NotNull(app.WindowManager.FocusedWindow.CurrentForm);
+            Assert.Same(window, app.WindowManager.FocusedWindow);
+        }
+
+        [Fact]
         public void Restart_DropsQueuedCommands()
         {
             var app = new TestSimulationApp();

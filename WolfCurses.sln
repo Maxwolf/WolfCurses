@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27428.2043
+# Visual Studio Version 18
+VisualStudioVersion = 18.7.11925.98 stable
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WolfCurses", "src\WolfCurses.csproj", "{CFD4B0CA-45B8-4B88-A56C-7DF59548AD55}"
 EndProject
@@ -50,6 +50,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{CFD4B0CA-45B8-4B88-A56C-7DF59548AD55} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{2A34E59F-48B3-407D-B9FA-E8047E03D621} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution

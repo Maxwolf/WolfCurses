@@ -48,6 +48,14 @@ namespace WolfCurses
         private SpinningPixel _spinningPixel;
 
         /// <summary>
+        ///     True only while <see cref="OnFirstTick" /> is executing. Used to detect a <see cref="Restart" /> call
+        ///     that originates from inside the first-tick handler (a common and idiomatic pattern) so the tick counter
+        ///     reset can be suppressed; otherwise the "first tick" condition would keep re-triggering and
+        ///     <see cref="OnFirstTick" /> would recurse on every subsequent tick forever.
+        /// </summary>
+        private bool _firstTickInProgress;
+
+        /// <summary>
         ///     Initializes a new instance of the <see cref="T:TrailGame.SimulationApp" /> class, seeding the shared
         ///     <see cref="Randomizer" /> from the wall clock.
         /// </summary>
@@ -204,9 +212,21 @@ namespace WolfCurses
                 // Increase the total seconds ticked.
                 TotalSecondsTicked++;
 
-                // Fire event for first tick when it occurs, and only then.
+                // Fire event for first tick when it occurs, and only then. The in-progress flag lets a Restart
+                // triggered from inside OnFirstTick know not to reset the tick counter (which would otherwise make
+                // this same "== 1" branch fire again on the very next tick, recursing forever).
                 if (TotalSecondsTicked == 1)
-                    OnFirstTick();
+                {
+                    _firstTickInProgress = true;
+                    try
+                    {
+                        OnFirstTick();
+                    }
+                    finally
+                    {
+                        _firstTickInProgress = false;
+                    }
+                }
 
                 // Visual representation of ticking for debugging purposes. OnFirstTick may have destroyed the
                 // simulation, taking the spinning pixel with it.
@@ -266,10 +286,15 @@ namespace WolfCurses
                 throw new InvalidOperationException(
                     "Cannot restart a simulation that has been destroyed; create a new instance instead.");
 
-            // Reset tick measurements so the restarted session fires OnFirstTick again just like a fresh one.
+            // Reset tick measurements so the restarted session fires OnFirstTick again just like a fresh one — but
+            // only when this Restart is a genuinely new session. A Restart invoked from within OnFirstTick (the
+            // idiomatic "OnFirstTick attaches the initial window by calling Restart" pattern the example app uses)
+            // is part of the current first tick, so resetting the counter there would re-satisfy the "== 1"
+            // condition on the next tick and re-enter OnFirstTick every tick, endlessly wiping windows and forms.
             _lastTickTime = DateTime.UtcNow;
             _currentTickTime = _lastTickTime;
-            TotalSecondsTicked = 0;
+            if (!_firstTickInProgress)
+                TotalSecondsTicked = 0;
 
             // Resets the window manager and clears out all windows and forms from previous session.
             WindowManager.Clear();
