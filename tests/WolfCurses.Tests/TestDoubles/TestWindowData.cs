@@ -9,5 +9,8 @@ namespace WolfCurses.Tests.TestDoubles
     public sealed class TestWindowData : WindowData
     {
         public string Payload { get; set; }
+
+        /// <summary>Backdoor to the owning app for forms that need to drive simulation lifecycle mid-tick.</summary>
+        public SimulationApp App { get; set; }
     }
 }

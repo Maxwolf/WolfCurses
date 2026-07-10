@@ -153,6 +153,10 @@ namespace WolfCurses
             // Rolls virtual dice.
             Random?.OnTick(systemTick, skipDay);
 
+            // A module tick handler may have destroyed the simulation; stop before advancing time or counters.
+            if (IsClosing)
+                return;
+
             // System tick is from execution platform, otherwise they are linear simulation ticks.
             if (systemTick)
             {
@@ -164,8 +168,11 @@ namespace WolfCurses
                 if (!(elapsedSpan.TotalMilliseconds > TICK_INTERVAL))
                     return;
 
-                // Reset last tick time to current time for measuring towards next second tick.
-                _lastTickTime = _currentTickTime;
+                // Advance the accumulator by exactly one interval so the leftover fraction counts toward the next
+                // simulation tick; snap to now only when the host stalled more than a full interval behind.
+                _lastTickTime = _lastTickTime.AddMilliseconds(TICK_INTERVAL);
+                if ((_currentTickTime - _lastTickTime).TotalMilliseconds > TICK_INTERVAL)
+                    _lastTickTime = _currentTickTime;
 
                 // Recursive call on ourselves to process non-system ticks.
                 OnTick(false, skipDay);
@@ -179,8 +186,9 @@ namespace WolfCurses
                 if (TotalSecondsTicked == 1)
                     OnFirstTick();
 
-                // Visual representation of ticking for debugging purposes.
-                TickPhase = _spinningPixel.Step();
+                // Visual representation of ticking for debugging purposes. OnFirstTick may have destroyed the
+                // simulation, taking the spinning pixel with it.
+                TickPhase = _spinningPixel?.Step() ?? string.Empty;
             }
         }
 
@@ -195,11 +203,21 @@ namespace WolfCurses
         /// </summary>
         public void Destroy()
         {
+            // A second destroy on an already-destroyed simulation must not re-fire teardown hooks.
+            if (IsClosing)
+                return;
+
             // Set flag that we are closing now so we can ignore ticks during shutdown.
             IsClosing = true;
 
             // Allows game simulation above us to cleanup any data structures it cares about.
             OnPreDestroy();
+
+            // Give every module the chance to run its own teardown before the references are dropped.
+            InputManager?.Destroy();
+            SceneGraph?.Destroy();
+            WindowManager?.Destroy();
+            Random?.Destroy();
 
             // Remove simulation presentation variables.
             _lastTickTime = DateTime.MinValue;
@@ -221,11 +239,22 @@ namespace WolfCurses
         /// </summary>
         public virtual void Restart()
         {
+            // A destroyed simulation has no modules left to restart.
+            if (IsClosing || WindowManager == null)
+                throw new InvalidOperationException(
+                    "Cannot restart a simulation that has been destroyed; create a new instance instead.");
+
+            // Reset tick measurements so the restarted session fires OnFirstTick again just like a fresh one.
+            _lastTickTime = DateTime.UtcNow;
+            _currentTickTime = _lastTickTime;
+            TotalSecondsTicked = 0;
+
             // Resets the window manager and clears out all windows and forms from previous session.
             WindowManager.Clear();
 
-            // Clears the input buffer of any left over input from last play session.
+            // Clears the input buffer and any queued commands left over from last play session.
             InputManager.ClearBuffer();
+            InputManager.ClearQueue();
 
             // Removes any text from the interface from previous session.
             SceneGraph.Clear();

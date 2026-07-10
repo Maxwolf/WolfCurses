@@ -4,7 +4,7 @@ using WolfCurses.Window;
 
 namespace WolfCurses.Tests.TestDoubles
 {
-    /// <summary>Abstract window type: WindowFactory refuses to instantiate these and returns null.</summary>
+    /// <summary>Abstract window type: WindowFactory refuses to instantiate these with an ArgumentException.</summary>
     public abstract class AbstractTestWindow : Window<TestCommands, TestWindowData>
     {
         protected AbstractTestWindow(SimulationApp simUnit) : base(simUnit)
@@ -12,13 +12,34 @@ namespace WolfCurses.Tests.TestDoubles
         }
     }
 
-    /// <summary>App whose only allowed window is abstract, to pin how WindowManager.Add handles the factory's null.</summary>
+    /// <summary>App whose only allowed window is abstract, to verify how WindowManager.Add surfaces the mistake.</summary>
     public sealed class AbstractWindowSimulationApp : SimulationApp
     {
         public override IEnumerable<Type> AllowedWindows => new[] { typeof(AbstractTestWindow) };
 
         protected override void OnFirstTick()
         {
+        }
+
+        protected override void OnPreDestroy()
+        {
+        }
+
+        public override string OnPreRender()
+        {
+            return string.Empty;
+        }
+    }
+
+    /// <summary>Destroys itself from inside OnFirstTick, the earliest simulation callback, to prove that a
+    ///     mid-tick teardown cannot crash the remainder of the tick.</summary>
+    public sealed class SelfDestructingSimulationApp : SimulationApp
+    {
+        public override IEnumerable<Type> AllowedWindows => new[] { typeof(TestWindow) };
+
+        protected override void OnFirstTick()
+        {
+            Destroy();
         }
 
         protected override void OnPreDestroy()

@@ -8,6 +8,7 @@
 using System;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 #endregion
 
@@ -22,7 +23,7 @@ namespace WolfCurses.Utility
     public static class FactoryExtensions
     {
         /// <summary>
-        ///     FormatterServices.GetUninitializedObject(t) will fail for string. Hence special handling for string is in
+        ///     RuntimeHelpers.GetUninitializedObject(t) will fail for string. Hence special handling for string is in
         ///     place to return empty string.
         /// </summary>
         /// <param name="t">The t.</param>
@@ -44,9 +45,6 @@ namespace WolfCurses.Utility
             /// <summary>The instance.</summary>
             public static readonly Func<T> Instance = Creator();
 
-            // ReSharper disable once StaticMemberInGenericType
-            private static Func<Type, object> _getUninitializedObject;
-
             private static Func<T> Creator()
             {
                 var t = typeof (T);
@@ -62,43 +60,9 @@ namespace WolfCurses.Utility
             /// <summary>Creates a new instance of the specified type, bypassing the constructor.</summary>
             /// <param name="type">The type to create</param>
             /// <returns>The new instance</returns>
-            /// <exception cref="NotSupportedException">If the platform does not support constructor-skipping</exception>
-            /// <remarks>
-            ///     Inspired by DCS:
-            ///     https://github.com/dotnet/corefx/blob/c02d33b18398199f6acc17d375dab154e9a1df66/src/System.Private.DataContractSerialization/src/System/Runtime/Serialization/XmlFormatReaderGenerator.cs#L854-L894
-            /// </remarks>
             public static object GetUninitializedObject(Type type)
             {
-                var obj = TryGetUninitializedObjectWithFormatterServices(type);
-                return obj;
-            }
-
-            /// <summary>Manually calls the private method which Microsoft has not marked as public yet.</summary>
-            /// <remarks> https://github.com/mgravell/protobuf-net/blob/master/protobuf-net/BclHelpers.cs#L35 </remarks>
-            internal static object TryGetUninitializedObjectWithFormatterServices(Type type)
-            {
-                if (_getUninitializedObject != null)
-                    return _getUninitializedObject(type);
-
-                try
-                {
-                    var formatterServiceType =
-                        typeof (string).GetTypeInfo().Assembly.GetType("System.Runtime.Serialization.FormatterServices");
-                    var method = formatterServiceType?.GetMethod("GetUninitializedObject",
-                        BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
-                    if (method != null)
-                    {
-                        _getUninitializedObject = (Func<Type, object>) method.CreateDelegate(typeof (Func<Type, object>));
-                    }
-                }
-                catch
-                {
-                    /* best efforts only */
-                }
-
-                if (_getUninitializedObject == null)
-                    _getUninitializedObject = x => null;
-                return _getUninitializedObject(type);
+                return RuntimeHelpers.GetUninitializedObject(type);
             }
         }
     }

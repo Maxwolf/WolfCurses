@@ -52,5 +52,15 @@ namespace WolfCurses.Tests.Utility
             Assert.Contains(typeof(YesNoDialogForm), types);
             Assert.DoesNotContain(typeof(OrphanForm), types);
         }
+
+        [Fact]
+        public void GetTypesWith_TypeWithStackedAttributes_YieldedExactlyOnce()
+        {
+            // A second [ParentWindow] used to add the type twice and crash FormFactory's dictionary for every
+            // SimulationApp in the assembly; stacked attributes now register the type a single time.
+            var types = AttributeExtensions.GetTypesWith<ParentWindowAttribute>(false).ToList();
+
+            Assert.Single(types, t => t == typeof(DoubleRegisteredForm));
+        }
     }
 }

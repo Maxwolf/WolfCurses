@@ -57,6 +57,12 @@ namespace WolfCurses.Window.Form
         /// <returns>true if the specified objects are equal; otherwise, false.</returns>
         public bool Equals(Form<TData> x, Form<TData> y)
         {
+            if (ReferenceEquals(x, y))
+                return true;
+
+            if (x == null || y == null)
+                return false;
+
             return x.Equals(y);
         }
 
@@ -69,6 +75,9 @@ namespace WolfCurses.Window.Form
         /// </exception>
         public int GetHashCode(Form<TData> obj)
         {
+            if (obj == null)
+                throw new ArgumentNullException(nameof(obj));
+
             return obj.GetHashCode();
         }
 
@@ -93,8 +102,8 @@ namespace WolfCurses.Window.Form
                 return false;
             }
 
-            return UserData.Equals(other.UserData) &&
-                   ParentWindow.Equals(other.ParentWindow);
+            return Equals(UserData, other.UserData) &&
+                   Equals(ParentWindow, other.ParentWindow);
         }
 
         /// <summary>
@@ -161,11 +170,7 @@ namespace WolfCurses.Window.Form
         /// <param name="y">The second object to compare.</param>
         public int Compare(IForm x, IForm y)
         {
-            var result = string.Compare(x?.GetType().Name, y?.GetType().Name, StringComparison.Ordinal);
-            if (result != 0)
-                return result;
-
-            return result;
+            return string.Compare(x?.GetType().Name, y?.GetType().Name, StringComparison.Ordinal);
         }
 
         /// <summary>Compares the current object with another object of the same type.</summary>
@@ -178,7 +183,7 @@ namespace WolfCurses.Window.Form
         /// <param name="other">An object to compare with this object.</param>
         public int CompareTo(IForm other)
         {
-            return string.Compare(other.GetType().Name, GetType().Name, StringComparison.Ordinal);
+            return string.Compare(GetType().Name, other?.GetType().Name, StringComparison.Ordinal);
         }
 
         /// <summary>
@@ -243,8 +248,7 @@ namespace WolfCurses.Window.Form
         [SuppressMessage("ReSharper", "PossibleNullReferenceException")]
         public override int Compare(Form<TData> x, Form<TData> y)
         {
-            var result = string.Compare(x.GetType().Name, y.GetType().Name, StringComparison.Ordinal);
-            return result;
+            return string.Compare(x?.GetType().Name, y?.GetType().Name, StringComparison.Ordinal);
         }
 
         /// <summary>
@@ -256,8 +260,8 @@ namespace WolfCurses.Window.Form
         public override int GetHashCode()
         {
             var hash = 23;
-            hash = (hash*31) + UserData.GetHashCode();
-            hash = (hash*31) + ParentWindow.GetHashCode();
+            hash = (hash*31) + (UserData?.GetHashCode() ?? 0);
+            hash = (hash*31) + (ParentWindow?.GetHashCode() ?? 0);
             return hash;
         }
     }

@@ -53,13 +53,54 @@ namespace WolfCurses.Tests.Forms
         [InlineData("maybe")]
         [InlineData("")]
         [InlineData("1")]
-        public void OnInputBufferReturned_AnythingElse_RespondsCustom(string input)
+        public void OnInputBufferReturned_CustomDialog_AnythingElse_RespondsCustom(string input)
         {
-            var form = new YesNoDialogForm(NewWindow());
+            var form = new CustomDialogForm(NewWindow());
 
             form.OnInputBufferReturned(input);
 
             Assert.Equal(DialogResponse.Custom, form.LastResponse);
+        }
+
+        [Theory]
+        [InlineData("maybe")]
+        [InlineData("")]
+        [InlineData("1")]
+        public void OnInputBufferReturned_YesNoDialog_InvalidInput_IsIgnoredUntilValidResponse(string input)
+        {
+            // DialogType.YesNo documents that invalid data is ignored until a valid response is given.
+            var form = new YesNoDialogForm(NewWindow());
+
+            form.OnInputBufferReturned(input);
+            Assert.Equal(0, form.ResponseCount);
+
+            form.OnInputBufferReturned("yes");
+
+            Assert.Equal(1, form.ResponseCount);
+            Assert.Equal(DialogResponse.Yes, form.LastResponse);
+        }
+
+        [Fact]
+        public void OnInputBufferReturned_PromptDialog_EmptyReturn_RespondsCustom()
+        {
+            // Press-enter prompts advance on the empty submit the input manager passes along.
+            var form = new PromptDialogForm(NewWindow());
+
+            form.OnInputBufferReturned(string.Empty);
+
+            Assert.Equal(DialogResponse.Custom, form.LastResponse);
+        }
+
+        [Fact]
+        public void OnInputBufferReturned_NullInput_DoesNotThrow()
+        {
+            var yesNo = new YesNoDialogForm(NewWindow());
+            yesNo.OnInputBufferReturned(null);
+            Assert.Equal(0, yesNo.ResponseCount);
+
+            var custom = new CustomDialogForm(NewWindow());
+            custom.OnInputBufferReturned(null);
+            Assert.Equal(DialogResponse.Custom, custom.LastResponse);
         }
 
         [Fact]

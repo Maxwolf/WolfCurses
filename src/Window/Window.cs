@@ -159,6 +159,12 @@ namespace WolfCurses.Window
         /// <returns>The <see cref="bool" />.</returns>
         public bool Equals(Window<TCommands, TData> x, Window<TCommands, TData> y)
         {
+            if (ReferenceEquals(x, y))
+                return true;
+
+            if (x == null || y == null)
+                return false;
+
             return x.Equals(y);
         }
 
@@ -167,6 +173,9 @@ namespace WolfCurses.Window
         /// <returns>The <see cref="int" />.</returns>
         public int GetHashCode(Window<TCommands, TData> obj)
         {
+            if (obj == null)
+                throw new ArgumentNullException(nameof(obj));
+
             return obj.GetHashCode();
         }
 
@@ -191,8 +200,7 @@ namespace WolfCurses.Window
                 return false;
             }
 
-            return GetType().Name.Equals(other.GetType().Name) &&
-                   Form.Equals(other.Form);
+            return Equals(Form, other.Form);
         }
 
         /// <summary>
@@ -265,8 +273,8 @@ namespace WolfCurses.Window
                 if (!string.IsNullOrEmpty(MenuHeader))
                     _menuPrompt.Append($"{MenuHeader}{Environment.NewLine}{Environment.NewLine}");
 
-                // Figures out which input names and numbers goto what menu choice.
-                RefreshCommandMappings();
+                // Prints out the number and description for every menu choice.
+                RenderMenuCommands();
 
                 // Footer text for below menu.
                 if (!string.IsNullOrEmpty(MenuFooter))
@@ -364,12 +372,19 @@ namespace WolfCurses.Window
         /// <returns>The <see cref="int" />.</returns>
         public override int Compare(IWindow x, IWindow y)
         {
-            // ReSharper disable once PossibleNullReferenceException
+            if (ReferenceEquals(x, y))
+                return 0;
+
+            if (x == null)
+                return -1;
+
+            if (y == null)
+                return 1;
+
             var result = string.Compare(x.GetType().Name, y.GetType().Name, StringComparison.Ordinal);
             if (result != 0) return result;
 
-            result = x.CurrentForm.CompareTo(y.CurrentForm);
-            return result;
+            return CompareForms(x.CurrentForm, y.CurrentForm);
         }
 
         /// <summary>The compare to.</summary>
@@ -377,11 +392,25 @@ namespace WolfCurses.Window
         /// <returns>The <see cref="int" />.</returns>
         public int CompareTo(IWindow other)
         {
-            var result = string.Compare(other.GetType().Name, GetType().Name, StringComparison.Ordinal);
-            if (result != 0) return result;
+            return Compare(this, other);
+        }
 
-            result = other.CurrentForm.CompareTo(Form);
-            return result;
+        /// <summary>Orders forms by type name, treating a missing form as less than any attached form.</summary>
+        /// <param name="x">The first form, may be null.</param>
+        /// <param name="y">The second form, may be null.</param>
+        /// <returns>The <see cref="int" />.</returns>
+        private static int CompareForms(IForm x, IForm y)
+        {
+            if (ReferenceEquals(x, y))
+                return 0;
+
+            if (x == null)
+                return -1;
+
+            if (y == null)
+                return 1;
+
+            return x.CompareTo(y);
         }
 
         /// <summary>Creates and adds the specified type of state to currently active game Windows.</summary>
@@ -446,6 +475,9 @@ namespace WolfCurses.Window
 
             // Adds the input to the list of possible choices.
             _menuCommands.Add(menuChoice);
+
+            // Keep the input mappings current so commands work before the window has ever rendered.
+            RefreshCommandMappings();
         }
 
         /// <summary>
@@ -460,20 +492,39 @@ namespace WolfCurses.Window
             // Loop through every menu input we have.
             foreach (var menuChoice in _menuCommands)
             {
-                // Figure out what enumeration integer value was given for this command.
-                var currentChoiceIndex = menuChoice.Command.ToInt32(new NumberFormatInfo());
-
-                // Add the input to the mapping dictionary, and the delegate for it's action invoker.
-                _menuMappings.Add(currentChoiceIndex.ToString(), menuChoice.Command);
+                // Add the input to the mapping dictionary, and the delegate for it's action invoker. TryAdd
+                // tolerates alias enum values that share the same underlying number.
+                _menuMappings.TryAdd(MenuChoiceKey(menuChoice.Command), menuChoice.Command);
 
                 // Adds the reverse mapping for actual enumeration value input to related action.
-                _menuActions.Add(menuChoice.Command, menuChoice.Action);
-
-                // Name of input and then description of what it does, the input is all we really care about.
-                _menuPrompt.Append(ShowCommandNamesInMenu
-                    ? $"  {currentChoiceIndex}. {menuChoice.Command} - {menuChoice.Description}{Environment.NewLine}"
-                    : $"  {currentChoiceIndex}. {menuChoice.Description}{Environment.NewLine}");
+                _menuActions.TryAdd(menuChoice.Command, menuChoice.Action);
             }
+        }
+
+        /// <summary>
+        ///     Prints out the number and description for every registered menu choice into the prompt buffer.
+        /// </summary>
+        private void RenderMenuCommands()
+        {
+            foreach (var menuChoice in _menuCommands)
+            {
+                // Name of input and then description of what it does, the input is all we really care about.
+                var currentChoiceKey = MenuChoiceKey(menuChoice.Command);
+                _menuPrompt.Append(ShowCommandNamesInMenu
+                    ? $"  {currentChoiceKey}. {menuChoice.Command} - {menuChoice.Description}{Environment.NewLine}"
+                    : $"  {currentChoiceKey}. {menuChoice.Description}{Environment.NewLine}");
+            }
+        }
+
+        /// <summary>
+        ///     Formats the underlying numeric value of a command as the string the user must type to select it. The
+        ///     "D" enum format cannot overflow and the invariant culture keeps the digits locale-independent.
+        /// </summary>
+        /// <param name="command">Menu command enumeration value.</param>
+        /// <returns>Culture-invariant decimal string for the command.</returns>
+        private static string MenuChoiceKey(TCommands command)
+        {
+            return command.ToString("D", CultureInfo.InvariantCulture);
         }
 
         /// <summary>

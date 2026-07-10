@@ -89,12 +89,13 @@ namespace WolfCurses.Core
         /// </summary>
         public void SendInputBufferAsCommand()
         {
-            // Trim the result of the input so no extra whitespace at front or end exists.
-            var lineBufferTrimmed = InputBuffer.Trim();
-
-            // Destroy the input buffer if we are not accepting commands but return is pressed anyway.
+            // Destroy the input buffer if we are not accepting commands but return is pressed anyway, so stale
+            // typed text never leaks through as a command and only an empty string is passed along.
             if (!_simUnit.WindowManager.AcceptingInput)
                 InputBuffer = string.Empty;
+
+            // Trim the result of the input so no extra whitespace at front or end exists.
+            var lineBufferTrimmed = InputBuffer.Trim();
 
             // Send trimmed line buffer to game simulation, if not accepting input we just pass along empty string.
             AddCommandToQueue(lineBufferTrimmed);
@@ -167,6 +168,15 @@ namespace WolfCurses.Core
         public void ClearBuffer()
         {
             InputBuffer = string.Empty;
+        }
+
+        /// <summary>
+        ///     Removes any commands that are waiting to be dispatched so they cannot execute against windows created
+        ///     after a session reset.
+        /// </summary>
+        public void ClearQueue()
+        {
+            _commandQueue.Clear();
         }
     }
 }

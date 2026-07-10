@@ -80,6 +80,19 @@ namespace WolfCurses.Tests.Utility
         }
 
         [Fact]
+        public void WordWrap_UnixNewlines_TreatedAsLineBreaks()
+        {
+            // "\n"-delimited text (files, network data) must wrap the same as Environment.NewLine text.
+            Assert.Equal("aaa" + Text.NL + "bbb" + Text.NL, "aaa\nbbb".WordWrap(10));
+        }
+
+        [Fact]
+        public void WordWrap_UnixEmptyLine_Preserved()
+        {
+            Assert.Equal("aaa" + Text.NL + Text.NL + "bbb" + Text.NL, "aaa\n\nbbb".WordWrap(10));
+        }
+
+        [Fact]
         public void WordWrap_DefaultWidthIs32()
         {
             var thirtyTwo = new string('a', 32);

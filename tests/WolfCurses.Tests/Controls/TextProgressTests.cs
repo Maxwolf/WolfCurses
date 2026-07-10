@@ -33,18 +33,36 @@ namespace WolfCurses.Tests.Controls
         }
 
         [Fact]
-        public void DrawProgressBar_ValueAboveMax_OverfillsBarPast100Percent()
+        public void DrawProgressBar_ValueAboveMax_ClampsToFullBar()
         {
-            // Documents current behavior: no clamping; the filled section exceeds barSize and the empty loop
-            // simply never runs.
-            Assert.Equal(new string(FILLED, 20) + " 200.00%", TextProgress.DrawProgressBar(200, 100, 10));
+            // Overshoot clamps to the maximum so the bar never exceeds its size or reports over 100%.
+            Assert.Equal(new string(FILLED, 10) + " 100.00%", TextProgress.DrawProgressBar(200, 100, 10));
         }
 
         [Fact]
-        public void DrawProgressBar_MaxValueZero_ThrowsDivideByZeroException()
+        public void DrawProgressBar_NegativeValue_ClampsToEmptyBar()
         {
-            // Documents current behavior: the decimal division value/maxValue is unguarded.
-            Assert.Throws<DivideByZeroException>(() => TextProgress.DrawProgressBar(0, 0, 10));
+            Assert.Equal(new string(EMPTY, 10) + " 0.00%", TextProgress.DrawProgressBar(-25, 100, 10));
+        }
+
+        [Fact]
+        public void DrawProgressBar_FullWithAwkwardBarSize_FillsEveryCell()
+        {
+            // Regression: the old floor(perc / (1/barSize)) decimal math left one cell unfilled at exactly 100%
+            // for bar sizes whose reciprocal is not exact, like 7.
+            Assert.Equal(new string(FILLED, 7) + " 100.00%", TextProgress.DrawProgressBar(7, 7, 7));
+        }
+
+        [Fact]
+        public void DrawProgressBar_MaxValueZero_ThrowsArgumentOutOfRangeException()
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() => TextProgress.DrawProgressBar(0, 0, 10));
+        }
+
+        [Fact]
+        public void DrawProgressBar_BarSizeZero_ThrowsArgumentOutOfRangeException()
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() => TextProgress.DrawProgressBar(5, 10, 0));
         }
     }
 }

@@ -6,9 +6,8 @@ namespace WolfCurses.Tests.TestDoubles
 {
     /// <summary>
     ///     Recording form for TestWindow. Counts ticks since Window.OnTick forwards only to its form — the sole
-    ///     per-window tick observable. NOTE: although ParentWindowAttribute declares AllowMultiple, a form may carry
-    ///     only ONE [ParentWindow] in this assembly: GetTypesWith yields the type once per attribute and FormFactory's
-    ///     dictionary Add then throws, which would break construction of every SimulationApp in the test run.
+    ///     per-window tick observable. GetTypesWith yields each type once regardless of how many [ParentWindow]
+    ///     attributes it carries (see DoubleRegisteredForm), and FormFactory registers the first attribute's parent.
     /// </summary>
     [ParentWindow(typeof(TestWindow))]
     public class TestForm : Form<TestWindowData>

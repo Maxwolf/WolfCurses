@@ -15,13 +15,28 @@ namespace WolfCurses.Tests.Windows
         }
 
         [Fact]
-        public void Add_AbstractAllowedWindow_ThrowsNullReferenceException()
+        public void Add_AbstractAllowedWindow_ThrowsArgumentException()
         {
-            // Documents current behavior: WindowFactory returns null for abstract types, WindowManager stores the
-            // null anyway, and the OnWindowAdded notification then dereferences FocusedWindow.
+            // WindowFactory refuses abstract types with a descriptive exception instead of returning null and
+            // letting the window list get poisoned.
             var app = new AbstractWindowSimulationApp();
 
-            Assert.Throws<NullReferenceException>(() => app.WindowManager.Add(typeof(AbstractTestWindow)));
+            Assert.Throws<ArgumentException>(() => app.WindowManager.Add(typeof(AbstractTestWindow)));
+
+            // The failed add must not leave a broken entry behind.
+            Assert.Equal(0, app.WindowManager.Count);
+            Assert.Null(app.WindowManager.FocusedWindow);
+        }
+
+        [Fact]
+        public void SetForm_AbstractRegisteredForm_ThrowsArgumentException()
+        {
+            // FormFactory refuses abstract form types instead of returning null for SetForm to dereference.
+            var app = new TestSimulationApp();
+            app.WindowManager.Add(typeof(TestWindow));
+
+            Assert.Throws<ArgumentException>(
+                () => app.WindowManager.FocusedWindow.SetForm(typeof(AbstractRegisteredForm)));
         }
 
         [Fact]

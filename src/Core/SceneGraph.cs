@@ -85,9 +85,10 @@ namespace WolfCurses.Core
         /// </param>
         public override void OnTick(bool systemTick, bool skipDay = false)
         {
-            // GetModule the current text user interface data from inheriting class.
+            // GetModule the current text user interface data from inheriting class. Comparison must be
+            // case-sensitive: a screen differing only by letter case still needs a redraw.
             var tuiContent = OnRender();
-            if (ScreenBuffer.Equals(tuiContent, StringComparison.OrdinalIgnoreCase))
+            if (ScreenBuffer.Equals(tuiContent, StringComparison.Ordinal))
                 return;
 
             // Update the screen buffer with altered data.

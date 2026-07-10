@@ -56,13 +56,19 @@ namespace WolfCurses.Window
             // Grab the game Windows type reference from inputted Windows type enum.
             var modeType = Windows[window.Name];
 
-            // Check if the class is abstract base class, we don't want to add that.
+            // Abstract classes cannot be instantiated; surface the mistake instead of handing back null.
             if (modeType.GetTypeInfo().IsAbstract)
-                return null;
+                throw new ArgumentException(
+                    $"Window factory cannot create an instance of abstract window type {modeType.FullName}! " +
+                    "Only concrete window classes may be listed in SimulationApp.AllowedWindows.", nameof(window));
 
             // Create the game Windows, it will have single parameter for user data.
             var gameModeInstance = Activator.CreateInstance(modeType, _simUnit);
-            return gameModeInstance as IWindow;
+            if (gameModeInstance is not IWindow createdWindow)
+                throw new ArgumentException(
+                    $"Window factory created {modeType.FullName} but it does not implement IWindow!", nameof(window));
+
+            return createdWindow;
         }
 
         /// <summary>

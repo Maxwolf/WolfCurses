@@ -46,12 +46,18 @@ namespace WolfCurses.Utility
             // Parse each line of text
             for (pos = 0; pos < text.Length; pos = next)
             {
-                // Find end of line
-                var eol = text.IndexOf(Environment.NewLine, pos, StringComparison.Ordinal);
+                // Find end of line, accepting both "\n" and "\r\n" so wrapping is OS-independent.
+                var eol = text.IndexOf('\n', pos);
                 if (eol == -1)
+                {
                     next = eol = text.Length;
+                }
                 else
-                    next = eol + Environment.NewLine.Length;
+                {
+                    next = eol + 1;
+                    if (eol > pos && text[eol - 1] == '\r')
+                        eol--;
+                }
 
                 // Copy this line of text, breaking into smaller lines as needed
                 if (eol > pos)
