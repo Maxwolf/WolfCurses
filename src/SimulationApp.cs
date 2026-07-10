@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using WolfCurses.Core;
 using WolfCurses.Window.Control;
 
@@ -47,9 +48,22 @@ namespace WolfCurses
         private SpinningPixel _spinningPixel;
 
         /// <summary>
-        ///     Initializes a new instance of the <see cref="T:TrailGame.SimulationApp" /> class.
+        ///     Initializes a new instance of the <see cref="T:TrailGame.SimulationApp" /> class, seeding the shared
+        ///     <see cref="Randomizer" /> from the wall clock.
         /// </summary>
-        protected SimulationApp()
+        protected SimulationApp() : this(null)
+        {
+        }
+
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="T:TrailGame.SimulationApp" /> class with an explicit random
+        ///     seed so a consuming simulation can be made fully reproducible: constructing two apps with the same seed
+        ///     yields identical <see cref="Randomizer" /> sequences.
+        /// </summary>
+        /// <param name="randomSeed">
+        ///     Seed handed to the shared <see cref="Randomizer" />, or null to seed from the wall clock as usual.
+        /// </param>
+        protected SimulationApp(int? randomSeed)
         {
             // We are not closing...
             IsClosing = false;
@@ -65,8 +79,8 @@ namespace WolfCurses
             _spinningPixel = new SpinningPixel();
             TickPhase = _spinningPixel.Step();
 
-            // Create modules needed for managing simulation.
-            Random = new Randomizer();
+            // Create modules needed for managing simulation. A caller-supplied seed makes the RNG reproducible.
+            Random = randomSeed.HasValue ? new Randomizer(randomSeed.Value) : new Randomizer();
             WindowManager = new WindowManager(this);
             SceneGraph = new SceneGraph(this);
 
@@ -120,6 +134,14 @@ namespace WolfCurses
         ///     Determines what windows the simulation will be capable of using and creating using the window managers factory.
         /// </summary>
         public abstract IEnumerable<Type> AllowedWindows { get; }
+
+        /// <summary>
+        ///     Extra assemblies to scan for <c>[ParentWindow]</c> forms beyond the SimulationApp subclass's own assembly
+        ///     and the process entry assembly. Override this to contribute forms that live in plugin or module
+        ///     assemblies. Like <see cref="AllowedWindows" />, it is read while the base constructor builds the window
+        ///     manager, so an override must return data that does not depend on subclass fields initialized later.
+        /// </summary>
+        public virtual IEnumerable<Assembly> AdditionalFormAssemblies => Array.Empty<Assembly>();
 
         /// <summary>
         ///     Called when the simulation is ticked by underlying operating system, game engine, or potato. Each of these system

@@ -59,5 +59,44 @@ namespace WolfCurses.Tests.Core
 
             Assert.Equal(2, seen.Count);
         }
+
+        [Fact]
+        public void SeededCtor_ExposesTheSeed()
+        {
+            var random = new Randomizer(1337);
+
+            Assert.Equal(1337, random.RandomSeed);
+        }
+
+        [Fact]
+        public void SeededCtor_SameSeed_ProducesIdenticalSequence()
+        {
+            // The whole point of the seed overload: two independently constructed randomizers with the same seed
+            // yield the exact same draws, so downstream simulations become reproducible.
+            var a = new Randomizer(42);
+            var b = new Randomizer(42);
+
+            for (var i = 0; i < ITERATIONS; i++)
+            {
+                Assert.Equal(a.Next(), b.Next());
+                Assert.Equal(a.Next(0, 100), b.Next(0, 100));
+                Assert.Equal(a.NextDouble(), b.NextDouble());
+                Assert.Equal(a.NextBool(), b.NextBool());
+            }
+        }
+
+        [Fact]
+        public void SeededCtor_RecordedAutoSeed_ReplaysSameSequence()
+        {
+            // A session seeded from the clock can be replayed later by feeding its RandomSeed back in.
+            var original = new Randomizer();
+            var firstDraws = new List<int>();
+            for (var i = 0; i < 20; i++)
+                firstDraws.Add(original.Next());
+
+            var replay = new Randomizer(original.RandomSeed);
+            for (var i = 0; i < 20; i++)
+                Assert.Equal(firstDraws[i], replay.Next());
+        }
     }
 }

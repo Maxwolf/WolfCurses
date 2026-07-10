@@ -45,9 +45,10 @@ namespace WolfCurses.Core
         /// <param name="simUnit">Core simulation which is controlling the window manager.</param>
         public WindowManager(SimulationApp simUnit)
         {
-            // Factories for modes and states that can be attached to them during runtime.
+            // Factories for modes and states that can be attached to them during runtime. The form factory needs the
+            // owning simulation so it can discover forms from the app's own assembly, not just the entry assembly.
             _windowFactory = new WindowFactory(simUnit);
-            _formFactory = new FormFactory();
+            _formFactory = new FormFactory(simUnit);
         }
 
         /// <summary>
