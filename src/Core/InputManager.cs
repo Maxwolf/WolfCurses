@@ -2,6 +2,8 @@
 // Timestamp 12/31/2015@2:38 PM
 
 using System.Collections.Generic;
+using System.Globalization;
+using System.Text;
 
 namespace WolfCurses.Core
 {
@@ -126,13 +128,55 @@ namespace WolfCurses.Core
         /// <param name="keyChar">The key Char.</param>
         public void AddCharToInputBuffer(char keyChar)
         {
-            // Filter to prevent non-characters like delete, insert, scroll lock, etc.
-            if (!char.IsLetter(keyChar) && !char.IsNumber(keyChar))
+            // Only printable free-text belongs in the buffer. Enter and Backspace are the caller's responsibility;
+            // everything that is not a control code or an invisible formatting mark — letters, digits, spaces, and
+            // punctuation alike — is valid input and may enter the buffer.
+            if (!IsPrintableInputChar(keyChar))
                 return;
 
-            // Convert character to string representation if itself.
+            // Convert character to string representation of itself.
             var addedKeyString = char.ToString(keyChar);
             OnCharacterAddedToInputBuffer(addedKeyString);
+        }
+
+        /// <summary>
+        ///     Appends a string of already-composed text to the input buffer for host applications that need to inject text
+        ///     programmatically — pasting, pre-filling a field, or feeding an IME/composed string — without reaching into the
+        ///     manager's internals via reflection. Non-printable characters (control codes such as newlines and escapes, and
+        ///     zero-width / formatting marks) are stripped, exactly as they are for typed input via
+        ///     <see cref="AddCharToInputBuffer" />, so injected text can neither corrupt the single-line prompt nor smuggle
+        ///     control characters into a dispatched command. Like typed input, the text is only accepted while the focused
+        ///     window/form is currently accepting input; otherwise it is silently dropped.
+        /// </summary>
+        /// <param name="text">Text to append to the input buffer. A null or empty value is ignored.</param>
+        public void AppendToInputBuffer(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return;
+
+            // Keep only printable characters so injected/pasted text can never smuggle newlines, escape sequences, or
+            // invisible formatting marks into the single-line buffer and, from there, into a dispatched command.
+            var printable = new StringBuilder(text.Length);
+            foreach (var character in text)
+                if (IsPrintableInputChar(character))
+                    printable.Append(character);
+
+            if (printable.Length > 0)
+                OnCharacterAddedToInputBuffer(printable.ToString());
+        }
+
+        /// <summary>
+        ///     Determines whether a character is printable free-text that belongs in the input buffer. Rejects control codes
+        ///     (Tab, Escape, Delete, and the caller-handled Enter/Backspace) and zero-width / formatting marks (Unicode
+        ///     category <see cref="UnicodeCategory.Format" />, e.g. the byte-order mark or a zero-width space) which would
+        ///     otherwise sit invisibly in the buffer yet still break exact command matching or corrupt the rendered prompt.
+        /// </summary>
+        /// <param name="keyChar">Character to test.</param>
+        /// <returns>TRUE if the character may be appended to the input buffer.</returns>
+        private static bool IsPrintableInputChar(char keyChar)
+        {
+            return !char.IsControl(keyChar) &&
+                   char.GetUnicodeCategory(keyChar) != UnicodeCategory.Format;
         }
 
         /// <summary>
