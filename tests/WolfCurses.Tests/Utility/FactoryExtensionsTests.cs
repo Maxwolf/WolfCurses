@@ -40,15 +40,13 @@ namespace WolfCurses.Tests.Utility
         }
 
         [Fact]
-        public void New_TypeWithoutParameterlessCtor_SilentlyReturnsNull()
+        public void New_TypeWithoutParameterlessCtor_CreatesUninitializedInstance()
         {
-            // Documents current behavior on .NET 10: the fallback reflects for
-            // System.Runtime.Serialization.FormatterServices inside CoreLib, does not find it, and the factory
-            // degrades to a delegate that returns null - no exception is ever thrown. Any Window whose TData
-            // lacks a parameterless constructor would get a null UserData from this same path.
+            // The fallback uses RuntimeHelpers.GetUninitializedObject, so a Window whose TData lacks a
+            // parameterless constructor still gets a (constructor-skipped) UserData instance instead of null.
             var created = FactoryExtensions.New<WithoutDefaultCtor>.Instance();
 
-            Assert.Null(created);
+            Assert.NotNull(created);
         }
     }
 }

@@ -95,6 +95,44 @@ namespace WolfCurses.Tests.Windows
         }
 
         [Fact]
+        public void OnTick_LastWindowRemovesItself_LeavesManagerEmptyWithoutThrowing()
+        {
+            // Closing the final screen is the ordinary shutdown flow; it must not dereference a null focus.
+            var app = new TestSimulationApp();
+            app.WindowManager.Add(typeof(TestWindow));
+            app.WindowManager.FocusedWindow.RemoveWindowNextTick();
+
+            app.WindowManager.OnTick(false);
+
+            Assert.Equal(0, app.WindowManager.Count);
+            Assert.Null(app.WindowManager.FocusedWindow);
+        }
+
+        [Fact]
+        public void FocusedWindow_AfterRemovalsAndReAdds_IsAlwaysLastAdded()
+        {
+            // Stack order must survive removals; dictionary slot reuse used to let an older window keep focus.
+            var app = new TestSimulationApp();
+            app.WindowManager.Add(typeof(TestWindow));
+            var bottom = app.WindowManager.FocusedWindow;
+            app.WindowManager.Add(typeof(SecondTestWindow));
+            var top = app.WindowManager.FocusedWindow;
+            bottom.RemoveWindowNextTick();
+            top.RemoveWindowNextTick();
+            app.WindowManager.OnTick(false);
+            Assert.Equal(0, app.WindowManager.Count);
+
+            app.WindowManager.Add(typeof(SecondTestWindow));
+            app.WindowManager.Add(typeof(TestWindow));
+
+            Assert.Equal(2, app.WindowManager.Count);
+            var focused = app.WindowManager.FocusedWindow;
+            Assert.IsType<TestWindow>(focused);
+            // The newly focused window (not the background one) received OnWindowPostCreate.
+            Assert.Equal(1, ((TestWindow) focused).PostCreateCount);
+        }
+
+        [Fact]
         public void AcceptingInput_NoWindows_IsFalse()
         {
             var app = new TestSimulationApp();

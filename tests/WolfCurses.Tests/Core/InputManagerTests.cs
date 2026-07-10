@@ -120,6 +120,41 @@ namespace WolfCurses.Tests.Core
         }
 
         [Fact]
+        public void SendInputBufferAsCommand_WhenNotAcceptingInput_SendsEmptyNotStaleBuffer()
+        {
+            // Text typed while input was accepted must not leak through as a command after a non-filling form
+            // (AcceptingInput == false) takes over; only an empty submit may pass.
+            var app = NewAcceptingApp();
+            var window = (TestWindow) app.WindowManager.FocusedWindow;
+            app.InputManager.AddCharToInputBuffer('h');
+            app.InputManager.AddCharToInputBuffer('i');
+
+            window.SetForm(typeof(NonFillingRecordingForm));
+            var form = (NonFillingRecordingForm) window.CurrentForm;
+            Assert.False(app.WindowManager.AcceptingInput);
+
+            app.InputManager.SendInputBufferAsCommand();
+            app.InputManager.OnTick(false);
+
+            Assert.Equal(new[] { string.Empty }, form.ReceivedInputs);
+        }
+
+        [Fact]
+        public void ClearQueue_DropsPendingCommands()
+        {
+            var app = NewAcceptingApp();
+            var window = (TestWindow) app.WindowManager.FocusedWindow;
+            window.SetForm(typeof(TestForm));
+            var form = (TestForm) window.CurrentForm;
+            SendText(app, "pending");
+
+            app.InputManager.ClearQueue();
+            app.InputManager.OnTick(false);
+
+            Assert.Empty(form.ReceivedInputs);
+        }
+
+        [Fact]
         public void ClearBuffer_EmptiesInputBuffer()
         {
             var app = NewAcceptingApp();

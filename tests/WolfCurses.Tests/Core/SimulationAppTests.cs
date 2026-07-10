@@ -98,5 +98,96 @@ namespace WolfCurses.Tests.Core
             Assert.Equal(string.Empty, app.InputManager.InputBuffer);
             Assert.NotNull(app.WindowManager);
         }
+
+        [Fact]
+        public void Restart_ReFiresOnFirstTickForTheNewSession()
+        {
+            var app = new TestSimulationApp();
+            app.OnTick(false);
+            Assert.Equal(1, app.FirstTickCount);
+
+            app.Restart();
+            app.OnTick(false);
+
+            // The restarted session gets its OnFirstTick again, so the app can attach its initial window.
+            Assert.Equal(2, app.FirstTickCount);
+        }
+
+        [Fact]
+        public void Restart_DropsQueuedCommands()
+        {
+            var app = new TestSimulationApp();
+            app.WindowManager.Add(typeof(TestWindow));
+            foreach (var keyChar in "stale")
+                app.InputManager.AddCharToInputBuffer(keyChar);
+            app.InputManager.SendInputBufferAsCommand();
+
+            app.Restart();
+
+            // Attach a fresh window and form; the pre-restart command must not reach it.
+            app.WindowManager.Add(typeof(TestWindow));
+            var window = (TestWindow) app.WindowManager.FocusedWindow;
+            window.SetForm(typeof(TestForm));
+            var form = (TestForm) window.CurrentForm;
+
+            app.InputManager.OnTick(false);
+
+            Assert.Empty(form.ReceivedInputs);
+        }
+
+        [Fact]
+        public void Restart_AfterDestroy_ThrowsInvalidOperationException()
+        {
+            var app = new TestSimulationApp();
+            app.Destroy();
+
+            Assert.Throws<System.InvalidOperationException>(() => app.Restart());
+        }
+
+        [Fact]
+        public void Destroy_SecondCall_DoesNotRefireOnPreDestroy()
+        {
+            var app = new TestSimulationApp();
+
+            app.Destroy();
+            app.Destroy();
+
+            Assert.Equal(1, app.PreDestroyCount);
+        }
+
+        [Fact]
+        public void Destroy_DuringOnFirstTick_DoesNotThrow()
+        {
+            // OnFirstTick fires between the counter increment and the spinner step; destroying there must not
+            // crash the remainder of the simulation tick.
+            var app = new SelfDestructingSimulationApp();
+
+            app.OnTick(false);
+
+            Assert.True(app.IsClosing);
+            Assert.Null(app.WindowManager);
+        }
+
+        [Fact]
+        public void Destroy_DuringInputDispatch_StopsTickPipelineCleanly()
+        {
+            // A command handler that destroys the simulation runs inside the InputManager module tick; the rest
+            // of the tick (renderer, window manager, tick counters) must notice and bail out.
+            var app = new TestSimulationApp();
+            app.WindowManager.Add(typeof(TestWindow));
+            var window = (TestWindow) app.WindowManager.FocusedWindow;
+            window.SetForm(typeof(DestroyOnInputForm));
+            ((TestWindowData) ((WolfCurses.Window.IWindow) window).UserData).App = app;
+
+            foreach (var keyChar in "boom")
+                app.InputManager.AddCharToInputBuffer(keyChar);
+            app.InputManager.SendInputBufferAsCommand();
+
+            app.OnTick(false);
+
+            Assert.True(app.IsClosing);
+            // The tick died before reaching the counter, so OnFirstTick never fired on the destroyed sim.
+            Assert.Equal(0, app.FirstTickCount);
+        }
     }
 }

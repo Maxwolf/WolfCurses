@@ -27,21 +27,17 @@ namespace WolfCurses.Utility
             // Collection of types we have found.
             var foundTypes = new List<Type>();
 
-            // Loop through every defined type in current running assembly.
-            foreach (var t in Assembly.GetEntryAssembly().DefinedTypes)
-            {
-                // Loop through every custom attribute based on type we are looking for.
-                foreach (var unused in t.GetCustomAttributes<TAttribute>())
-                {
-                    // Use reflection to figure out object information.
-                    var typeInfo = ((IReflectableType) t).GetTypeInfo();
+            // Some hosts (native embedding, unmanaged entry points) have no managed entry assembly to scan.
+            var entryAssembly = Assembly.GetEntryAssembly();
+            if (entryAssembly == null)
+                return foundTypes;
 
-                    // Check if the type if defined following inheritance rules.
-                    if (typeInfo != null && typeInfo.IsDefined(typeof(TAttribute), inherit))
-                    {
-                        foundTypes.Add(typeInfo.UnderlyingSystemType);
-                    }
-                }
+            // Loop through every defined type in current running assembly, adding each matching type exactly
+            // once no matter how many attribute instances are stacked on it.
+            foreach (var typeInfo in entryAssembly.DefinedTypes)
+            {
+                if (typeInfo.IsDefined(typeof(TAttribute), inherit))
+                    foundTypes.Add(typeInfo.UnderlyingSystemType);
             }
 
             return foundTypes;

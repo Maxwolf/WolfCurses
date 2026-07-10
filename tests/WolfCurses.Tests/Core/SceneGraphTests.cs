@@ -108,6 +108,26 @@ namespace WolfCurses.Tests.Core
         }
 
         [Fact]
+        public void OnTick_CaseOnlyChange_RefiresEvent()
+        {
+            // The back-buffer diff is case-sensitive; a screen differing only by letter case still redraws.
+            var app = new TestSimulationApp();
+            app.WindowManager.Add(typeof(TestWindow));
+            var window = (TestWindow) app.WindowManager.FocusedWindow;
+            var fireCount = 0;
+            app.SceneGraph.ScreenBufferDirtyEvent += _ => fireCount++;
+
+            window.PromptText = "make a choice";
+            app.SceneGraph.OnTick(false);
+            Assert.Equal(1, fireCount);
+
+            window.PromptText = "MAKE A CHOICE";
+            app.SceneGraph.OnTick(false);
+
+            Assert.Equal(2, fireCount);
+        }
+
+        [Fact]
         public void PromptTextDefault_ConstantPinned()
         {
             Assert.Equal("What is your choice?", SceneGraph.PROMPT_TEXT_DEFAULT);

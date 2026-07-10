@@ -31,16 +31,15 @@ namespace WolfCurses.Tests.Windows
         }
 
         [Fact]
-        public void SendCommand_BeforeOnRenderWindow_DoesNothing()
+        public void SendCommand_BeforeFirstRender_InvokesAction()
         {
-            // Documents surprising current behavior: command mappings are built only inside OnRenderWindow, so
-            // input sent before the first render is silently dropped.
+            // Mappings are refreshed eagerly by AddCommand, so commands work before the window ever renders.
             var window = NewWindow(out _);
             window.AddTestCommand(TestCommands.First);
 
             window.SendCommand("1");
 
-            Assert.Empty(window.InvokedCommands);
+            Assert.Equal(new[] { TestCommands.First }, window.InvokedCommands);
         }
 
         [Fact]
@@ -87,15 +86,23 @@ namespace WolfCurses.Tests.Windows
         }
 
         [Fact]
-        public void OnRenderWindow_DuplicateAddCommand_ThrowsArgumentException()
+        public void AddCommand_DuplicateCommand_KeepsFirstRegistration()
         {
-            // Documents a known bug: MenuChoice does not override Equals, so AddCommand's Contains dedup never
-            // matches and the second registration survives until RefreshCommandMappings hits a duplicate key.
+            // MenuChoice equality is based on the command value, so a duplicate AddCommand is ignored instead of
+            // crashing the next render with a duplicate mapping key.
             var window = NewWindow(out _);
-            window.AddTestCommand(TestCommands.First, () => { });
-            window.AddTestCommand(TestCommands.First, () => { });
+            var firstInvocations = 0;
+            var secondInvocations = 0;
+            window.AddTestCommand(TestCommands.First, () => firstInvocations++);
+            window.AddTestCommand(TestCommands.First, () => secondInvocations++);
 
-            Assert.Throws<ArgumentException>(() => window.OnRenderWindow());
+            var rendered = window.OnRenderWindow();
+            window.SendCommand("1");
+
+            var menuLines = rendered.Split(Environment.NewLine);
+            Assert.Single(menuLines, line => line.StartsWith("  1."));
+            Assert.Equal(1, firstInvocations);
+            Assert.Equal(0, secondInvocations);
         }
 
         [Fact]
@@ -160,25 +167,38 @@ namespace WolfCurses.Tests.Windows
         }
 
         [Fact]
-        public void Equals_TwoWindowsWithNullForms_ThrowsNullReferenceException()
+        public void Equals_TwoWindowsWithNullForms_AreEqual()
         {
-            // Documents a known bug: instance Equals dereferences Form unconditionally.
+            // Same window type with no forms attached on either side counts as equal; no null dereference.
             var app = new TestSimulationApp();
             var first = new TestWindow(app);
             var second = new TestWindow(app);
 
-            Assert.Throws<NullReferenceException>(() => first.Equals(second));
+            Assert.True(first.Equals(second));
         }
 
         [Fact]
-        public void CompareTo_WindowsWithNullForms_ThrowsNullReferenceException()
+        public void CompareTo_WindowsWithNullForms_AreEqual()
         {
-            // Documents a known bug: CompareTo dereferences CurrentForm when type names match.
+            // Same type name and both forms missing compares as equal; no null dereference.
             var app = new TestSimulationApp();
             var first = new TestWindow(app);
             var second = new TestWindow(app);
 
-            Assert.Throws<NullReferenceException>(() => first.CompareTo((WolfCurses.Window.IWindow) second));
+            Assert.Equal(0, first.CompareTo((WolfCurses.Window.IWindow) second));
+        }
+
+        [Fact]
+        public void CompareTo_SortsByTypeNameAscending()
+        {
+            // Ascending contract: "SecondTestWindow" < "TestWindow" ordinally, so SecondTestWindow compares
+            // less than TestWindow (previous code compared the arguments in reverse and inverted the sign).
+            var app = new TestSimulationApp();
+            var testWindow = new TestWindow(app);
+            var secondWindow = new SecondTestWindow(app);
+
+            Assert.True(secondWindow.CompareTo((WolfCurses.Window.IWindow) testWindow) < 0);
+            Assert.True(testWindow.CompareTo((WolfCurses.Window.IWindow) secondWindow) > 0);
         }
 
         [Fact]

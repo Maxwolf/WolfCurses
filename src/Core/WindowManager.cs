@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using WolfCurses.Window;
 using WolfCurses.Window.Form;
 
@@ -34,6 +33,12 @@ namespace WolfCurses.Core
         private readonly Dictionary<Type, IWindow> _windowList = new();
 
         /// <summary>
+        ///     Insertion order of the window types; dictionary enumeration order is undefined after removals, so the
+        ///     stack semantics (last added is focused) must be tracked explicitly.
+        /// </summary>
+        private readonly List<Type> _windowOrder = new();
+
+        /// <summary>
         ///     Initializes a new instance of the <see cref="WindowManager" /> class.
         ///     Initializes a new instance of the <see cref="T:TrailSimulation.Core.ModuleProduct" /> class.
         /// </summary>
@@ -54,7 +59,7 @@ namespace WolfCurses.Core
             {
                 lock (_windowList)
                 {
-                    return _windowList.LastOrDefault().Value;
+                    return _windowOrder.Count > 0 ? _windowList[_windowOrder[_windowOrder.Count - 1]] : null;
                 }
             }
         }
@@ -113,6 +118,7 @@ namespace WolfCurses.Core
             lock (_windowList)
             {
                 _windowList.Clear();
+                _windowOrder.Clear();
             }
 
             // State factory only references parent Windows type, they are added directly to active Windows so no list of them here.
@@ -141,9 +147,10 @@ namespace WolfCurses.Core
             if (FocusedWindow != null && FocusedWindow.ShouldRemoveMode)
                 updatedModes = CleanWindows();
 
-            // When list of modes is updated then we need to activate now active Windows since they shifted.
+            // When list of modes is updated then we need to activate now active Windows since they shifted. The
+            // removed window may have been the last one, leaving nothing to activate.
             if (updatedModes)
-                FocusedWindow.OnWindowActivate();
+                FocusedWindow?.OnWindowActivate();
 
             // Otherwise just tick the game Windows logic.
             FocusedWindow?.OnTick(systemTick, skipDay);
@@ -184,6 +191,7 @@ namespace WolfCurses.Core
 
                     // Remove the Windows from list if it is flagged for removal.
                     _windowList.Remove(mode.Key);
+                    _windowOrder.Remove(mode.Key);
                     updatedWindowList = true;
                 }
 
@@ -243,6 +251,7 @@ namespace WolfCurses.Core
 
                 // Add the game Windows to the simulation now that we know it does not exist in the stack yet.
                 _windowList.Add(window, modeProduct);
+                _windowOrder.Add(window);
                 OnWindowAdded();
             }
         }
@@ -256,6 +265,7 @@ namespace WolfCurses.Core
             lock (_windowList)
             {
                 _windowList.Clear();
+                _windowOrder.Clear();
             }
         }
     }

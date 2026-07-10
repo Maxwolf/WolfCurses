@@ -115,20 +115,26 @@ namespace WolfCurses.Window.Form.Input
                 return;
 
             // Process input and return dialog result.
-            _seenPrompt = true;
-            switch (input.ToUpperInvariant())
+            switch ((input ?? string.Empty).ToUpperInvariant())
             {
                 case "Y":
                 case "YES":
                 case "TRUE":
+                    _seenPrompt = true;
                     OnDialogResponse(DialogResponse.Yes);
                     return;
                 case "N":
                 case "NO":
                 case "FALSE":
+                    _seenPrompt = true;
                     OnDialogResponse(DialogResponse.No);
                     return;
                 default:
+                    // YesNo dialogs ignore anything that is not a yes or no until a valid response is given.
+                    if (DialogType == DialogType.YesNo)
+                        return;
+
+                    _seenPrompt = true;
                     OnDialogResponse(DialogResponse.Custom);
                     return;
             }

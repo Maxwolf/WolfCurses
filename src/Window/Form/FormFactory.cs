@@ -51,17 +51,22 @@ namespace WolfCurses.Window.Form
             if (!LoadedForms.ContainsKey(stateType))
                 throw new ArgumentException(
                     "State factory cannot create state from type that does not exist in reference states! " +
-                    "Perhaps developer forgot [RequiredMode] attribute on state?!");
+                    "Perhaps developer forgot [ParentWindow] attribute on form?!");
 
-            // States are based on abstract class, but never should be one.
+            // Abstract classes cannot be instantiated; surface the mistake instead of handing back null.
             if (stateType.GetTypeInfo().IsAbstract)
-                return null;
+                throw new ArgumentException(
+                    $"State factory cannot create an instance of abstract form type {stateType.FullName}!",
+                    nameof(stateType));
 
             // Create the state, it will have constructor with one parameter.
             var stateInstance = Activator.CreateInstance(stateType, activeMode);
+            if (stateInstance is not IForm createdForm)
+                throw new ArgumentException(
+                    $"State factory created {stateType.FullName} but it does not implement IForm!", nameof(stateType));
 
             // Pass the created state back to caller.
-            return stateInstance as IForm;
+            return createdForm;
         }
 
         /// <summary>
