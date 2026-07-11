@@ -7,7 +7,7 @@ namespace WolfCurses.Tests.Graphics
 {
     /// <summary>
     ///     End-to-end tests against the real fixture images at the repository root: they prove the default
-    ///     StbImageSharp decoder actually handles the formats in the "images for ANSI support" folder — including
+    ///     StbImageSharp decoder actually handles the formats in the media folder — including
     ///     <em>progressive</em> JPEG (image_001, image_003) and a PNG with an alpha channel (the transparent Tux) — and
     ///     that the full decode-plus-render pipeline produces sane output. They skip (rather than fail) when the
     ///     repository fixtures are not present.
@@ -31,7 +31,7 @@ namespace WolfCurses.Tests.Graphics
         {
             Assert.SkipUnless(TestImages.Available, "Repository image fixtures are not present.");
 
-            var image = AnsiImage.FromFile(TestImages.Ansi(fileName));
+            var image = AnsiImage.FromFile(TestImages.Media(fileName));
 
             Assert.Equal(width, image.Width);
             Assert.Equal(height, image.Height);
@@ -58,7 +58,7 @@ namespace WolfCurses.Tests.Graphics
         {
             Assert.SkipUnless(TestImages.Available, "Repository image fixtures are not present.");
 
-            var image = AnsiImage.FromFile(TestImages.Ansi(fileName));
+            var image = AnsiImage.FromFile(TestImages.Media(fileName));
             var (cols, rows) = AnsiImageRenderer.ComputeTargetCells(image.Width, image.Height, FixedBounds);
 
             var ansi = image.ToAnsi(FixedBounds);
@@ -76,7 +76,7 @@ namespace WolfCurses.Tests.Graphics
             Assert.SkipUnless(TestImages.Available, "Repository image fixtures are not present.");
 
             // A JPEG has no alpha channel, so every cell has two opaque pixels and no cell degrades to a bare space.
-            var ansi = AnsiImage.FromFile(TestImages.Ansi("image_002.jpg")).ToAnsi(FixedBounds);
+            var ansi = AnsiImage.FromFile(TestImages.Media("image_002.jpg")).ToAnsi(FixedBounds);
             Assert.DoesNotContain(' ', ansi);
         }
 
@@ -111,7 +111,7 @@ namespace WolfCurses.Tests.Graphics
         {
             foreach (var name in new[] {"transparent test.png", "transparent_test.png"})
             {
-                var candidate = TestImages.Ansi(name);
+                var candidate = TestImages.Media(name);
                 if (candidate != null && File.Exists(candidate))
                     return candidate;
             }

@@ -1,4 +1,5 @@
 using WolfCurses.Graphics;
+using WolfCurses.Tests.Support;
 using Xunit;
 
 namespace WolfCurses.Tests.Graphics
@@ -128,7 +129,7 @@ namespace WolfCurses.Tests.Graphics
             var result = AnsiImageRenderer.Render(image, Opts(2, 2));
 
             var line = Fg(255, 0, 0) + Bg(255, 0, 0) + Upper + Upper + Reset;
-            Assert.Equal(line + "\n" + line, result);
+            Assert.Equal(line + Text.NL + line, result);
         }
 
         [Theory]
@@ -232,7 +233,7 @@ namespace WolfCurses.Tests.Graphics
             var result = AnsiImageRenderer.Render(image, options);
 
             var line = Fg(255, 0, 0) + Bg(255, 0, 0) + new string(Upper, 3) + Reset;
-            Assert.Equal(line + "\n" + line, result);
+            Assert.Equal(line + Text.NL + line, result);
         }
 
         [Fact]

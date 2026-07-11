@@ -34,8 +34,10 @@ namespace WolfCurses.Graphics
         /// <param name="image">The decoded image to draw.</param>
         /// <param name="options">Rendering options, or null to use the defaults (auto-fit the console, auto color).</param>
         /// <returns>
-        ///     A multi-line string whose lines are separated by <c>\n</c>. Each colored line ends with a reset so the
-        ///     terminal state does not leak into whatever is printed next; the string has no trailing newline.
+        ///     A multi-line string whose rows are separated by the platform newline (<c>Environment.NewLine</c>), to
+        ///     match the rest of the library so the result drops cleanly into a window's rendered text. Each colored
+        ///     line ends with a reset so the terminal state does not leak into whatever is printed next; the string has
+        ///     no trailing newline.
         /// </returns>
         public static string Render(PixelBuffer image, AnsiImageOptions options = null)
         {
@@ -148,7 +150,7 @@ namespace WolfCurses.Graphics
             for (var r = 0; r < rows; r++)
             {
                 if (r > 0)
-                    sb.Append('\n');
+                    sb.Append(Environment.NewLine);
 
                 if (leftPad > 0)
                     sb.Append(' ', leftPad);
@@ -234,7 +236,7 @@ namespace WolfCurses.Graphics
             for (var r = 0; r < rows; r++)
             {
                 if (r > 0)
-                    sb.Append('\n');
+                    sb.Append(Environment.NewLine);
                 if (leftPad > 0)
                     sb.Append(' ', leftPad);
 
