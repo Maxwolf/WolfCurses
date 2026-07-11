@@ -65,6 +65,23 @@ while (!app.IsClosing)
 
 Windows derive from `Window<TCommands, TData>`, where each value of the `TCommands` enum becomes a menu choice. Forms (dialogs, prompts) derive from `Form<TData>` and attach to their parent window with a `[ParentWindow(typeof(MainMenuWindow))]` attribute — no manual registration needed.
 
+## ANSI graphics
+
+Display images (PNG with transparency, baseline and progressive JPEG, and more) right in the terminal. An image becomes a string of block characters and ANSI color escapes that you embed in your window's rendered text.
+
+```csharp
+using WolfCurses.Graphics;
+
+// Once at start-up: enables VT processing + UTF-8 output so the escapes/glyphs render (Windows).
+AnsiConsole.Enable();
+
+// Decode + render ONCE and cache it — OnRenderWindow runs every tick, so never render there.
+private readonly string _logo = AnsiImage.RenderFile("media/logo.jpg");
+public override string OnRenderWindow() => _logo;
+```
+
+By default the image is scaled to fit the console window while keeping its aspect ratio (no terminal resizing needed), transparent pixels let the background show through, and true color degrades gracefully to 256-color/grayscale/ASCII. Set `AnsiImageOptions.Fit` to `Cover`, `Stretch`, or `ScaleDown` to fill a scene instead of letterboxing, and composite a transparent image onto another with `background.Overlay(foreground)`. Options live on `AnsiImageOptions`; decoding is pluggable via `IImageDecoder` / `ImageDecoders.Default` (the built-in decoder is the managed, public-domain StbImageSharp).
+
 ## Links
 
 - [Source code](https://github.com/Maxwolf/WolfCurses)
