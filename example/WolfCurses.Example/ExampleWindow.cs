@@ -47,6 +47,7 @@ namespace WolfCurses.Example
             AddCommand(ShowCompositeSlideshow, ExampleCommands.CompositeSlideshow);
             AddCommand(OpenImageFile, ExampleCommands.OpenImageFile);
             AddCommand(SelectFolder, ExampleCommands.SelectFolder);
+            AddCommand(ShowProgressAndGraphs, ExampleCommands.ProgressAndGraphs);
             AddCommand(CloseSimulation, ExampleCommands.CloseSimulation);
 
             // Flex the WolfCurses logo as an ANSI graphics splash before the menu; pressing ENTER reveals it.
@@ -78,6 +79,11 @@ namespace WolfCurses.Example
         private void ShowCompositeSlideshow()
         {
             SetForm(typeof (CompositeSlideshowDialog));
+        }
+
+        private void ShowProgressAndGraphs()
+        {
+            SetForm(typeof (ProgressGraphsDialog));
         }
 
         private void OpenImageFile()
