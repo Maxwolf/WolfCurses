@@ -34,7 +34,11 @@ dotnet build WolfCurses.sln
 
 ## Example Implementation ##
 
-You can find an example implementation of the WolfCurses library being used with a simple console application with a few different menus, windows, and forms. The source code can be [found here](https://github.com/Maxwolf/WolfCurses.Example "WolfCurses.Example").
+A runnable example console application lives in this repository at [`example/WolfCurses.Example`](example/WolfCurses.Example). It is its own project (referencing the library directly) and shows a few different menus, windows, and forms — plus a WolfCurses logo splash on startup and **Slideshow** / **Compositing** menu items that display the `media/` images (and a transparent penguin composited over them) using the ANSI graphics feature above. Run it with:
+
+```cmd
+dotnet run --project example/WolfCurses.Example
+```
 
 ## ANSI Graphics ##
 

@@ -85,5 +85,5 @@ By default the image is scaled to fit the console window while keeping its aspec
 ## Links
 
 - [Source code](https://github.com/Maxwolf/WolfCurses)
-- [Complete example application](https://github.com/Maxwolf/WolfCurses.Example)
+- [Complete example application](https://github.com/Maxwolf/WolfCurses/tree/master/example/WolfCurses.Example)
 - [MIT license](https://github.com/Maxwolf/WolfCurses/blob/master/LICENSE)
