@@ -19,6 +19,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Managed, public-domain image decoder (PNG with alpha, baseline & progressive JPEG, BMP, GIF, TGA...).
+         Pure managed with no native binaries, so the package stays cross-platform. Consumers who want a
+         different decoder can implement IImageDecoder and assign ImageDecoders.Default at start-up. -->
+    <PackageReference Include="StbImageSharp" Version="2.30.15" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="WolfCurses.Tests" />
   </ItemGroup>
 

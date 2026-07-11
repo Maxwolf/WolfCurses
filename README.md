@@ -36,6 +36,33 @@ dotnet build WolfCurses.sln
 
 You can find an example implementation of the WolfCurses library being used with a simple console application with a few different menus, windows, and forms. The source code can be [found here](https://github.com/Maxwolf/WolfCurses.Example "WolfCurses.Example").
 
+## ANSI Graphics ##
+
+Wolf Curses can display images (PNG, JPEG — baseline *and* progressive — BMP, GIF, TGA, …) directly in the terminal. Images are converted to a block of text and ANSI color escape sequences that you drop into your window's rendered text like any other string, so the scene graph draws them along with everything else.
+
+```csharp
+using WolfCurses.Graphics;
+
+// Once, at start-up, so the terminal interprets the escapes and shows the block glyphs
+// (enables virtual-terminal processing + a UTF-8 output encoding on Windows):
+AnsiConsole.Enable();
+
+// Decode + render ONCE and cache the string — the escapes never change, and a window's
+// OnRenderWindow runs every tick, so rendering there would re-decode the image constantly:
+private readonly string _logo = AnsiImage.RenderFile("media/logo.jpg");
+
+// ...then just return the cached text from your window/form:
+public override string OnRenderWindow() => _logo;
+```
+
+- **Sized to fit.** By default the image is scaled to fit the current console window while preserving its aspect ratio, so it is fully visible without resizing the terminal. Pass `new AnsiImageOptions { MaxColumns = …, MaxRows = … }` to bound it yourself.
+- **Fit modes.** `AnsiImageOptions.Fit` controls how the image fills the area, mirroring CSS `object-fit`: `Contain` (default — show all of the image, letterboxed), `Cover` (fill the whole scene, cropping the overflow), `Stretch` (fill exactly, ignoring aspect ratio), or `ScaleDown` (like Contain but never enlarge past native size). `HorizontalAlignment`/`VerticalAlignment` choose which part `Cover` keeps.
+- **Compositing.** Overlay a transparent image on top of another and see both — `background.Overlay(foreground)` (centered) or `background.Overlay(foreground, x, y)` alpha-composites them into one image, with the overlay's own transparency preserved. Use `.Resize(w, h)` to size an overlay first.
+- **Two pixels per character.** It uses the Unicode half-block (`▀`) trick — foreground color for the top pixel, background color for the bottom — to double the vertical resolution and keep pixels square.
+- **Transparency.** Transparent PNG pixels let the terminal background show through; set `AnsiImageOptions.BackgroundColor` to composite the image onto a solid color instead.
+- **Graceful color downgrade.** True color by default, with automatic fallback to the 256-color palette, grayscale, or shaded ASCII on terminals that cannot do better (honoring `NO_COLOR`). Force a mode with `AnsiImageOptions.ColorMode`.
+- **Pluggable decoding.** Decoding is done through [StbImageSharp](https://github.com/StbSharp/StbImageSharp) (a managed, public-domain decoder, no native binaries). To use a different image library, implement `IImageDecoder` and assign `ImageDecoders.Default` once at start-up.
+
 ## Purpose ##
 
 The purpose of this project was to replicate the concept of the curses library created by Ken Arnold and originally released with BSD UNIX, where it was used for several games, most notably [Rogue](https://en.wikipedia.org/wiki/Rogue_(video_game) "Rogue (video game)").
