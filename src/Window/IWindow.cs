@@ -49,6 +49,13 @@ namespace WolfCurses.Window
         /// </summary>
         string PromptText { get; set; }
 
+        /// <summary>
+        ///     When true, the renderer shows the echoed input buffer as asterisks instead of the typed characters, for
+        ///     password-style prompts. Default is false. Implemented as a default interface member so existing windows
+        ///     need not change.
+        /// </summary>
+        bool MaskInput => false;
+
         /// <summary>Creates and adds the specified type of state to currently active game Windows.</summary>
         /// <param name="stateType">The state Type.</param>
         void SetForm(Type stateType);

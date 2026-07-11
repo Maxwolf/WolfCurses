@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Reflection;
 using System.Text;
@@ -152,6 +151,12 @@ namespace WolfCurses.Window
         /// </summary>
         public string PromptText { get; set; } = SceneGraph.PROMPT_TEXT_DEFAULT;
 
+        /// <summary>
+        ///     When true, the scene graph echoes the input buffer as asterisks instead of the typed characters (for
+        ///     password-style prompts). Off by default; a window such as a masked text-input dialog overrides this.
+        /// </summary>
+        public virtual bool MaskInput => false;
+
         /// <summary>The compare to.</summary>
         /// <param name="other">The other.</param>
         /// <returns>The <see cref="int" />.</returns>
@@ -232,6 +237,11 @@ namespace WolfCurses.Window
             // Forcefully detaches any state that was active before calling Windows removed.
             ShouldRemoveMode = true;
             Form = null;
+
+            // Never leave a masked (password) value sitting in the shared input buffer where a later non-masked
+            // window could echo it in cleartext once this window is torn down.
+            if (MaskInput)
+                _simUnit.InputManager?.ClearBuffer();
 
             // Allows any data structures that care about themselves to save before the next tick comes.
             OnModeRemoved();

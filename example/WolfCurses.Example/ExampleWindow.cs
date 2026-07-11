@@ -48,6 +48,11 @@ namespace WolfCurses.Example
             AddCommand(OpenImageFile, ExampleCommands.OpenImageFile);
             AddCommand(SelectFolder, ExampleCommands.SelectFolder);
             AddCommand(ShowProgressAndGraphs, ExampleCommands.ProgressAndGraphs);
+            AddCommand(SelectFromList, ExampleCommands.SelectFromList);
+            AddCommand(MultiSelectList, ExampleCommands.MultiSelectList);
+            AddCommand(ShowMessageBox, ExampleCommands.MessageBoxDemo);
+            AddCommand(TextInput, ExampleCommands.TextInputDemo);
+            AddCommand(PasswordInput, ExampleCommands.PasswordDemo);
             AddCommand(CloseSimulation, ExampleCommands.CloseSimulation);
 
             // Flex the WolfCurses logo as an ANSI graphics splash before the menu; pressing ENTER reveals it.
@@ -84,6 +89,72 @@ namespace WolfCurses.Example
         private void ShowProgressAndGraphs()
         {
             SetForm(typeof (ProgressGraphsDialog));
+        }
+
+        private void SelectFromList()
+        {
+            var colors = new[] {"Crimson", "Emerald", "Sapphire", "Goldenrod", "Violet", "Amber", "Teal"};
+
+            SelectList.Choose(
+                SimUnit,
+                "Pick a color",
+                colors,
+                index => ShowResult($"You chose: {colors[index]}"),
+                () => ShowResult("Selection cancelled."));
+        }
+
+        private void MultiSelectList()
+        {
+            var toppings = new[]
+                {"Cheese", "Pepperoni", "Mushroom", "Onion", "Olives", "Bacon", "Pineapple", "Peppers"};
+
+            SelectList.ChooseMany(
+                SimUnit,
+                "Pick your toppings",
+                toppings,
+                topping => topping,
+                chosen => ShowResult(chosen.Count == 0
+                    ? "No toppings selected."
+                    : "Toppings: " + string.Join(", ", chosen)),
+                () => ShowResult("Selection cancelled."));
+        }
+
+        private void ShowMessageBox()
+        {
+            MessageBox.Show(
+                SimUnit,
+                "Enable hard mode?" + Environment.NewLine + "This makes the journey much tougher.",
+                MessageBoxButtons.YesNoCancel,
+                result => ShowResult($"You picked: {result}"));
+        }
+
+        private void TextInput()
+        {
+            TextInputDialog.Prompt(
+                SimUnit,
+                "What is your name?",
+                name => ShowResult($"Hello, {name}!"),
+                () => ShowResult("No name entered."),
+                defaultValue: string.IsNullOrEmpty(UserData.PlayerName) ? "Traveler" : UserData.PlayerName,
+                validator: value => value.Length < 2 ? "Name must be at least 2 characters." : null);
+        }
+
+        private void PasswordInput()
+        {
+            TextInputDialog.Prompt(
+                SimUnit,
+                "Choose a passphrase (at least 4 characters):",
+                _ => ShowResult("Passphrase accepted."),
+                () => ShowResult("No passphrase entered."),
+                masked: true,
+                validator: value => value.Length < 4 ? "Passphrase must be at least 4 characters." : null);
+        }
+
+        /// <summary>Stores a demo's outcome and switches to the shared result dialog to show it.</summary>
+        private void ShowResult(string result)
+        {
+            UserData.LastResult = result;
+            SetForm(typeof (ControlResultDialog));
         }
 
         private void OpenImageFile()

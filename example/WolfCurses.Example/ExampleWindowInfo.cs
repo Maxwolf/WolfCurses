@@ -22,6 +22,12 @@ namespace WolfCurses.Example
         public string SelectedPath { get; set; }
 
         /// <summary>
+        ///     Holds the outcome of the most recent standard-control demo (selection, message box, text prompt) so the
+        ///     shared result dialog can show it back to the user.
+        /// </summary>
+        public string LastResult { get; set; }
+
+        /// <summary>
         ///     Shows example of using the user data class to generate a piece of data that can be shown on the main interface and
         ///     accessed from form or window.
         /// </summary>
