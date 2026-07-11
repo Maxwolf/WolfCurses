@@ -87,6 +87,38 @@ The dialog pushes itself on top of the current screen and lets the user navigate
 
 Because the dialog is a window, list `typeof(FileDialogWindow)` in your app's `AllowedWindows`; its form ships inside the library and is discovered automatically.
 
+## Progress bars & graphs ##
+
+WolfCurses ships a set of drop-in **display widgets** (in `WolfCurses.Window.Control`) that turn data into a block of text you return from your window or form's render — no extra windows to register. They are pure string producers, so they compose with everything else (including ANSI images) and update in place as your data changes.
+
+```csharp
+using WolfCurses.Window.Control;
+
+// Determinate progress bar: value against a maximum, or a 0..1 fraction.
+var bar = new ProgressBar { Width = 24, Label = "Download" };
+string line = bar.Render(bytesDone, bytesTotal);      // Download [██████████░░░░░░░░░░░░░░]  42%
+
+// Inline sparkline of a whole series.
+string trend = new Sparkline().Render(samples);        // ▁▂▄▅▇█▆▄▂  (one glyph per point)
+
+// Horizontal bar chart of labelled values.
+string chart = new BarChart { Width = 20 }.Render(new[]
+{
+    new BarChartValue("Wood", 12),
+    new BarChartValue("Iron", 5),
+});
+
+// 2-D line graph of a series over time (optional axis, scale labels, and area fill).
+string graph = new LineGraph { Width = 40, Height = 10 }.Render(samples);
+```
+
+- **`ProgressBar`** — determinate bar with configurable width, filled/empty glyphs, optional brackets, percentage, and a leading label. Clamps out-of-range and non-finite input (a non-positive maximum renders empty rather than throwing). For a quick one-off, the older static `TextProgress.DrawProgressBar(value, max, size)` is still there; `MarqueeBar` gives you an indeterminate ping-pong bar and `SpinningPixel` a spinner.
+- **`Sparkline`** — a series drawn as one line of block glyphs (`▁▂▃▄▅▆▇█`), auto-scaled between the series min/max or a range you pin with `Minimum`/`Maximum`. Handy next to a label.
+- **`BarChart`** — one row per `BarChartValue`, labels aligned to a common width, bars scaled to the largest value, with an optional aligned "track" and printed values.
+- **`LineGraph`** — plots a series across a `Width`×`Height` grid (top = max, bottom = min) with optional connecting segments, area fill, a left Y-axis with min/max scale labels, and a bottom X-axis — good for a rolling metric over time.
+
+The multi-line widgets join their rows with the platform newline and emit no trailing newline, so they slot cleanly into surrounding text. The example app's **Progress bars & graphs** menu item shows all of them animating together off the simulation tick.
+
 ## Purpose ##
 
 The purpose of this project was to replicate the concept of the curses library created by Ken Arnold and originally released with BSD UNIX, where it was used for several games, most notably [Rogue](https://en.wikipedia.org/wiki/Rogue_(video_game) "Rogue (video game)").

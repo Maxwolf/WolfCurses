@@ -47,8 +47,13 @@ namespace WolfCurses.Example
         [Description("Pick a folder (folder browser).")] SelectFolder = 7,
 
         /// <summary>
+        ///     Live dashboard of the progress bar and graph controls (progress bar, marquee, sparkline, bar chart, line graph).
+        /// </summary>
+        [Description("Progress bars & graphs (live dashboard).")] ProgressAndGraphs = 8,
+
+        /// <summary>
         ///     Closes the console application.
         /// </summary>
-        [Description("End")] CloseSimulation = 8
+        [Description("End")] CloseSimulation = 9
     }
 }

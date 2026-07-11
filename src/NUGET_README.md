@@ -82,6 +82,34 @@ public override string OnRenderWindow() => _logo;
 
 By default the image is scaled to fit the console window while keeping its aspect ratio (no terminal resizing needed), transparent pixels let the background show through, and true color degrades gracefully to 256-color/grayscale/ASCII. Set `AnsiImageOptions.Fit` to `Cover`, `Stretch`, or `ScaleDown` to fill a scene instead of letterboxing, and composite a transparent image onto another with `background.Overlay(foreground)`. Options live on `AnsiImageOptions`; decoding is pluggable via `IImageDecoder` / `ImageDecoders.Default` (the built-in decoder is the managed, public-domain StbImageSharp).
 
+## Progress bars & graphs
+
+Drop-in display widgets in `WolfCurses.Window.Control` turn data into text you return from a window/form's render — no windows to register.
+
+```csharp
+using WolfCurses.Window.Control;
+
+new ProgressBar { Label = "Download", Width = 24 }.Render(done, total); // determinate bar + percentage
+new Sparkline().Render(samples);                                       // inline ▁▂▄▅▇█ trend of a series
+new BarChart { Width = 20 }.Render(new[] { new BarChartValue("Wood", 12), new BarChartValue("Iron", 5) });
+new LineGraph { Width = 40, Height = 10 }.Render(samples);             // 2-D plot over time
+```
+
+`ProgressBar` (determinate), `Sparkline`, `BarChart`, and `LineGraph` are pure string producers with robust clamping and edge-case handling (empty/flat/negative/non-finite input); `MarqueeBar`/`SpinningPixel` cover the indeterminate cases. The example app's **Progress bars & graphs** screen animates them all off the simulation tick.
+
+## File & folder browser
+
+A ready-made picker so you don't build directory navigation yourself. From inside a window the simulation is available as `SimUnit`:
+
+```csharp
+using WolfCurses.Controls;
+
+FileDialog.OpenFile(SimUnit, "C:\\", new[] { ".jpg", ".png" }, onFileSelected: path => { /* ... */ });
+FileDialog.SelectFolder(SimUnit, "C:\\", onFolderSelected: path => { /* ... */ });
+```
+
+List `typeof(FileDialogWindow)` in your app's `AllowedWindows`; the dialog's form ships in the library and is discovered automatically.
+
 ## Links
 
 - [Source code](https://github.com/Maxwolf/WolfCurses)
