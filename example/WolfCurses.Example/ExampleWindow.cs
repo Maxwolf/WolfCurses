@@ -3,6 +3,7 @@
 
 using System;
 using System.Text;
+using WolfCurses.Controls;
 using WolfCurses.Example.CustomInput;
 using WolfCurses.Example.Demos;
 using WolfCurses.Example.Prompt;
@@ -44,6 +45,8 @@ namespace WolfCurses.Example
             AddCommand(CustomPrompt, ExampleCommands.CustomPrompt);
             AddCommand(ShowSlideshow, ExampleCommands.Slideshow);
             AddCommand(ShowCompositeSlideshow, ExampleCommands.CompositeSlideshow);
+            AddCommand(OpenImageFile, ExampleCommands.OpenImageFile);
+            AddCommand(SelectFolder, ExampleCommands.SelectFolder);
             AddCommand(CloseSimulation, ExampleCommands.CloseSimulation);
 
             // Flex the WolfCurses logo as an ANSI graphics splash before the menu; pressing ENTER reveals it.
@@ -75,6 +78,34 @@ namespace WolfCurses.Example
         private void ShowCompositeSlideshow()
         {
             SetForm(typeof (CompositeSlideshowDialog));
+        }
+
+        private void OpenImageFile()
+        {
+            // Browse for an image file, then display the one the user picks with ANSI graphics. SimUnit is the
+            // running simulation, exposed to windows so they can push the file dialog window.
+            FileDialog.OpenFile(
+                SimUnit,
+                AppContext.BaseDirectory,
+                new[] {".jpg", ".jpeg", ".png", ".bmp", ".gif"},
+                path =>
+                {
+                    UserData.SelectedPath = path;
+                    SetForm(typeof (SelectedImageDialog));
+                });
+        }
+
+        private void SelectFolder()
+        {
+            // Browse for a folder, then show the one the user picks.
+            FileDialog.SelectFolder(
+                SimUnit,
+                AppContext.BaseDirectory,
+                path =>
+                {
+                    UserData.SelectedPath = path;
+                    SetForm(typeof (SelectedFolderDialog));
+                });
         }
 
         private void CustomPrompt()

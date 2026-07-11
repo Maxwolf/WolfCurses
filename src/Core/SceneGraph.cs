@@ -133,13 +133,21 @@ namespace WolfCurses.Core
         /// <returns>The current window text to be rendered out.<see cref="string" />.</returns>
         private string RenderWindow()
         {
+            var focusedWindow = _simUnit.WindowManager.FocusedWindow;
+
+            // A window flagged for removal is torn down on the next tick (its form and menu are already gone). Its
+            // render is empty, so suppress the "[DEFAULT WINDOW TEXT]" placeholder that would otherwise flash for a
+            // single frame while it is being closed (e.g. when a dialog dismisses itself).
+            if (focusedWindow != null && focusedWindow.ShouldRemoveMode)
+                return string.Empty;
+
             // If TUI for active game Windows is not null or empty then use it.
-            var activeWindowText = _simUnit.WindowManager.FocusedWindow?.OnRenderWindow();
+            var activeWindowText = focusedWindow?.OnRenderWindow();
             if (!string.IsNullOrEmpty(activeWindowText) && !string.IsNullOrWhiteSpace(activeWindowText))
                 return activeWindowText;
 
             // Otherwise, display default message if null for Windows.
-            return _simUnit.WindowManager.FocusedWindow == null ? GAMEMODE_EMPTY_TUI : GAMEMODE_DEFAULT_TUI;
+            return focusedWindow == null ? GAMEMODE_EMPTY_TUI : GAMEMODE_DEFAULT_TUI;
         }
 
         /// <summary>

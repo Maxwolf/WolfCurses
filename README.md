@@ -34,7 +34,7 @@ dotnet build WolfCurses.sln
 
 ## Example Implementation ##
 
-A runnable example console application lives in this repository at [`example/WolfCurses.Example`](example/WolfCurses.Example). It is its own project (referencing the library directly) and shows a few different menus, windows, and forms — plus a WolfCurses logo splash on startup and **Slideshow** / **Compositing** menu items that display the `media/` images (and a transparent penguin composited over them) using the ANSI graphics feature above. Run it with:
+A runnable example console application lives in this repository at [`example/WolfCurses.Example`](example/WolfCurses.Example). It is its own project (referencing the library directly) and shows a few different menus, windows, and forms — plus a WolfCurses logo splash on startup, **Slideshow** / **Compositing** menu items that display the `media/` images (and a transparent penguin composited over them), and **file/folder browser** menu items that pick an image to display or a folder to report. Run it with:
 
 ```cmd
 dotnet run --project example/WolfCurses.Example
@@ -66,6 +66,26 @@ public override string OnRenderWindow() => _logo;
 - **Transparency.** Transparent PNG pixels let the terminal background show through; set `AnsiImageOptions.BackgroundColor` to composite the image onto a solid color instead.
 - **Graceful color downgrade.** True color by default, with automatic fallback to the 256-color palette, grayscale, or shaded ASCII on terminals that cannot do better (honoring `NO_COLOR`). Force a mode with `AnsiImageOptions.ColorMode`.
 - **Pluggable decoding.** Decoding is done through [StbImageSharp](https://github.com/StbSharp/StbImageSharp) (a managed, public-domain decoder, no native binaries). To use a different image library, implement `IImageDecoder` and assign `ImageDecoders.Default` once at start-up.
+
+## File & folder browser ##
+
+WolfCurses ships a ready-made file/folder picker so an application doesn't have to build directory navigation itself. From inside a window the running simulation is available as `SimUnit`:
+
+```csharp
+using WolfCurses.Controls;
+
+// Let the user pick an image file (only these extensions are shown):
+FileDialog.OpenFile(SimUnit, startDirectory: "C:\\", extensions: new[] { ".jpg", ".png" },
+    onFileSelected: path => { /* do something with the chosen file */ });
+
+// ...or pick a folder:
+FileDialog.SelectFolder(SimUnit, startDirectory: "C:\\",
+    onFolderSelected: path => { /* do something with the chosen folder */ });
+```
+
+The dialog pushes itself on top of the current screen and lets the user navigate drives and folders — type a number to open an entry, `U` to go up, `D` to list drives, `N`/`P` to page through a long folder, and `C` to cancel (plus `S` to confirm the current folder when picking a folder). When the user chooses, your callback runs with the full path and the dialog closes itself. An empty extension filter shows every file.
+
+Because the dialog is a window, list `typeof(FileDialogWindow)` in your app's `AllowedWindows`; its form ships inside the library and is discovered automatically.
 
 ## Purpose ##
 

@@ -17,6 +17,11 @@ namespace WolfCurses.Example
         public string PlayerName { get; set; }
 
         /// <summary>
+        ///     Holds the file or folder path the user picked with the file dialog, so a follow-up form can show it.
+        /// </summary>
+        public string SelectedPath { get; set; }
+
+        /// <summary>
         ///     Shows example of using the user data class to generate a piece of data that can be shown on the main interface and
         ///     accessed from form or window.
         /// </summary>

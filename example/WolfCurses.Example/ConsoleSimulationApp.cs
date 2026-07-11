@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using WolfCurses.Controls;
 
 namespace WolfCurses.Example
 {
@@ -33,7 +34,10 @@ namespace WolfCurses.Example
             {
                 var windowList = new List<Type>
                 {
-                    typeof (ExampleWindow)
+                    typeof (ExampleWindow),
+
+                    // Opt in to the built-in file/folder browser control so FileDialog can push it.
+                    typeof (FileDialogWindow)
                 };
 
                 return windowList;

@@ -81,10 +81,11 @@ namespace WolfCurses.Tests.Utility
         [Fact]
         public void GetTypesWith_ExplicitAssembly_WithoutMatchingTypes_ReturnsEmpty()
         {
-            // Proves it honors the assembly it is given rather than silently falling back to the entry assembly:
-            // the WolfCurses library assembly defines no [ParentWindow] forms even though the entry assembly does.
+            // Proves it honors the assembly it is given rather than silently falling back to the entry assembly: the
+            // core runtime assembly defines no [ParentWindow] forms even though the entry (test) assembly does. (The
+            // WolfCurses library assembly is no longer a valid "empty" target — it now ships the file dialog's form.)
             var types = AttributeExtensions
-                .GetTypesWith<ParentWindowAttribute>(typeof(SimulationApp).Assembly, false)
+                .GetTypesWith<ParentWindowAttribute>(typeof(object).Assembly, false)
                 .ToList();
 
             Assert.Empty(types);
@@ -101,8 +102,8 @@ namespace WolfCurses.Tests.Utility
         [Fact]
         public void GetTypesWith_AssemblyCollection_UnionsAcrossDistinctAssemblies()
         {
-            // Forms come only from the test assembly here; the library assembly contributes nothing, but including it
-            // must not drop or duplicate anything.
+            // The library assembly contributes its built-in file dialog form and the test assembly its test forms;
+            // unioning them must not drop or duplicate anything, so the test assembly's TestForm still appears once.
             var assemblies = new[] { typeof(SimulationApp).Assembly, typeof(TestForm).Assembly };
 
             var types = AttributeExtensions.GetTypesWith<ParentWindowAttribute>(assemblies, false).ToList();

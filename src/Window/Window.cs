@@ -103,6 +103,13 @@ namespace WolfCurses.Window
         }
 
         /// <summary>
+        ///     The running simulation this window belongs to, exposed to subclasses so a window's command handlers can
+        ///     reach shared services — the window manager (to push another window, such as a
+        ///     <see cref="WolfCurses.Controls.FileDialog" />), the shared randomizer, and so on.
+        /// </summary>
+        protected SimulationApp SimUnit => _simUnit;
+
+        /// <summary>
         ///     Current game Windows state that is being ticked when this Windows is ticked by the underlying simulation.
         /// </summary>
         private IForm Form { get; set; }
