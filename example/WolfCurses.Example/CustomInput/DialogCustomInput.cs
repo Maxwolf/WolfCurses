@@ -39,12 +39,13 @@ namespace WolfCurses.Example.CustomInput
         /// </returns>
         public override string OnRenderForm()
         {
-            ParentWindow.PromptText = "Type your name and press ENTER";
+            // Ask the question on the prompt line so the name the user types echoes right after it — the same way the
+            // menu shows the typed number after "What is your choice?" — instead of on a separate line below a
+            // second, redundant prompt.
+            ParentWindow.PromptText = "What is your name?";
 
             _inputNamesHelp.Clear();
-
-            _inputNamesHelp.AppendLine($"{Environment.NewLine}Dialog Custom Input{Environment.NewLine}");
-            _inputNamesHelp.Append("What is your name?");
+            _inputNamesHelp.Append($"{Environment.NewLine}Dialog Custom Input{Environment.NewLine}");
 
             return _inputNamesHelp.ToString();
         }
