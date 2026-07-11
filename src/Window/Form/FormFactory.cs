@@ -41,7 +41,14 @@ namespace WolfCurses.Window.Form
             // process entry point) plus the process entry assembly (preserving the original behavior for apps that
             // ARE their own entry point). Duplicate assemblies are collapsed, so entry == app assembly registers each
             // form exactly once.
-            var assembliesToScan = new List<Assembly> { simUnit?.GetType().Assembly, Assembly.GetEntryAssembly() };
+            var assembliesToScan = new List<Assembly>
+            {
+                // The WolfCurses library itself, so built-in control forms (e.g. the file dialog's form) are
+                // discovered for every consuming app without it having to opt them in.
+                typeof(FormFactory).Assembly,
+                simUnit?.GetType().Assembly,
+                Assembly.GetEntryAssembly()
+            };
             var additionalAssemblies = simUnit?.AdditionalFormAssemblies;
             if (additionalAssemblies != null)
                 assembliesToScan.AddRange(additionalAssemblies);

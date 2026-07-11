@@ -37,8 +37,18 @@ namespace WolfCurses.Example
         [Description("Compositing: penguin over the slideshow images.")] CompositeSlideshow = 5,
 
         /// <summary>
+        ///     Opens the file browser to pick an image, then shows it with ANSI graphics.
+        /// </summary>
+        [Description("Open an image file (file browser).")] OpenImageFile = 6,
+
+        /// <summary>
+        ///     Opens the folder browser to pick a folder.
+        /// </summary>
+        [Description("Pick a folder (folder browser).")] SelectFolder = 7,
+
+        /// <summary>
         ///     Closes the console application.
         /// </summary>
-        [Description("End")] CloseSimulation = 6
+        [Description("End")] CloseSimulation = 8
     }
 }
