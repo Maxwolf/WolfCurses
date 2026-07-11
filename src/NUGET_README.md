@@ -110,6 +110,24 @@ FileDialog.SelectFolder(SimUnit, "C:\\", onFolderSelected: path => { /* ... */ }
 
 List `typeof(FileDialogWindow)` in your app's `AllowedWindows`; the dialog's form ships in the library and is discovered automatically.
 
+## Dialogs & panels
+
+Ready-made modal dialogs and a panel widget for common interactions. The dialogs call you back with the result and close themselves.
+
+```csharp
+using WolfCurses.Controls;
+using WolfCurses.Window.Control;
+
+new Box { Title = "Status", Border = BoxBorder.Double, Padding = 1 }.Render("All good."); // bordered panel
+
+SelectList.Choose(SimUnit, "Pick", new[] { "A", "B", "C" }, index => { /* ... */ }); // or ChooseMany for multi-select
+MessageBox.Show(SimUnit, "Proceed?", MessageBoxButtons.YesNoCancel, result => { /* Yes/No/Cancel */ });
+TextInputDialog.Prompt(SimUnit, "Name?", name => { /* ... */ }, defaultValue: "Traveler",
+    validator: v => v.Length < 2 ? "Too short" : null); // add masked: true for passwords
+```
+
+`Box` (a pure widget) borders any text with an optional title, measuring width past ANSI color escapes. `SelectList`, `MessageBox`, and `TextInputDialog` are windows — list `typeof(SelectListWindow)` / `typeof(MessageBoxWindow)` / `typeof(TextInputWindow)` in your `AllowedWindows`.
+
 ## Links
 
 - [Source code](https://github.com/Maxwolf/WolfCurses)

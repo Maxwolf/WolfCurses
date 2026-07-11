@@ -71,12 +71,12 @@ namespace WolfCurses.Controls
             simulation.WindowManager.Add(typeof (FileDialogWindow));
 
             // Add normally makes the FileDialogWindow the fresh, focused window. But windows are single-instance per
-            // type, so if one is already open (or is mid-close, e.g. opening a second dialog from within the first's
-            // callback) Add re-activates that doomed/other window instead. Detect that and fail loudly rather than
-            // silently configuring a window that will never actually show and never fire its callback.
+            // type, so if one is already open (Initialized) or is mid-close (ShouldRemoveMode, e.g. opening a second
+            // dialog from within the first's callback) Add re-activates that existing/doomed window instead. Detect
+            // that and fail loudly rather than silently reconfiguring a window and dropping the first callback.
             var focused = simulation.WindowManager.FocusedWindow;
             if (focused is not FileDialogWindow window || window.ShouldRemoveMode ||
-                focused.UserData is not FileDialogData data)
+                focused.UserData is not FileDialogData data || data.Initialized)
                 throw new InvalidOperationException(
                     "A file dialog is already open or closing. Open only one at a time and wait for its callback " +
                     "before opening another.");

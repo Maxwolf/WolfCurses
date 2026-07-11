@@ -52,8 +52,33 @@ namespace WolfCurses.Example
         [Description("Progress bars & graphs (live dashboard).")] ProgressAndGraphs = 8,
 
         /// <summary>
+        ///     Opens the list picker to choose one option.
+        /// </summary>
+        [Description("Pick one from a list (SelectList).")] SelectFromList = 9,
+
+        /// <summary>
+        ///     Opens the list picker to check several options.
+        /// </summary>
+        [Description("Pick several from a list (multi-select).")] MultiSelectList = 10,
+
+        /// <summary>
+        ///     Opens a yes/no/cancel message box.
+        /// </summary>
+        [Description("Message box (yes/no/cancel).")] MessageBoxDemo = 11,
+
+        /// <summary>
+        ///     Opens a text prompt with a default value and validation.
+        /// </summary>
+        [Description("Text input (default + validation).")] TextInputDemo = 12,
+
+        /// <summary>
+        ///     Opens a masked text prompt for a passphrase.
+        /// </summary>
+        [Description("Password input (masked).")] PasswordDemo = 13,
+
+        /// <summary>
         ///     Closes the console application.
         /// </summary>
-        [Description("End")] CloseSimulation = 9
+        [Description("End")] CloseSimulation = 14
     }
 }

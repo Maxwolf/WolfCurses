@@ -36,8 +36,11 @@ namespace WolfCurses.Example
                 {
                     typeof (ExampleWindow),
 
-                    // Opt in to the built-in file/folder browser control so FileDialog can push it.
-                    typeof (FileDialogWindow)
+                    // Opt in to the built-in controls so their static entry points can push them.
+                    typeof (FileDialogWindow),
+                    typeof (SelectListWindow),
+                    typeof (MessageBoxWindow),
+                    typeof (TextInputWindow)
                 };
 
                 return windowList;

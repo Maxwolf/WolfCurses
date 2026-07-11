@@ -121,9 +121,18 @@ namespace WolfCurses.Core
 
             // Determines if the user is allowed to see their input from buffer as they type it, or is it stored until they press enter.
             if (_simUnit.WindowManager.AcceptingInput)
-                tui.Append(_simUnit.WindowManager.FocusedWindow != null
-                    ? $"{_simUnit.WindowManager.FocusedWindow.PromptText} {_simUnit.InputManager.InputBuffer}"
-                    : $"{PROMPT_TEXT_DEFAULT} {_simUnit.InputManager.InputBuffer}");
+            {
+                var focusedWindow = _simUnit.WindowManager.FocusedWindow;
+
+                // Mask the echoed buffer for password-style prompts so typed characters are not shown on screen.
+                var inputBuffer = focusedWindow != null && focusedWindow.MaskInput
+                    ? new string('*', _simUnit.InputManager.InputBuffer.Length)
+                    : _simUnit.InputManager.InputBuffer;
+
+                tui.Append(focusedWindow != null
+                    ? $"{focusedWindow.PromptText} {inputBuffer}"
+                    : $"{PROMPT_TEXT_DEFAULT} {inputBuffer}");
+            }
 
             // Outputs the result of the string builder to TUI builder above.
             return tui.ToString();
