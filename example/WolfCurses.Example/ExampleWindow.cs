@@ -108,15 +108,23 @@ namespace WolfCurses.Example
             var toppings = new[]
                 {"Cheese", "Pepperoni", "Mushroom", "Onion", "Olives", "Bacon", "Pineapple", "Peppers"};
 
+            // Open with the user's last picks already checked (initiallySelected) so they edit from the current state
+            // rather than starting blank; the confirmed set replaces it, so reopening reflects the change.
             SelectList.ChooseMany(
                 SimUnit,
                 "Pick your toppings",
                 toppings,
                 topping => topping,
-                chosen => ShowResult(chosen.Count == 0
-                    ? "No toppings selected."
-                    : "Toppings: " + string.Join(", ", chosen)),
-                () => ShowResult("Selection cancelled."));
+                chosen =>
+                {
+                    UserData.SelectedToppings.Clear();
+                    UserData.SelectedToppings.AddRange(chosen);
+                    ShowResult(chosen.Count == 0
+                        ? "No toppings selected."
+                        : "Toppings: " + string.Join(", ", chosen));
+                },
+                () => ShowResult("Selection cancelled."),
+                initiallySelected: UserData.SelectedToppings);
         }
 
         private void ShowMessageBox()

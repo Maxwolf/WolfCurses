@@ -2,6 +2,7 @@
 // Timestamp 01/07/2016@7:28 PM
 
 using System;
+using System.Collections.Generic;
 using WolfCurses.Window;
 
 namespace WolfCurses.Example
@@ -15,6 +16,12 @@ namespace WolfCurses.Example
         ///     Holds the name of the player so we can reference it on another form.
         /// </summary>
         public string PlayerName { get; set; }
+
+        /// <summary>
+        ///     The toppings the user last confirmed in the multi-select demo. Seeded with a couple of defaults so the
+        ///     picker opens with something already checked, then re-checked on every reopen to show the round-trip.
+        /// </summary>
+        public List<string> SelectedToppings { get; } = new() {"Cheese", "Pepperoni"};
 
         /// <summary>
         ///     Holds the file or folder path the user picked with the file dialog, so a follow-up form can show it.
