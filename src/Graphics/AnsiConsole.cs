@@ -50,26 +50,26 @@ namespace WolfCurses.Graphics
         /// <summary>
         ///     Best-effort guess at how much color the destination terminal supports, honoring the common
         ///     <c>NO_COLOR</c>, <c>COLORTERM</c> and <c>TERM</c> environment conventions. Used to resolve
-        ///     <see cref="AnsiColorMode.Auto" />.
+        ///     <see cref="AnsiColorModeEnum.Auto" />.
         /// </summary>
-        /// <returns>A concrete (never <see cref="AnsiColorMode.Auto" />) color mode.</returns>
-        public static AnsiColorMode DetectColorMode()
+        /// <returns>A concrete (never <see cref="AnsiColorModeEnum.Auto" />) color mode.</returns>
+        public static AnsiColorModeEnum DetectColorMode()
         {
             // The NO_COLOR convention: any non-empty value means "do not emit color".
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NO_COLOR")))
-                return AnsiColorMode.None;
+                return AnsiColorModeEnum.None;
 
             var colorTerm = Environment.GetEnvironmentVariable("COLORTERM");
             if (!string.IsNullOrEmpty(colorTerm))
             {
                 var ct = colorTerm.ToLowerInvariant();
                 if (ct.Contains("truecolor") || ct.Contains("24bit"))
-                    return AnsiColorMode.TrueColor;
+                    return AnsiColorModeEnum.TrueColor;
             }
 
             // Windows Terminal advertises itself here and speaks true color.
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WT_SESSION")))
-                return AnsiColorMode.TrueColor;
+                return AnsiColorModeEnum.TrueColor;
 
             var termProgram = Environment.GetEnvironmentVariable("TERM_PROGRAM");
             if (!string.IsNullOrEmpty(termProgram))
@@ -77,8 +77,8 @@ namespace WolfCurses.Graphics
                 // macOS Terminal.app is a notable holdout that only does 256 colors; most other host programs
                 // (VS Code, iTerm2, WezTerm, Hyper) handle true color.
                 if (string.Equals(termProgram, "Apple_Terminal", StringComparison.OrdinalIgnoreCase))
-                    return AnsiColorMode.Palette256;
-                return AnsiColorMode.TrueColor;
+                    return AnsiColorModeEnum.Palette256;
+                return AnsiColorModeEnum.TrueColor;
             }
 
             var term = Environment.GetEnvironmentVariable("TERM");
@@ -86,20 +86,20 @@ namespace WolfCurses.Graphics
             {
                 var t = term.ToLowerInvariant();
                 if (t == "dumb")
-                    return AnsiColorMode.None;
+                    return AnsiColorModeEnum.None;
                 if (t.Contains("256"))
-                    return AnsiColorMode.Palette256;
+                    return AnsiColorModeEnum.Palette256;
                 // A bare "xterm"/"screen"/"linux" with no color hint: 256-color support is a safe assumption.
                 if (t.Contains("color") || t.Contains("xterm") || t.Contains("screen") || t.Contains("vt100"))
-                    return AnsiColorMode.Palette256;
+                    return AnsiColorModeEnum.Palette256;
             }
 
             // Modern Windows console hosts support true color once virtual-terminal processing is on.
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                return AnsiColorMode.TrueColor;
+                return AnsiColorModeEnum.TrueColor;
 
             // Nothing told us otherwise; true color is near-universal on current terminals.
-            return AnsiColorMode.TrueColor;
+            return AnsiColorModeEnum.TrueColor;
         }
 
         /// <summary>Console window width in columns, or <paramref name="fallback" /> when there is no console.</summary>

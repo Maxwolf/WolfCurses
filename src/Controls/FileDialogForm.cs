@@ -44,7 +44,7 @@ namespace WolfCurses.Controls
                 return sb.ToString();
             }
 
-            sb.AppendLine(data.Mode == FileDialogMode.SelectFolder ? "Select Folder" : "Open File");
+            sb.AppendLine(data.Mode == FileDialogModeEnum.SelectFolder ? "Select Folder" : "Open File");
             if (data.CurrentDirectory == null)
             {
                 sb.AppendLine("Choose a drive:");
@@ -52,7 +52,7 @@ namespace WolfCurses.Controls
             else
             {
                 sb.AppendLine($"Folder: {data.CurrentDirectory}");
-                if (data.Mode == FileDialogMode.OpenFile)
+                if (data.Mode == FileDialogModeEnum.OpenFile)
                     sb.AppendLine($"Showing: {FilterText(data)}");
             }
 
@@ -79,7 +79,7 @@ namespace WolfCurses.Controls
             var help = new StringBuilder($"Page {page + 1}/{totalPages}   [U]p  [D]rives  ");
             if (totalPages > 1)
                 help.Append("[N]ext  [P]rev  ");
-            if (data.Mode == FileDialogMode.SelectFolder && data.CurrentDirectory != null)
+            if (data.Mode == FileDialogModeEnum.SelectFolder && data.CurrentDirectory != null)
                 help.Append("[S]elect this folder  ");
             help.Append("[C]ancel");
             sb.Append(help);
@@ -119,7 +119,7 @@ namespace WolfCurses.Controls
                     data.PageIndex = ClampPage(data.PageIndex - 1, TotalPages(data));
                     break;
                 case "S":
-                    if (data.Mode == FileDialogMode.SelectFolder && data.CurrentDirectory != null)
+                    if (data.Mode == FileDialogModeEnum.SelectFolder && data.CurrentDirectory != null)
                         Confirm(data, data.CurrentDirectory);
                     break;
                 case "C":
@@ -144,17 +144,17 @@ namespace WolfCurses.Controls
             var entry = data.Entries[index];
             switch (entry.Kind)
             {
-                case FileDialogEntryKind.ParentDirectory:
+                case FileDialogEntryKindEnum.ParentDirectory:
                     if (entry.FullPath != null)
                         data.LoadDirectory(entry.FullPath);
                     else
                         data.LoadDrives();
                     break;
-                case FileDialogEntryKind.Drive:
-                case FileDialogEntryKind.Directory:
+                case FileDialogEntryKindEnum.Drive:
+                case FileDialogEntryKindEnum.Directory:
                     data.LoadDirectory(entry.FullPath);
                     break;
-                case FileDialogEntryKind.File:
+                case FileDialogEntryKindEnum.File:
                     Confirm(data, entry.FullPath);
                     break;
             }
@@ -199,11 +199,11 @@ namespace WolfCurses.Controls
         {
             switch (entry.Kind)
             {
-                case FileDialogEntryKind.ParentDirectory:
+                case FileDialogEntryKindEnum.ParentDirectory:
                     return ".. (up one level)";
-                case FileDialogEntryKind.Drive:
+                case FileDialogEntryKindEnum.Drive:
                     return $"[drive] {entry.Name}";
-                case FileDialogEntryKind.Directory:
+                case FileDialogEntryKindEnum.Directory:
                     return $"[dir]  {entry.Name}";
                 default:
                     return entry.Name;

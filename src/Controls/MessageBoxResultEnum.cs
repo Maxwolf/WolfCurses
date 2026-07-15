@@ -4,7 +4,7 @@
 namespace WolfCurses.Controls
 {
     /// <summary>The button the user pressed on a <see cref="MessageBox" />.</summary>
-    public enum MessageBoxResult
+    public enum MessageBoxResultEnum
     {
         /// <summary>The acknowledgement button on an OK dialog.</summary>
         Ok,

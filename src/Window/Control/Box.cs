@@ -7,38 +7,6 @@ using System.Text.RegularExpressions;
 
 namespace WolfCurses.Window.Control
 {
-    /// <summary>The line style used to draw a <see cref="Box" />.</summary>
-    public enum BoxBorder
-    {
-        /// <summary>Single line: <c>┌─┐│└┘</c>.</summary>
-        Single,
-
-        /// <summary>Double line: <c>╔═╗║╚╝</c>.</summary>
-        Double,
-
-        /// <summary>Single line with rounded corners: <c>╭─╮│╰╯</c>.</summary>
-        Rounded,
-
-        /// <summary>Plain ASCII: <c>+-+|++</c>, for terminals without box-drawing glyphs.</summary>
-        Ascii,
-
-        /// <summary>No border at all — the content is just padded into a rectangular block.</summary>
-        None
-    }
-
-    /// <summary>Where the title sits along the top border of a <see cref="Box" />.</summary>
-    public enum BoxAlignment
-    {
-        /// <summary>Near the left corner.</summary>
-        Left,
-
-        /// <summary>Centered.</summary>
-        Center,
-
-        /// <summary>Near the right corner.</summary>
-        Right
-    }
-
     /// <summary>
     ///     Draws a border around a block of text, with an optional title in the top edge and interior padding. Like the
     ///     other <see cref="WolfCurses.Window.Control" /> widgets it is a pure string producer — pass it your content and
@@ -48,7 +16,7 @@ namespace WolfCurses.Window.Control
     /// </summary>
     /// <example>
     ///     <code>
-    ///     var box = new Box { Title = "Status", Border = BoxBorder.Double, Padding = 1 };
+    ///     var box = new Box { Title = "Status", Border = BoxBorderEnum.Double, Padding = 1 };
     ///     string framed = box.Render("All systems nominal.");
     ///     // ╔═ Status ═════════════╗
     ///     // ║                      ║
@@ -59,16 +27,16 @@ namespace WolfCurses.Window.Control
     /// </example>
     public sealed class Box
     {
-        private static readonly Regex AnsiEscape = new(@"\x1b\[[0-9;?=]*[A-Za-z]", RegexOptions.Compiled);
+        private static readonly Regex _ansiEscape = new(@"\x1b\[[0-9;?=]*[A-Za-z]", RegexOptions.Compiled);
 
         /// <summary>The border line style. Defaults to a single line.</summary>
-        public BoxBorder Border { get; set; } = BoxBorder.Single;
+        public BoxBorderEnum Border { get; set; } = BoxBorderEnum.Single;
 
         /// <summary>Optional title drawn into the top border; null or empty for no title.</summary>
         public string Title { get; set; }
 
         /// <summary>Where the title sits along the top border.</summary>
-        public BoxAlignment TitleAlignment { get; set; } = BoxAlignment.Left;
+        public BoxAlignmentEnum TitleAlignment { get; set; } = BoxAlignmentEnum.Left;
 
         /// <summary>Number of blank columns (and, top/bottom, blank rows) between the border and the content.</summary>
         public int Padding { get; set; }
@@ -111,7 +79,7 @@ namespace WolfCurses.Window.Control
             var glyphs = GlyphsFor(Border);
             var outputLines = new List<string>(lines.Count + 2);
 
-            if (Border == BoxBorder.None)
+            if (Border == BoxBorderEnum.None)
             {
                 var pad = new string(' ', padding);
                 foreach (var line in lines)
@@ -149,10 +117,10 @@ namespace WolfCurses.Window.Control
             int left;
             switch (TitleAlignment)
             {
-                case BoxAlignment.Right:
+                case BoxAlignmentEnum.Right:
                     left = remaining - Math.Min(1, remaining);
                     break;
-                case BoxAlignment.Center:
+                case BoxAlignmentEnum.Center:
                     left = remaining / 2;
                     break;
                 default: // Left
@@ -177,18 +145,18 @@ namespace WolfCurses.Window.Control
         {
             if (string.IsNullOrEmpty(line))
                 return 0;
-            return line.IndexOf('\x1b') < 0 ? line.Length : AnsiEscape.Replace(line, string.Empty).Length;
+            return line.IndexOf('\x1b') < 0 ? line.Length : _ansiEscape.Replace(line, string.Empty).Length;
         }
 
-        private static BorderGlyphs GlyphsFor(BoxBorder border)
+        private static BorderGlyphs GlyphsFor(BoxBorderEnum border)
         {
             switch (border)
             {
-                case BoxBorder.Double:
+                case BoxBorderEnum.Double:
                     return new BorderGlyphs('╔', '╗', '╚', '╝', '═', '║');
-                case BoxBorder.Rounded:
+                case BoxBorderEnum.Rounded:
                     return new BorderGlyphs('╭', '╮', '╰', '╯', '─', '│');
-                case BoxBorder.Ascii:
+                case BoxBorderEnum.Ascii:
                     return new BorderGlyphs('+', '+', '+', '+', '-', '|');
                 default: // Single (None never draws glyphs)
                     return new BorderGlyphs('┌', '┐', '└', '┘', '─', '│');

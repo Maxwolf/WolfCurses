@@ -16,7 +16,7 @@ namespace WolfCurses.Controls
     public sealed class FileDialogData : WindowData
     {
         /// <summary>Whether the dialog is picking a file or a folder.</summary>
-        public FileDialogMode Mode { get; private set; }
+        public FileDialogModeEnum Mode { get; private set; }
 
         /// <summary>Normalized extension filter (open-file mode); empty means all files.</summary>
         public string[] Extensions { get; private set; } = Array.Empty<string>();
@@ -46,7 +46,7 @@ namespace WolfCurses.Controls
         ///     Configures the dialog and navigates to its starting view. If the start folder is missing or unreadable,
         ///     the drive list is shown instead.
         /// </summary>
-        public void Initialize(FileDialogMode mode, string startDirectory, IEnumerable<string> extensions,
+        public void Initialize(FileDialogModeEnum mode, string startDirectory, IEnumerable<string> extensions,
             Action<string> onPathSelected, Action onCancelled)
         {
             Mode = mode;
@@ -86,7 +86,7 @@ namespace WolfCurses.Controls
                 // Directory.GetParent("C:\\X\\") returns "C:\\X" (the same folder) and navigating up is a no-op on the
                 // first press. TrimEndingDirectorySeparator leaves a bare root like "C:\\" alone.
                 var full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory));
-                var entries = FileDialogListing.BuildEntries(full, Extensions, Mode == FileDialogMode.OpenFile);
+                var entries = FileDialogListing.BuildEntries(full, Extensions, Mode == FileDialogModeEnum.OpenFile);
 
                 CurrentDirectory = full;
                 Entries = entries;

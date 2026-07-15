@@ -10,7 +10,7 @@ namespace WolfCurses.Controls
     ///     Push it with <see cref="MessageBox" />'s static methods rather than adding it directly, and list
     ///     <c>typeof(MessageBoxWindow)</c> in your <see cref="SimulationApp.AllowedWindows" />.
     /// </summary>
-    public sealed class MessageBoxWindow : Window<MessageBoxCommands, MessageBoxData>
+    public sealed class MessageBoxWindow : Window<MessageBoxCommandsEnum, MessageBoxData>
     {
         /// <summary>Initializes a new instance of the <see cref="MessageBoxWindow" /> class.</summary>
         /// <param name="simUnit">Core simulation which is controlling the window.</param>

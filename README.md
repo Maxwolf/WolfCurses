@@ -128,14 +128,14 @@ using WolfCurses.Controls;
 using WolfCurses.Window.Control;
 
 // A bordered panel (a pure string widget — no window needed):
-string panel = new Box { Title = "Status", Border = BoxBorder.Double, Padding = 1 }.Render("All systems nominal.");
+string panel = new Box { Title = "Status", Border = BoxBorderEnum.Double, Padding = 1 }.Render("All systems nominal.");
 
 // Pick one option from a list (or ChooseMany for multi-select, returning several):
 SelectList.Choose(SimUnit, "Pick a color", new[] { "Crimson", "Emerald", "Sapphire" },
     onChosen: index => { /* the chosen index */ });
 
 // A yes/no/cancel message box (or MessageBox.Show(...) for a simple OK, MessageBox.Confirm(...) for yes/no):
-MessageBox.Show(SimUnit, "Enable hard mode?", MessageBoxButtons.YesNoCancel,
+MessageBox.Show(SimUnit, "Enable hard mode?", MessageBoxButtonsEnum.YesNoCancel,
     result => { /* result is Yes / No / Cancel */ });
 
 // A text prompt with a default value, validation, and optional password masking:
@@ -147,7 +147,7 @@ TextInputDialog.Prompt(SimUnit, "What is your name?",
 
 - **`Box`** — draws a border (single, double, rounded, ASCII, or none) around any text, with an optional aligned title and interior padding. Widths are measured ignoring ANSI color escapes, so it frames colored text and even ANSI images correctly. The dialogs use it for their own framing.
 - **`SelectList`** — a paginated picker. `Choose` returns the chosen option (by index, or by item with the generic overload); `ChooseMany` lets the user check several and returns them all. Numbers pick/toggle, `S` confirms a multi-select, `A`/`X` select all/none, `N`/`P` page, `C` cancels.
-- **`MessageBox`** — `Show` for a simple acknowledgement, `Confirm` for a yes/no question, or the buttons overload for yes/no/cancel; the callback receives the `MessageBoxResult`.
+- **`MessageBox`** — `Show` for a simple acknowledgement, `Confirm` for a yes/no question, or the buttons overload for yes/no/cancel; the callback receives the `MessageBoxResultEnum`.
 - **`TextInputDialog`** — `Prompt` for a line of text, optionally pre-filled with a default, validated (a returned message rejects and keeps the dialog open), and/or masked so typed characters echo as asterisks. Submitting a blank line cancels.
 
 Each dialog is a window, so list its window type (`typeof(SelectListWindow)`, `typeof(MessageBoxWindow)`, `typeof(TextInputWindow)`) in your app's `AllowedWindows`; the forms ship in the library and are discovered automatically. The example app demonstrates all four.

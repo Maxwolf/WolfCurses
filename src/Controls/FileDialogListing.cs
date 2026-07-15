@@ -77,17 +77,17 @@ namespace WolfCurses.Controls
             // The parent entry always exists; at a drive root its path is null, which the dialog reads as "go back to
             // the drive list".
             var parent = Directory.GetParent(directory);
-            entries.Add(new FileDialogEntry("..", parent?.FullName, FileDialogEntryKind.ParentDirectory));
+            entries.Add(new FileDialogEntry("..", parent?.FullName, FileDialogEntryKindEnum.ParentDirectory));
 
             foreach (var dir in Directory.GetDirectories(directory)
                          .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase))
-                entries.Add(new FileDialogEntry(Path.GetFileName(dir), dir, FileDialogEntryKind.Directory));
+                entries.Add(new FileDialogEntry(Path.GetFileName(dir), dir, FileDialogEntryKindEnum.Directory));
 
             if (includeFiles)
                 foreach (var file in Directory.GetFiles(directory)
                              .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase))
                     if (MatchesExtension(file, normalizedExtensions))
-                        entries.Add(new FileDialogEntry(Path.GetFileName(file), file, FileDialogEntryKind.File));
+                        entries.Add(new FileDialogEntry(Path.GetFileName(file), file, FileDialogEntryKindEnum.File));
 
             return entries;
         }
@@ -128,7 +128,7 @@ namespace WolfCurses.Controls
 
                 if (ready)
                     entries.Add(new FileDialogEntry(drive.Name, drive.RootDirectory.FullName,
-                        FileDialogEntryKind.Drive));
+                        FileDialogEntryKindEnum.Drive));
             }
 
             return entries;

@@ -8,7 +8,7 @@ namespace WolfCurses.Example
     /// <summary>
     ///     Commands that will be loaded into the example window.
     /// </summary>
-    public enum ExampleCommands
+    public enum ExampleCommandsEnum
     {
         /// <summary>
         ///     Basic

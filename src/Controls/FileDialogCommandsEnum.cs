@@ -9,7 +9,7 @@ namespace WolfCurses.Controls
     ///     dynamic list of drives, folders, and files through <see cref="FileDialogForm" /> — so this has no real
     ///     commands.
     /// </summary>
-    public enum FileDialogCommands
+    public enum FileDialogCommandsEnum
     {
         /// <summary>Unused placeholder; the dialog never registers this as a menu choice.</summary>
         None = 0

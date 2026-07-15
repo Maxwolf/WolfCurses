@@ -24,29 +24,29 @@ namespace WolfCurses.Graphics
         public int? MaxRows { get; set; }
 
         /// <summary>
-        ///     How the image is scaled to the target area. Defaults to <see cref="AnsiImageFit.Contain" /> (show the
-        ///     whole image, letterboxed). Use <see cref="AnsiImageFit.Cover" /> to fill the scene by cropping, or
-        ///     <see cref="AnsiImageFit.Stretch" /> to fill it by distorting.
+        ///     How the image is scaled to the target area. Defaults to <see cref="AnsiImageFitEnum.Contain" /> (show the
+        ///     whole image, letterboxed). Use <see cref="AnsiImageFitEnum.Cover" /> to fill the scene by cropping, or
+        ///     <see cref="AnsiImageFitEnum.Stretch" /> to fill it by distorting.
         /// </summary>
-        public AnsiImageFit Fit { get; set; } = AnsiImageFit.Contain;
+        public AnsiImageFitEnum Fit { get; set; } = AnsiImageFitEnum.Contain;
 
         /// <summary>
-        ///     Which part of the image is kept when <see cref="AnsiImageFit.Cover" /> crops horizontally. Defaults to
-        ///     <see cref="AnsiHorizontalAlignment.Center" />.
+        ///     Which part of the image is kept when <see cref="AnsiImageFitEnum.Cover" /> crops horizontally. Defaults to
+        ///     <see cref="AnsiHorizontalAlignmentEnum.Center" />.
         /// </summary>
-        public AnsiHorizontalAlignment HorizontalAlignment { get; set; } = AnsiHorizontalAlignment.Center;
+        public AnsiHorizontalAlignmentEnum HorizontalAlignment { get; set; } = AnsiHorizontalAlignmentEnum.Center;
 
         /// <summary>
-        ///     Which part of the image is kept when <see cref="AnsiImageFit.Cover" /> crops vertically. Defaults to
-        ///     <see cref="AnsiVerticalAlignment.Middle" />.
+        ///     Which part of the image is kept when <see cref="AnsiImageFitEnum.Cover" /> crops vertically. Defaults to
+        ///     <see cref="AnsiVerticalAlignmentEnum.Middle" />.
         /// </summary>
-        public AnsiVerticalAlignment VerticalAlignment { get; set; } = AnsiVerticalAlignment.Middle;
+        public AnsiVerticalAlignmentEnum VerticalAlignment { get; set; } = AnsiVerticalAlignmentEnum.Middle;
 
         /// <summary>
-        ///     How much color fidelity to emit. Defaults to <see cref="AnsiColorMode.Auto" />, which detects terminal
+        ///     How much color fidelity to emit. Defaults to <see cref="AnsiColorModeEnum.Auto" />, which detects terminal
         ///     support at render time.
         /// </summary>
-        public AnsiColorMode ColorMode { get; set; } = AnsiColorMode.Auto;
+        public AnsiColorModeEnum ColorMode { get; set; } = AnsiColorModeEnum.Auto;
 
         /// <summary>
         ///     The height-to-width ratio of a single terminal character cell (how many times taller a cell is than it is

@@ -13,7 +13,7 @@ namespace WolfCurses.Tests.Controls
             public int Age { get; set; }
         }
 
-        private static readonly Row[] Rows =
+        private static readonly Row[] _rows =
         {
             new() { Name = "Alice", Age = 30 },
             new() { Name = "Bob", Age = 9 }
@@ -22,7 +22,7 @@ namespace WolfCurses.Tests.Controls
         [Fact]
         public void ToStringTable_WithHeaders_RendersHeaderRowSeparatorAndValues()
         {
-            var table = Rows.ToStringTable(
+            var table = _rows.ToStringTable(
                 new[] { "Name", "Age" },
                 r => r.Name, r => r.Age);
 
@@ -46,7 +46,7 @@ namespace WolfCurses.Tests.Controls
         [Fact]
         public void ToStringTable_ExpressionOverload_DerivesHeadersFromPropertyNames()
         {
-            var table = Rows.ToStringTable(r => r.Name, r => r.Age);
+            var table = _rows.ToStringTable(r => r.Name, r => r.Age);
 
             Assert.Contains("| Name ", table);
             Assert.Contains("| Age ", table);

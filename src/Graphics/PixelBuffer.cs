@@ -6,58 +6,6 @@ using System;
 namespace WolfCurses.Graphics
 {
     /// <summary>
-    ///     A straight-alpha (non-premultiplied) 32-bit color value in red, green, blue, alpha channel order. Alpha of
-    ///     zero is fully transparent and 255 is fully opaque.
-    /// </summary>
-    public readonly struct Rgba32
-    {
-        /// <summary>Red channel, 0-255.</summary>
-        public readonly byte R;
-
-        /// <summary>Green channel, 0-255.</summary>
-        public readonly byte G;
-
-        /// <summary>Blue channel, 0-255.</summary>
-        public readonly byte B;
-
-        /// <summary>Alpha channel, 0 (transparent) to 255 (opaque).</summary>
-        public readonly byte A;
-
-        /// <summary>Initializes a new instance of the <see cref="Rgba32" /> struct.</summary>
-        public Rgba32(byte r, byte g, byte b, byte a)
-        {
-            R = r;
-            G = g;
-            B = b;
-            A = a;
-        }
-    }
-
-    /// <summary>
-    ///     An opaque 24-bit color value in red, green, blue channel order. Used for the colors emitted into the ANSI
-    ///     escape sequences where there is no alpha channel to speak of.
-    /// </summary>
-    public readonly struct Rgb24
-    {
-        /// <summary>Red channel, 0-255.</summary>
-        public readonly byte R;
-
-        /// <summary>Green channel, 0-255.</summary>
-        public readonly byte G;
-
-        /// <summary>Blue channel, 0-255.</summary>
-        public readonly byte B;
-
-        /// <summary>Initializes a new instance of the <see cref="Rgb24" /> struct.</summary>
-        public Rgb24(byte r, byte g, byte b)
-        {
-            R = r;
-            G = g;
-            B = b;
-        }
-    }
-
-    /// <summary>
     ///     A decoder-agnostic, in-memory raster image: a flat row-major array of 32-bit RGBA pixels. This is the common
     ///     exchange type between an <see cref="IImageDecoder" /> (which turns a file or stream into pixels) and the
     ///     <see cref="AnsiImageRenderer" /> (which turns pixels into an ANSI string). It intentionally has no external

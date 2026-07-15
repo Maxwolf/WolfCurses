@@ -11,21 +11,21 @@ namespace WolfCurses.Tests.Core
         private const char Esc = (char) 27;
         private const char Bel = (char) 7;
 
-        private static readonly string SyncBegin = Esc + "[?2026h";
-        private static readonly string SyncEnd = Esc + "[?2026l";
-        private static readonly string WrapOff = Esc + "[?7l";
-        private static readonly string WrapOn = Esc + "[?7h";
-        private static readonly string SgrReset = Esc + "[0m";
-        private static readonly string ResetEraseLine = Esc + "[0m" + Esc + "[K";
-        private static readonly string ResetEraseBelow = Esc + "[0m" + Esc + "[J";
+        private static readonly string _syncBegin = Esc + "[?2026h";
+        private static readonly string _syncEnd = Esc + "[?2026l";
+        private static readonly string _wrapOff = Esc + "[?7l";
+        private static readonly string _wrapOn = Esc + "[?7h";
+        private static readonly string _sgrReset = Esc + "[0m";
+        private static readonly string _resetEraseLine = Esc + "[0m" + Esc + "[K";
+        private static readonly string _resetEraseBelow = Esc + "[0m" + Esc + "[J";
 
         [Fact]
         public void BuildAnsiUpdate_FullRedraw_WritesEveryRowInPlace()
         {
             var update = ConsolePresenter.BuildAnsiUpdate(new[] {"AAA", "BBB"}, null, 80, 25);
 
-            Assert.Contains($"{Esc}[1;1HAAA{ResetEraseLine}", update);
-            Assert.Contains($"{Esc}[2;1HBBB{ResetEraseLine}", update);
+            Assert.Contains($"{Esc}[1;1HAAA{_resetEraseLine}", update);
+            Assert.Contains($"{Esc}[2;1HBBB{_resetEraseLine}", update);
         }
 
         [Fact]
@@ -33,7 +33,7 @@ namespace WolfCurses.Tests.Core
         {
             var update = ConsolePresenter.BuildAnsiUpdate(new[] {"AAA", "BBB"}, null, 80, 25);
 
-            Assert.Contains($"{Esc}[3;1H{ResetEraseBelow}", update);
+            Assert.Contains($"{Esc}[3;1H{_resetEraseBelow}", update);
         }
 
         [Fact]
@@ -52,7 +52,7 @@ namespace WolfCurses.Tests.Core
                 new[] {"AAA", "XXX"},
                 new[] {"AAA", "BBB"}, 80, 25);
 
-            Assert.Contains($"{Esc}[2;1HXXX{ResetEraseLine}", update);
+            Assert.Contains($"{Esc}[2;1HXXX{_resetEraseLine}", update);
             Assert.DoesNotContain(Esc + "[1;1H", update);
         }
 
@@ -67,7 +67,7 @@ namespace WolfCurses.Tests.Core
                 new[] {"AAA", "BBB"}, 80, 25);
 
             Assert.Equal(
-                $"{SyncBegin}{WrapOff}{Esc}[2;1HXXX{ResetEraseLine}{Esc}[2;4H{WrapOn}{SyncEnd}",
+                $"{_syncBegin}{_wrapOff}{Esc}[2;1HXXX{_resetEraseLine}{Esc}[2;4H{_wrapOn}{_syncEnd}",
                 update);
         }
 
@@ -99,7 +99,7 @@ namespace WolfCurses.Tests.Core
                 new[] {"AAA", "BBB"}, 80, 25);
 
             // The row is "written" as nothing and then erased to the end of the line, wiping the old content.
-            Assert.Contains($"{Esc}[2;1H{ResetEraseLine}", update);
+            Assert.Contains($"{Esc}[2;1H{_resetEraseLine}", update);
         }
 
         [Fact]
@@ -110,7 +110,7 @@ namespace WolfCurses.Tests.Core
             // of a console-wide image). The color reset must still be emitted.
             var update = ConsolePresenter.BuildAnsiUpdate(new[] {"ABC"}, null, 3, 25);
 
-            Assert.Contains($"{Esc}[1;1HABC{SgrReset}", update);
+            Assert.Contains($"{Esc}[1;1HABC{_sgrReset}", update);
             Assert.DoesNotContain(Esc + "[K", update);
         }
 
@@ -138,8 +138,8 @@ namespace WolfCurses.Tests.Core
         {
             var update = ConsolePresenter.BuildAnsiUpdate(new[] {"AAA"}, null, 80, 25);
 
-            Assert.StartsWith(SyncBegin + WrapOff, update);
-            Assert.EndsWith(WrapOn + SyncEnd, update);
+            Assert.StartsWith(_syncBegin + _wrapOff, update);
+            Assert.EndsWith(_wrapOn + _syncEnd, update);
         }
 
         [Fact]
@@ -149,7 +149,7 @@ namespace WolfCurses.Tests.Core
             // prompt would echo the next typed character.
             var update = ConsolePresenter.BuildAnsiUpdate(new[] {"Hello", "Hi", ""}, null, 80, 25);
 
-            Assert.EndsWith($"{Esc}[2;3H{WrapOn}{SyncEnd}", update);
+            Assert.EndsWith($"{Esc}[2;3H{_wrapOn}{_syncEnd}", update);
         }
 
         [Fact]
@@ -159,7 +159,7 @@ namespace WolfCurses.Tests.Core
             var update = ConsolePresenter.BuildAnsiUpdate(new[] {colored}, null, 80, 25);
 
             // Two visible characters, so the park column is 3 no matter how long the escape codes are.
-            Assert.EndsWith($"{Esc}[1;3H{WrapOn}{SyncEnd}", update);
+            Assert.EndsWith($"{Esc}[1;3H{_wrapOn}{_syncEnd}", update);
         }
 
         [Fact]

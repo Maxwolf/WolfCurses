@@ -5,16 +5,6 @@ using Xunit;
 namespace WolfCurses.Tests.Windows
 {
     /// <summary>
-    ///     Collection whose tests mutate the process-global entry assembly. Marked non-parallel so it never runs
-    ///     alongside the entry-assembly canary or the entry-assembly form-discovery tests, which would otherwise
-    ///     observe the temporary mutation and fail.
-    /// </summary>
-    [CollectionDefinition("EntryAssemblyMutation", DisableParallelization = true)]
-    public sealed class EntryAssemblyMutationCollection
-    {
-    }
-
-    /// <summary>
     ///     Reproduces the downstream failure that motivated scanning the SimulationApp's own assembly: when the app is
     ///     hosted (a test runner, a plugin, any process whose SimulationApp subclass is not the entry point) the entry
     ///     assembly holds no [ParentWindow] forms, so FormFactory used to discover zero forms and SetForm threw

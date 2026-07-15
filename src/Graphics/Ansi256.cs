@@ -15,7 +15,7 @@ namespace WolfCurses.Graphics
         ///     The six intensity steps used by each axis of the color cube. Note the large gap between 0 and 95: the
         ///     cube is deliberately biased toward brighter values.
         /// </summary>
-        private static readonly int[] CubeLevels = {0, 95, 135, 175, 215, 255};
+        private static readonly int[] _cubeLevels = {0, 95, 135, 175, 215, 255};
 
         /// <summary>
         ///     Returns the palette index (16-255) that most closely matches the given color.
@@ -27,7 +27,7 @@ namespace WolfCurses.Graphics
             var gi = NearestCubeIndex(g);
             var bi = NearestCubeIndex(b);
             var cubeIndex = 16 + 36 * ri + 6 * gi + bi;
-            var cubeDistance = Distance(r, g, b, CubeLevels[ri], CubeLevels[gi], CubeLevels[bi]);
+            var cubeDistance = Distance(r, g, b, _cubeLevels[ri], _cubeLevels[gi], _cubeLevels[bi]);
 
             // Best match on the dedicated grayscale ramp (values 8, 18, ... 238).
             var gray = (r * 299 + g * 587 + b * 114) / 1000; // Rec. 601 luma
@@ -43,7 +43,7 @@ namespace WolfCurses.Graphics
 
         /// <summary>
         ///     Returns the grayscale palette index (232-255, plus the cube's pure black/white endpoints) whose shade is
-        ///     nearest the given color's luminance. Used by <see cref="AnsiColorMode.Grayscale" />.
+        ///     nearest the given color's luminance. Used by <see cref="AnsiColorModeEnum.Grayscale" />.
         /// </summary>
         public static int GrayFromRgb(byte r, byte g, byte b)
         {
@@ -60,14 +60,14 @@ namespace WolfCurses.Graphics
             return 232 + grayStep;
         }
 
-        /// <summary>Finds the index into <see cref="CubeLevels" /> whose value is closest to the channel.</summary>
+        /// <summary>Finds the index into <see cref="_cubeLevels" /> whose value is closest to the channel.</summary>
         private static int NearestCubeIndex(int value)
         {
             var best = 0;
             var bestDelta = int.MaxValue;
-            for (var i = 0; i < CubeLevels.Length; i++)
+            for (var i = 0; i < _cubeLevels.Length; i++)
             {
-                var delta = value - CubeLevels[i];
+                var delta = value - _cubeLevels[i];
                 if (delta < 0) delta = -delta;
                 if (delta >= bestDelta) continue;
                 bestDelta = delta;

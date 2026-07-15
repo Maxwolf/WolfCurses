@@ -16,16 +16,16 @@ namespace WolfCurses.Controls
         public string Message { get; private set; }
 
         /// <summary>Which buttons are offered.</summary>
-        public MessageBoxButtons Buttons { get; private set; }
+        public MessageBoxButtonsEnum Buttons { get; private set; }
 
         /// <summary>Invoked with the pressed button when the user answers.</summary>
-        public Action<MessageBoxResult> OnResult { get; private set; }
+        public Action<MessageBoxResultEnum> OnResult { get; private set; }
 
         /// <summary>True once <see cref="Initialize" /> has run.</summary>
         public bool Initialized { get; private set; }
 
         /// <summary>Configures the dialog.</summary>
-        public void Initialize(string message, MessageBoxButtons buttons, Action<MessageBoxResult> onResult)
+        public void Initialize(string message, MessageBoxButtonsEnum buttons, Action<MessageBoxResultEnum> onResult)
         {
             Message = message ?? string.Empty;
             Buttons = buttons;

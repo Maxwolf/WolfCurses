@@ -34,7 +34,7 @@ namespace WolfCurses.Example.Question
         ///     Defines what type of dialog this will act like depending on this enumeration value. Up to implementation to define
         ///     desired behavior.
         /// </summary>
-        protected override DialogType DialogType => DialogType.YesNo;
+        protected override DialogTypeEnum DialogType => DialogTypeEnum.YesNo;
 
         /// <summary>
         ///     Fired when dialog prompt is attached to active game Windows and would like to have a string returned.
@@ -59,15 +59,15 @@ namespace WolfCurses.Example.Question
         ///     common to attach another state, or remove the current state based on the response.
         /// </summary>
         /// <param name="reponse">The response the dialog parsed from simulation input buffer.</param>
-        protected override void OnDialogResponse(DialogResponse reponse)
+        protected override void OnDialogResponse(DialogResponseEnum reponse)
         {
             switch (reponse)
             {
-                case DialogResponse.Custom:
-                case DialogResponse.No:
+                case DialogResponseEnum.Custom:
+                case DialogResponseEnum.No:
                     SetForm(typeof (NoWolves));
                     break;
-                case DialogResponse.Yes:
+                case DialogResponseEnum.Yes:
                     SetForm(typeof (YesWolves));
                     break;
                 default:

@@ -6,7 +6,7 @@ namespace WolfCurses.Window.Form.Input
     /// <summary>
     ///     Used by game Windows state prefab to determine what the response was to a particular dialog prompt.
     /// </summary>
-    public enum DialogResponse
+    public enum DialogResponseEnum
     {
         /// <summary>
         ///     User indicated their reply to the prompt was NO in one form or another.

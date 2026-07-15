@@ -8,7 +8,7 @@ namespace WolfCurses.Graphics
     ///     sequences. Richer modes look better but assume the destination terminal understands the corresponding escape
     ///     codes; the fallbacks let an image still be recognizable on a limited or colorless terminal.
     /// </summary>
-    public enum AnsiColorMode
+    public enum AnsiColorModeEnum
     {
         /// <summary>
         ///     Inspect the environment at render time (via <see cref="AnsiConsole.DetectColorMode" />) and pick the best

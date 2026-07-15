@@ -37,7 +37,7 @@ namespace WolfCurses.Controls
         public static void OpenFile(SimulationApp simulation, string startDirectory, IEnumerable<string> extensions,
             Action<string> onFileSelected, Action onCancelled = null)
         {
-            Show(simulation, FileDialogMode.OpenFile, startDirectory, extensions, onFileSelected, onCancelled);
+            Show(simulation, FileDialogModeEnum.OpenFile, startDirectory, extensions, onFileSelected, onCancelled);
         }
 
         /// <summary>
@@ -51,10 +51,10 @@ namespace WolfCurses.Controls
         public static void SelectFolder(SimulationApp simulation, string startDirectory,
             Action<string> onFolderSelected, Action onCancelled = null)
         {
-            Show(simulation, FileDialogMode.SelectFolder, startDirectory, null, onFolderSelected, onCancelled);
+            Show(simulation, FileDialogModeEnum.SelectFolder, startDirectory, null, onFolderSelected, onCancelled);
         }
 
-        private static void Show(SimulationApp simulation, FileDialogMode mode, string startDirectory,
+        private static void Show(SimulationApp simulation, FileDialogModeEnum mode, string startDirectory,
             IEnumerable<string> extensions, Action<string> onPathSelected, Action onCancelled)
         {
             if (simulation == null)

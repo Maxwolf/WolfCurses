@@ -4,25 +4,6 @@
 namespace WolfCurses.Controls
 {
     /// <summary>
-    ///     The kind of thing a <see cref="FileDialogEntry" /> points at, which decides what happens when the user
-    ///     selects it.
-    /// </summary>
-    public enum FileDialogEntryKind
-    {
-        /// <summary>The ".." entry that moves up to the containing folder (or the drive list at a drive root).</summary>
-        ParentDirectory = 0,
-
-        /// <summary>A drive root (shown in the drive-selection view).</summary>
-        Drive = 1,
-
-        /// <summary>A sub-folder that can be navigated into.</summary>
-        Directory = 2,
-
-        /// <summary>A file that can be chosen (open-file mode only).</summary>
-        File = 3
-    }
-
-    /// <summary>
     ///     One selectable row in the <see cref="FileDialog" /> — a drive, folder, the parent folder, or a file.
     /// </summary>
     public readonly struct FileDialogEntry
@@ -31,7 +12,7 @@ namespace WolfCurses.Controls
         /// <param name="name">The text shown to the user for this entry.</param>
         /// <param name="fullPath">The full path this entry points at, or null for the "up to drives" parent entry.</param>
         /// <param name="kind">What sort of entry this is.</param>
-        public FileDialogEntry(string name, string fullPath, FileDialogEntryKind kind)
+        public FileDialogEntry(string name, string fullPath, FileDialogEntryKindEnum kind)
         {
             Name = name;
             FullPath = fullPath;
@@ -45,9 +26,9 @@ namespace WolfCurses.Controls
         public string FullPath { get; }
 
         /// <summary>What sort of entry this is.</summary>
-        public FileDialogEntryKind Kind { get; }
+        public FileDialogEntryKindEnum Kind { get; }
 
         /// <summary>True when selecting this entry navigates (parent, drive, folder) rather than picking a file.</summary>
-        public bool IsNavigable => Kind != FileDialogEntryKind.File;
+        public bool IsNavigable => Kind != FileDialogEntryKindEnum.File;
     }
 }

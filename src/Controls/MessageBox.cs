@@ -8,7 +8,7 @@ namespace WolfCurses.Controls
     /// <summary>
     ///     A ready-made modal message box. Use <see cref="Show(SimulationApp,string,Action)" /> to tell the user
     ///     something (an OK dialog), <see cref="Confirm" /> to ask a yes/no question, or
-    ///     <see cref="Show(SimulationApp,string,MessageBoxButtons,Action{MessageBoxResult})" /> for full control over
+    ///     <see cref="Show(SimulationApp,string,MessageBoxButtonsEnum,Action{MessageBoxResultEnum})" /> for full control over
     ///     the buttons and result. The dialog pushes itself on top of the current screen and closes itself when the
     ///     user answers.
     /// </summary>
@@ -22,7 +22,7 @@ namespace WolfCurses.Controls
         /// <summary>Shows an OK message; <paramref name="onDismissed" /> (optional) runs when the user presses ENTER.</summary>
         public static void Show(SimulationApp simulation, string message, Action onDismissed = null)
         {
-            Show(simulation, message, MessageBoxButtons.Ok, _ => onDismissed?.Invoke());
+            Show(simulation, message, MessageBoxButtonsEnum.Ok, _ => onDismissed?.Invoke());
         }
 
         /// <summary>Asks a yes/no question; runs <paramref name="onYes" /> or <paramref name="onNo" /> accordingly.</summary>
@@ -31,10 +31,10 @@ namespace WolfCurses.Controls
             if (onYes == null)
                 throw new ArgumentNullException(nameof(onYes));
 
-            Show(simulation, message, MessageBoxButtons.YesNo,
+            Show(simulation, message, MessageBoxButtonsEnum.YesNo,
                 result =>
                 {
-                    if (result == MessageBoxResult.Yes)
+                    if (result == MessageBoxResultEnum.Yes)
                         onYes();
                     else
                         onNo?.Invoke();
@@ -42,8 +42,8 @@ namespace WolfCurses.Controls
         }
 
         /// <summary>Shows a message with the given buttons; the callback receives the pressed button.</summary>
-        public static void Show(SimulationApp simulation, string message, MessageBoxButtons buttons,
-            Action<MessageBoxResult> onResult)
+        public static void Show(SimulationApp simulation, string message, MessageBoxButtonsEnum buttons,
+            Action<MessageBoxResultEnum> onResult)
         {
             if (simulation == null)
                 throw new ArgumentNullException(nameof(simulation));

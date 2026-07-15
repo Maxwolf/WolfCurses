@@ -32,7 +32,7 @@ namespace WolfCurses.Example.Demos
         }
 
         /// <inheritdoc />
-        protected override void OnDialogResponse(DialogResponse reponse)
+        protected override void OnDialogResponse(DialogResponseEnum reponse)
         {
             ClearForm();
         }

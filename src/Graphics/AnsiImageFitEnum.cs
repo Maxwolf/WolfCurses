@@ -9,7 +9,7 @@ namespace WolfCurses.Graphics
     ///     For the modes that crop (<see cref="Cover" />), which part of the image is kept is controlled by
     ///     <see cref="AnsiImageOptions.HorizontalAlignment" /> and <see cref="AnsiImageOptions.VerticalAlignment" />.
     /// </summary>
-    public enum AnsiImageFit
+    public enum AnsiImageFitEnum
     {
         /// <summary>
         ///     Scale so the whole image is visible inside the area, preserving aspect ratio. The image is as large as it
