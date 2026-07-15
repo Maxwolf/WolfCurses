@@ -9,8 +9,8 @@ namespace WolfCurses.Controls
 {
     /// <summary>
     ///     A ready-made list picker for WolfCurses applications. Call <see cref="Choose(SimulationApp,string,IEnumerable{string},Action{int},Action)" />
-    ///     to let the user pick one option (chosen by number) or <see cref="ChooseMany(SimulationApp,string,IEnumerable{string},Action{IReadOnlyList{int}},Action)" />
-    ///     to let them check several before confirming. Generic overloads take your own item type plus a label
+    ///     to let the user pick one option (chosen by number) or <see cref="ChooseMany(SimulationApp,string,IEnumerable{string},Action{IReadOnlyList{int}},Action,IEnumerable{int})" />
+    ///     to let them check several before confirming (optionally pre-checking a starting set). Generic overloads take your own item type plus a label
     ///     selector and hand the chosen item(s) straight back to you. The dialog pushes itself on top of the current
     ///     screen and closes itself once the user chooses or cancels.
     /// </summary>
@@ -55,20 +55,30 @@ namespace WolfCurses.Controls
                 onCancelled);
         }
 
-        /// <summary>Lets the user check several options; the callback receives the chosen option indices (ascending).</summary>
+        /// <summary>
+        ///     Lets the user check several options; the callback receives the chosen option indices (ascending).
+        ///     Pass <paramref name="initiallySelected" /> to pre-check option indices (e.g. the current state), so the
+        ///     user edits from there and the confirmed set becomes the new state; out-of-range indices are ignored.
+        /// </summary>
         public static void ChooseMany(SimulationApp simulation, string title, IEnumerable<string> options,
-            Action<IReadOnlyList<int>> onChosen, Action onCancelled = null)
+            Action<IReadOnlyList<int>> onChosen, Action onCancelled = null, IEnumerable<int> initiallySelected = null)
         {
             if (onChosen == null)
                 throw new ArgumentNullException(nameof(onChosen));
 
             var labels = options?.ToList() ?? new List<string>();
-            Show(simulation, title, labels, true, onChosen, onCancelled);
+            Show(simulation, title, labels, true, onChosen, onCancelled, initiallySelected);
         }
 
-        /// <summary>Lets the user check several items of your own type; the callback receives the chosen items.</summary>
+        /// <summary>
+        ///     Lets the user check several items of your own type; the callback receives the chosen items. Pass
+        ///     <paramref name="initiallySelected" /> to pre-check the items already in that set (matched against
+        ///     <paramref name="options" /> with the default equality comparer); the confirmed items become the new
+        ///     state. Items not present in <paramref name="options" /> are ignored.
+        /// </summary>
         public static void ChooseMany<T>(SimulationApp simulation, string title, IEnumerable<T> options,
-            Func<T, string> label, Action<IReadOnlyList<T>> onChosen, Action onCancelled = null)
+            Func<T, string> label, Action<IReadOnlyList<T>> onChosen, Action onCancelled = null,
+            IEnumerable<T> initiallySelected = null)
         {
             if (onChosen == null)
                 throw new ArgumentNullException(nameof(onChosen));
@@ -76,7 +86,26 @@ namespace WolfCurses.Controls
             var items = options?.ToList() ?? new List<T>();
             Show(simulation, title, ToLabels(items, label), true,
                 indices => onChosen(indices.Select(i => items[i]).ToList()),
-                onCancelled);
+                onCancelled, ToIndices(items, initiallySelected));
+        }
+
+        /// <summary>
+        ///     Maps a set of items to the indices at which they appear in <paramref name="items" /> (default equality).
+        ///     Every occurrence of a wanted item is included, so duplicate options all start checked; returns null when
+        ///     nothing was requested so the dialog opens with everything unchecked.
+        /// </summary>
+        private static IEnumerable<int> ToIndices<T>(List<T> items, IEnumerable<T> initiallySelected)
+        {
+            if (initiallySelected == null)
+                return null;
+
+            var wanted = new HashSet<T>(initiallySelected);
+            var indices = new List<int>();
+            for (var i = 0; i < items.Count; i++)
+                if (wanted.Contains(items[i]))
+                    indices.Add(i);
+
+            return indices;
         }
 
         private static List<string> ToLabels<T>(List<T> items, Func<T, string> label)
@@ -87,7 +116,7 @@ namespace WolfCurses.Controls
         }
 
         private static void Show(SimulationApp simulation, string title, List<string> options, bool multiSelect,
-            Action<IReadOnlyList<int>> onChosen, Action onCancelled)
+            Action<IReadOnlyList<int>> onChosen, Action onCancelled, IEnumerable<int> initiallySelected = null)
         {
             if (simulation == null)
                 throw new ArgumentNullException(nameof(simulation));
@@ -109,7 +138,7 @@ namespace WolfCurses.Controls
                     "A selection list is already open or closing. Open only one at a time and wait for its callback " +
                     "before opening another.");
 
-            data.Initialize(title, options, multiSelect, onChosen, onCancelled);
+            data.Initialize(title, options, multiSelect, onChosen, onCancelled, initiallySelected);
         }
 
         private static bool IsAllowed(SimulationApp simulation)

@@ -95,6 +95,140 @@ namespace WolfCurses.Tests.Controls
         }
 
         [Fact]
+        public void ChooseMany_InitiallySelected_OpensCheckedAndConfirmReturnsThem()
+        {
+            var app = new ControlsHostApp();
+            IReadOnlyList<string> chosen = null;
+
+            // Pre-check two items, then confirm without touching anything: the confirmed set must be exactly the
+            // pre-checked set, proving the checkboxes opened in the requested state.
+            SelectList.ChooseMany(app, "Pick", Colors, c => c, items => chosen = items,
+                initiallySelected: new[] {"Crimson", "Sapphire"});
+            app.OnTick(false);
+
+            Send(app, "S"); // confirm
+
+            Assert.Equal(new[] {"Crimson", "Sapphire"}, chosen);
+            Assert.Null(app.WindowManager.FocusedWindow);
+
+            app.Destroy();
+        }
+
+        [Fact]
+        public void ChooseMany_InitiallySelected_UserEditsFromThatStartingState()
+        {
+            var app = new ControlsHostApp();
+            IReadOnlyList<string> chosen = null;
+
+            SelectList.ChooseMany(app, "Pick", Colors, c => c, items => chosen = items,
+                initiallySelected: new[] {"Crimson", "Sapphire"}); // indices 0 and 2 checked
+            app.OnTick(false);
+
+            Send(app, "1"); // toggle Crimson (index 0) back off
+            Send(app, "4"); // toggle Amber (index 3) on
+            Send(app, "S"); // confirm -> Sapphire + Amber
+
+            Assert.Equal(new[] {"Sapphire", "Amber"}, chosen);
+
+            app.Destroy();
+        }
+
+        [Fact]
+        public void ChooseMany_ByIndex_InitiallySelected_PreChecksThoseIndices()
+        {
+            var app = new ControlsHostApp();
+            IReadOnlyList<int> chosen = null;
+
+            SelectList.ChooseMany(app, "Pick", Colors, indices => chosen = indices,
+                initiallySelected: new[] {1, 3});
+            app.OnTick(false);
+
+            Send(app, "S");
+
+            Assert.Equal(new[] {1, 3}, chosen);
+
+            app.Destroy();
+        }
+
+        [Fact]
+        public void ChooseMany_InitiallySelected_IgnoresOutOfRangeIndices()
+        {
+            var app = new ControlsHostApp();
+            IReadOnlyList<int> chosen = null;
+
+            SelectList.ChooseMany(app, "Pick", Colors, indices => chosen = indices,
+                initiallySelected: new[] {-1, 2, 99});
+            app.OnTick(false);
+
+            Send(app, "S");
+
+            Assert.Equal(new[] {2}, chosen); // only the in-range index survives
+
+            app.Destroy();
+        }
+
+        [Fact]
+        public void ChooseMany_InitiallySelected_IgnoresItemsNotAmongTheOptions()
+        {
+            var app = new ControlsHostApp();
+            IReadOnlyList<string> chosen = null;
+
+            SelectList.ChooseMany(app, "Pick", Colors, c => c, items => chosen = items,
+                initiallySelected: new[] {"Sapphire", "Chartreuse"}); // Chartreuse is not an option
+            app.OnTick(false);
+
+            Send(app, "S");
+
+            Assert.Equal(new[] {"Sapphire"}, chosen);
+
+            app.Destroy();
+        }
+
+        [Fact]
+        public void ChooseMany_InitiallySelected_ChecksEveryOccurrenceOfADuplicateOption()
+        {
+            var app = new ControlsHostApp();
+            IReadOnlyList<string> chosen = null;
+
+            // Pins the generic overload's documented duplicate contract: a wanted item that appears more than once in
+            // the options starts checked at every occurrence, so confirming returns all of them. Guards against a
+            // refactor to first-match semantics (which would still leave every other test green).
+            var options = new[] {"A", "B", "A"};
+            SelectList.ChooseMany(app, "Pick", options, x => x, items => chosen = items,
+                initiallySelected: new[] {"A"});
+            app.OnTick(false);
+
+            Send(app, "S"); // confirm without touching anything
+
+            Assert.Equal(new[] {"A", "A"}, chosen);
+
+            app.Destroy();
+        }
+
+        [Fact]
+        public void Data_InitializeWithInitialSelection_MultiSelect_ChecksInRangeIndicesOnly()
+        {
+            var data = new SelectListData();
+            data.Initialize("t", new[] {"a", "b", "c"}, multiSelect: true, _ => { }, null,
+                initiallySelected: new[] {0, 2, 5, -1});
+
+            Assert.True(data.IsSelected(0));
+            Assert.False(data.IsSelected(1));
+            Assert.True(data.IsSelected(2));
+            Assert.Equal(new[] {0, 2}, data.SelectedIndices());
+        }
+
+        [Fact]
+        public void Data_InitializeWithInitialSelection_SingleSelect_IgnoresIt()
+        {
+            var data = new SelectListData();
+            data.Initialize("t", new[] {"a", "b", "c"}, multiSelect: false, _ => { }, null,
+                initiallySelected: new[] {0, 2});
+
+            Assert.Empty(data.SelectedIndices());
+        }
+
+        [Fact]
         public void Cancel_FiresCancelCallbackAndCloses()
         {
             var app = new ControlsHostApp();

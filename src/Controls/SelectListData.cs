@@ -40,9 +40,13 @@ namespace WolfCurses.Controls
         /// <summary>True once <see cref="Initialize" /> has run.</summary>
         public bool Initialized { get; private set; }
 
-        /// <summary>Configures the dialog. Null options become an empty list; null labels become empty strings.</summary>
+        /// <summary>
+        ///     Configures the dialog. Null options become an empty list; null labels become empty strings.
+        ///     <paramref name="initiallySelected" /> pre-checks those option indices (multi-select only); out-of-range
+        ///     and duplicate indices are ignored, and it has no effect for single-select.
+        /// </summary>
         public void Initialize(string title, IEnumerable<string> options, bool multiSelect,
-            Action<IReadOnlyList<int>> onChosen, Action onCancelled)
+            Action<IReadOnlyList<int>> onChosen, Action onCancelled, IEnumerable<int> initiallySelected = null)
         {
             Title = title;
             Options = options?.Select(o => o ?? string.Empty).ToList() ?? new List<string>();
@@ -51,6 +55,15 @@ namespace WolfCurses.Controls
             OnCancelled = onCancelled;
             PageIndex = 0;
             _selected.Clear();
+
+            // Pre-check the caller's starting set so the confirmed set can be treated as the new state. Only meaningful
+            // for multi-select (single-select confirms on the first number press and never reads _selected); filter to
+            // valid indices so a stale or out-of-range set can't smuggle in a phantom selection.
+            if (multiSelect && initiallySelected != null)
+                foreach (var index in initiallySelected)
+                    if (index >= 0 && index < Options.Count)
+                        _selected.Add(index);
+
             Initialized = true;
         }
 
