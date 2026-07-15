@@ -32,12 +32,11 @@ public class ExampleApp : SimulationApp
 ```csharp
 var app = new ExampleApp();
 
-// Redraw the console only when the screen text changes.
-app.SceneGraph.ScreenBufferDirtyEvent += tuiContent =>
-{
-    Console.Clear();
-    Console.WriteLine(tuiContent);
-};
+// Presents each frame without flicker: rows are overwritten in place (never cleared first), only rows
+// that changed are rewritten, and the whole update goes out as one write. The constructor also readies
+// the console for ANSI graphics (VT processing on Windows + UTF-8 output).
+var presenter = new ConsolePresenter();
+app.SceneGraph.ScreenBufferDirtyEvent += presenter.Present;
 
 while (!app.IsClosing)
 {
@@ -73,6 +72,7 @@ Display images (PNG with transparency, baseline and progressive JPEG, and more) 
 using WolfCurses.Graphics;
 
 // Once at start-up: enables VT processing + UTF-8 output so the escapes/glyphs render (Windows).
+// Already done for you if you create a ConsolePresenter, as in the usage snippet above.
 AnsiConsole.Enable();
 
 // Decode + render ONCE and cache it — OnRenderWindow runs every tick, so never render there.

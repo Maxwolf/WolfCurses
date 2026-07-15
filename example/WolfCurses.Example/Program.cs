@@ -3,7 +3,6 @@
 
 using System;
 using System.Threading;
-using WolfCurses.Graphics;
 
 namespace WolfCurses.Example
 {
@@ -12,6 +11,14 @@ namespace WolfCurses.Example
     /// </summary>
     internal static class Program
     {
+        /// <summary>
+        ///     Draws frames without flicker: rows are overwritten in place (never blanked first), only changed rows are
+        ///     rewritten, and each update goes out as a single write. Its constructor also enables ANSI escape handling
+        ///     and a UTF-8 output encoding so images (and any other colored output) render correctly, especially on
+        ///     Windows where virtual-terminal processing is off by default.
+        /// </summary>
+        private static readonly ConsolePresenter Presenter = new ConsolePresenter();
+
         /// <summary>
         ///     Main entry point for the application being startup.
         /// </summary>
@@ -22,10 +29,6 @@ namespace WolfCurses.Example
             Console.WriteLine("Starting...");
             Console.CursorVisible = false;
             Console.CancelKeyPress += Console_CancelKeyPress;
-
-            // Turn on ANSI escape handling and a UTF-8 output encoding so images (and any other colored output) render
-            // correctly, especially on Windows where virtual-terminal processing is off by default.
-            AnsiConsole.Enable();
 
             // Entry point for the entire simulation.
             ConsoleSimulationApp.Create();
@@ -76,22 +79,7 @@ namespace WolfCurses.Example
         /// <param name="tuiContent">The text user interface content.</param>
         private static void Simulation_ScreenBufferDirtyEvent(string tuiContent)
         {
-            var tuiContentSplit = tuiContent.Split(new[] {Environment.NewLine}, StringSplitOptions.None);
-
-            for (var index = 0; index < Console.WindowHeight - 1; index++)
-            {
-                // Clear the whole row first. A line of image escape codes is far longer than its visible width, so the
-                // old PadRight trick could not be trusted to blank leftovers to the right of a narrower image.
-                Console.SetCursorPosition(0, index);
-                Console.Write(new string(' ', Console.WindowWidth));
-
-                if (tuiContentSplit.Length <= index)
-                    continue;
-
-                // Re-home to the start of the row and write the content (plain text or ANSI graphics) verbatim.
-                Console.SetCursorPosition(0, index);
-                Console.Write(tuiContentSplit[index]);
-            }
+            Presenter.Present(tuiContent);
         }
 
         /// <summary>
@@ -103,8 +91,8 @@ namespace WolfCurses.Example
         /// <param name="e">The e.</param>
         private static void Console_CancelKeyPress(object sender, ConsoleCancelEventArgs e)
         {
-            // Destroy the simulation.
-            ConsoleSimulationApp.Instance.Destroy();
+            // Destroy the simulation, unless it is already gone (CTRL-C pressed at the goodbye prompt).
+            ConsoleSimulationApp.Instance?.Destroy();
 
             // Stop the operating system from killing the entire process.
             e.Cancel = true;
