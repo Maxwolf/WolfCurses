@@ -12,7 +12,7 @@ namespace WolfCurses.Controls
     ///     rather than adding it directly, and list <c>typeof(SelectListWindow)</c> in your
     ///     <see cref="SimulationApp.AllowedWindows" />.
     /// </summary>
-    public sealed class SelectListWindow : Window<SelectListCommands, SelectListData>
+    public sealed class SelectListWindow : Window<SelectListCommandsEnum, SelectListData>
     {
         /// <summary>Initializes a new instance of the <see cref="SelectListWindow" /> class.</summary>
         /// <param name="simUnit">Core simulation which is controlling the window.</param>

@@ -10,7 +10,7 @@ namespace WolfCurses.Controls
 {
     /// <summary>
     ///     Draws the message (framed with a <see cref="Box" />) and turns the user's answer into a
-    ///     <see cref="MessageBoxResult" />. An OK dialog is dismissed by any ENTER; a yes/no dialog accepts Y/N (and
+    ///     <see cref="MessageBoxResultEnum" />. An OK dialog is dismissed by any ENTER; a yes/no dialog accepts Y/N (and
     ///     spelled-out variants) and ignores anything else until a valid answer is given; a yes/no/cancel dialog also
     ///     accepts C.
     /// </summary>
@@ -36,7 +36,7 @@ namespace WolfCurses.Controls
                 return Environment.NewLine + "Opening...";
             }
 
-            var title = data.Buttons == MessageBoxButtons.Ok ? "Message" : "Confirm";
+            var title = data.Buttons == MessageBoxButtonsEnum.Ok ? "Message" : "Confirm";
             var boxed = new Box {Title = title, Padding = 1}.Render(data.Message);
 
             ParentWindow.PromptText = PromptFor(data.Buttons);
@@ -55,28 +55,28 @@ namespace WolfCurses.Controls
 
             switch (data.Buttons)
             {
-                case MessageBoxButtons.Ok:
+                case MessageBoxButtonsEnum.Ok:
                     // Any submitted line (ENTER) dismisses an acknowledgement.
-                    Respond(data, MessageBoxResult.Ok);
+                    Respond(data, MessageBoxResultEnum.Ok);
                     break;
-                case MessageBoxButtons.YesNo:
+                case MessageBoxButtonsEnum.YesNo:
                     if (IsYes(answer))
-                        Respond(data, MessageBoxResult.Yes);
+                        Respond(data, MessageBoxResultEnum.Yes);
                     else if (IsNo(answer))
-                        Respond(data, MessageBoxResult.No);
+                        Respond(data, MessageBoxResultEnum.No);
                     break;
-                case MessageBoxButtons.YesNoCancel:
+                case MessageBoxButtonsEnum.YesNoCancel:
                     if (IsYes(answer))
-                        Respond(data, MessageBoxResult.Yes);
+                        Respond(data, MessageBoxResultEnum.Yes);
                     else if (IsNo(answer))
-                        Respond(data, MessageBoxResult.No);
+                        Respond(data, MessageBoxResultEnum.No);
                     else if (answer is "C" or "CANCEL")
-                        Respond(data, MessageBoxResult.Cancel);
+                        Respond(data, MessageBoxResultEnum.Cancel);
                     break;
             }
         }
 
-        private void Respond(MessageBoxData data, MessageBoxResult result)
+        private void Respond(MessageBoxData data, MessageBoxResultEnum result)
         {
             var callback = data.OnResult;
             ParentWindow.RemoveWindowNextTick();
@@ -93,13 +93,13 @@ namespace WolfCurses.Controls
             return answer is "N" or "NO" or "FALSE";
         }
 
-        private static string PromptFor(MessageBoxButtons buttons)
+        private static string PromptFor(MessageBoxButtonsEnum buttons)
         {
             switch (buttons)
             {
-                case MessageBoxButtons.YesNo:
+                case MessageBoxButtonsEnum.YesNo:
                     return "[Y]es  [N]o";
-                case MessageBoxButtons.YesNoCancel:
+                case MessageBoxButtonsEnum.YesNoCancel:
                     return "[Y]es  [N]o  [C]ancel";
                 default:
                     return "Press ENTER to continue";

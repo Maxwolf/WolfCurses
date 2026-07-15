@@ -91,14 +91,14 @@ namespace WolfCurses.Tests.Controls
         public void Show_YesNoCancel_ReturnsCancel()
         {
             var app = new ControlsHostApp();
-            var result = MessageBoxResult.Yes;
+            var result = MessageBoxResultEnum.Yes;
 
-            MessageBox.Show(app, "Proceed?", MessageBoxButtons.YesNoCancel, r => result = r);
+            MessageBox.Show(app, "Proceed?", MessageBoxButtonsEnum.YesNoCancel, r => result = r);
             app.OnTick(false);
 
             Send(app, "C");
 
-            Assert.Equal(MessageBoxResult.Cancel, result);
+            Assert.Equal(MessageBoxResultEnum.Cancel, result);
             Assert.Null(app.WindowManager.FocusedWindow);
 
             app.Destroy();

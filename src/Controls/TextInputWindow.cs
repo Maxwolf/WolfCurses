@@ -11,7 +11,7 @@ namespace WolfCurses.Controls
     ///     <see cref="TextInputDialog.Prompt" /> rather than adding it directly, and list
     ///     <c>typeof(TextInputWindow)</c> in your <see cref="SimulationApp.AllowedWindows" />.
     /// </summary>
-    public sealed class TextInputWindow : Window<TextInputCommands, TextInputData>
+    public sealed class TextInputWindow : Window<TextInputCommandsEnum, TextInputData>
     {
         /// <summary>Initializes a new instance of the <see cref="TextInputWindow" /> class.</summary>
         /// <param name="simUnit">Core simulation which is controlling the window.</param>

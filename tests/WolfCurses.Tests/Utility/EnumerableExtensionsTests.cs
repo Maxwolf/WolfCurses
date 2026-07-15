@@ -7,35 +7,35 @@ namespace WolfCurses.Tests.Utility
     /// <summary>
     ///     Shuffle orders by fresh GUIDs and is not seedable, so these tests assert membership and size, never order.
     /// </summary>
-    public class EnumerableExtensionTests
+    public class EnumerableExtensionsTests
     {
-        private static readonly int[] Source = { 1, 2, 3, 4, 5 };
+        private static readonly int[] _source = { 1, 2, 3, 4, 5 };
 
         [Fact]
         public void PickRandom_Single_ReturnsItemFromSource()
         {
-            var picked = Source.PickRandom(1).ToList();
+            var picked = _source.PickRandom(1).ToList();
 
             var item = Assert.Single(picked);
-            Assert.Contains(item, Source);
+            Assert.Contains(item, _source);
         }
 
         [Fact]
         public void PickRandom_Count_ReturnsThatManyDistinctItemsAllFromSource()
         {
-            var picked = Source.PickRandom(3).ToList();
+            var picked = _source.PickRandom(3).ToList();
 
             Assert.Equal(3, picked.Count);
             Assert.Equal(3, picked.Distinct().Count());
-            Assert.All(picked, item => Assert.Contains(item, Source));
+            Assert.All(picked, item => Assert.Contains(item, _source));
         }
 
         [Fact]
         public void PickRandom_CountExceedsSource_ReturnsAllItems()
         {
-            var picked = Source.PickRandom(99).OrderBy(x => x);
+            var picked = _source.PickRandom(99).OrderBy(x => x);
 
-            Assert.Equal(Source, picked);
+            Assert.Equal(_source, picked);
         }
 
         [Fact]
@@ -50,7 +50,7 @@ namespace WolfCurses.Tests.Utility
             // .NET 10 introduced System.Linq Shuffle, so the library extension is called explicitly.
             var source = new[] { 1, 2, 2, 3, 3, 3 };
 
-            var shuffled = EnumerableExtension.Shuffle(source).OrderBy(x => x);
+            var shuffled = EnumerableExtensions.Shuffle(source).OrderBy(x => x);
 
             Assert.Equal(source.OrderBy(x => x), shuffled);
         }
@@ -58,7 +58,7 @@ namespace WolfCurses.Tests.Utility
         [Fact]
         public void Shuffle_Empty_ReturnsEmpty()
         {
-            Assert.Empty(EnumerableExtension.Shuffle(System.Array.Empty<int>()));
+            Assert.Empty(EnumerableExtensions.Shuffle(System.Array.Empty<int>()));
         }
     }
 }

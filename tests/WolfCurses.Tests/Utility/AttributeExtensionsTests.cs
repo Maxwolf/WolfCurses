@@ -13,13 +13,13 @@ namespace WolfCurses.Tests.Utility
         [Fact]
         public void ToDescriptionAttribute_WithDescription_ReturnsAttributeText()
         {
-            Assert.Equal("Second command", TestCommands.Second.ToDescriptionAttribute());
+            Assert.Equal("Second command", TestCommandsEnum.Second.ToDescriptionAttribute());
         }
 
         [Fact]
         public void ToDescriptionAttribute_WithoutDescription_FallsBackToToString()
         {
-            Assert.Equal("First", TestCommands.First.ToDescriptionAttribute());
+            Assert.Equal("First", TestCommandsEnum.First.ToDescriptionAttribute());
         }
 
         [Fact]

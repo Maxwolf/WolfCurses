@@ -8,7 +8,7 @@ namespace WolfCurses.Controls
     ///     input — so this enum exists only to satisfy the <see cref="WolfCurses.Window.Window{TCommands,TData}" />
     ///     generic constraint.
     /// </summary>
-    public enum SelectListCommands
+    public enum SelectListCommandsEnum
     {
         /// <summary>Unused placeholder.</summary>
         None = 0

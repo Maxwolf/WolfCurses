@@ -9,27 +9,6 @@ using System.Text;
 namespace WolfCurses.Window.Control
 {
     /// <summary>
-    ///     One labelled datum in a <see cref="BarChart" />: a category name and its numeric magnitude.
-    /// </summary>
-    public readonly struct BarChartValue
-    {
-        /// <summary>Initializes a new instance of the <see cref="BarChartValue" /> struct.</summary>
-        /// <param name="label">The category label shown to the left of the bar.</param>
-        /// <param name="value">The magnitude of the bar.</param>
-        public BarChartValue(string label, double value)
-        {
-            Label = label;
-            Value = value;
-        }
-
-        /// <summary>The category label shown to the left of the bar.</summary>
-        public string Label { get; }
-
-        /// <summary>The magnitude of the bar.</summary>
-        public double Value { get; }
-    }
-
-    /// <summary>
     ///     Draws a horizontal bar chart: one row per item, each with its label padded to a common width, a bar whose
     ///     length is proportional to the largest value in the set, and (optionally) the value printed after the bar.
     ///     The result is a multi-line block of text (rows joined by <see cref="Environment.NewLine" />, no trailing

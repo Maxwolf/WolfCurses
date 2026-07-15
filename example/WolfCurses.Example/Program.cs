@@ -17,7 +17,7 @@ namespace WolfCurses.Example
         ///     and a UTF-8 output encoding so images (and any other colored output) render correctly, especially on
         ///     Windows where virtual-terminal processing is off by default.
         /// </summary>
-        private static readonly ConsolePresenter Presenter = new ConsolePresenter();
+        private static readonly ConsolePresenter _presenter = new ConsolePresenter();
 
         /// <summary>
         ///     Main entry point for the application being startup.
@@ -79,7 +79,7 @@ namespace WolfCurses.Example
         /// <param name="tuiContent">The text user interface content.</param>
         private static void Simulation_ScreenBufferDirtyEvent(string tuiContent)
         {
-            Presenter.Present(tuiContent);
+            _presenter.Present(tuiContent);
         }
 
         /// <summary>

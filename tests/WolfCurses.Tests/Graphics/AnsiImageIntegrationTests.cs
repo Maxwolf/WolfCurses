@@ -14,11 +14,11 @@ namespace WolfCurses.Tests.Graphics
     /// </summary>
     public class AnsiImageIntegrationTests
     {
-        private static readonly AnsiImageOptions FixedBounds = new()
+        private static readonly AnsiImageOptions _fixedBounds = new()
         {
             MaxColumns = 80,
             MaxRows = 40,
-            ColorMode = AnsiColorMode.TrueColor,
+            ColorMode = AnsiColorModeEnum.TrueColor,
             CellAspectRatio = 2.0
         };
 
@@ -59,9 +59,9 @@ namespace WolfCurses.Tests.Graphics
             Assert.SkipUnless(TestImages.Available, "Repository image fixtures are not present.");
 
             var image = AnsiImage.FromFile(TestImages.Media(fileName));
-            var (cols, rows) = AnsiImageRenderer.ComputeTargetCells(image.Width, image.Height, FixedBounds);
+            var (cols, rows) = AnsiImageRenderer.ComputeTargetCells(image.Width, image.Height, _fixedBounds);
 
-            var ansi = image.ToAnsi(FixedBounds);
+            var ansi = image.ToAnsi(_fixedBounds);
 
             Assert.False(string.IsNullOrEmpty(ansi));
             Assert.InRange(cols, 1, 80);
@@ -76,7 +76,7 @@ namespace WolfCurses.Tests.Graphics
             Assert.SkipUnless(TestImages.Available, "Repository image fixtures are not present.");
 
             // A JPEG has no alpha channel, so every cell has two opaque pixels and no cell degrades to a bare space.
-            var ansi = AnsiImage.FromFile(TestImages.Media("image_002.jpg")).ToAnsi(FixedBounds);
+            var ansi = AnsiImage.FromFile(TestImages.Media("image_002.jpg")).ToAnsi(_fixedBounds);
             Assert.DoesNotContain(' ', ansi);
         }
 
@@ -91,7 +91,7 @@ namespace WolfCurses.Tests.Graphics
             // The Tux image has fully transparent corners; without a background those cells become spaces so the
             // terminal shows through. This proves the alpha channel is honored end to end.
             var image = AnsiImage.FromFile(path);
-            var ansi = image.ToAnsi(FixedBounds);
+            var ansi = image.ToAnsi(_fixedBounds);
             Assert.Contains(' ', ansi);
 
             // With an opaque background configured, nothing stays transparent: no bare spaces remain.
@@ -99,7 +99,7 @@ namespace WolfCurses.Tests.Graphics
             {
                 MaxColumns = 80,
                 MaxRows = 40,
-                ColorMode = AnsiColorMode.TrueColor,
+                ColorMode = AnsiColorModeEnum.TrueColor,
                 CellAspectRatio = 2.0,
                 BackgroundColor = new Rgb24(0, 0, 0)
             });

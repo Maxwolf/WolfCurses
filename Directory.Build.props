@@ -1,0 +1,17 @@
+<Project>
+
+  <!-- Repo-wide static analysis. EnforceCodeStyleInBuild makes the .editorconfig naming rules
+       (IDE1006) fail-visible at build time instead of only in the IDE. Meziantou.Analyzer is a
+       build-only dependency (PrivateAssets=all, so it does not flow into the NuGet package); the
+       root .globalconfig disables every MA rule except MA0048 (file name must match type name). -->
+  <PropertyGroup>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The root .globalconfig is discovered automatically (the SDK probes ancestor directories);
+         do not also add it as a GlobalAnalyzerConfigFiles item, or the duplicate entries cancel out. -->
+    <PackageReference Include="Meziantou.Analyzer" Version="3.0.123" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

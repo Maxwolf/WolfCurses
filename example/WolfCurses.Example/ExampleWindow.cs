@@ -15,7 +15,7 @@ namespace WolfCurses.Example
     /// <summary>
     ///     Example window implementation that is attached to wolf curses list of active windows during runtime.
     /// </summary>
-    public sealed class ExampleWindow : Window<ExampleCommands, ExampleWindowInfo>
+    public sealed class ExampleWindow : Window<ExampleCommandsEnum, ExampleWindowInfo>
     {
         /// <summary>
         ///     Initializes a new instance of the <see cref="Window{TCommands,TData}" /> class.
@@ -40,20 +40,20 @@ namespace WolfCurses.Example
             headerText.Append("You may:");
             MenuHeader = headerText.ToString();
 
-            AddCommand(TextPrompt, ExampleCommands.TextPrompt);
-            AddCommand(YesNoPrompt, ExampleCommands.YesNoPrompt);
-            AddCommand(CustomPrompt, ExampleCommands.CustomPrompt);
-            AddCommand(ShowSlideshow, ExampleCommands.Slideshow);
-            AddCommand(ShowCompositeSlideshow, ExampleCommands.CompositeSlideshow);
-            AddCommand(OpenImageFile, ExampleCommands.OpenImageFile);
-            AddCommand(SelectFolder, ExampleCommands.SelectFolder);
-            AddCommand(ShowProgressAndGraphs, ExampleCommands.ProgressAndGraphs);
-            AddCommand(SelectFromList, ExampleCommands.SelectFromList);
-            AddCommand(MultiSelectList, ExampleCommands.MultiSelectList);
-            AddCommand(ShowMessageBox, ExampleCommands.MessageBoxDemo);
-            AddCommand(TextInput, ExampleCommands.TextInputDemo);
-            AddCommand(PasswordInput, ExampleCommands.PasswordDemo);
-            AddCommand(CloseSimulation, ExampleCommands.CloseSimulation);
+            AddCommand(TextPrompt, ExampleCommandsEnum.TextPrompt);
+            AddCommand(YesNoPrompt, ExampleCommandsEnum.YesNoPrompt);
+            AddCommand(CustomPrompt, ExampleCommandsEnum.CustomPrompt);
+            AddCommand(ShowSlideshow, ExampleCommandsEnum.Slideshow);
+            AddCommand(ShowCompositeSlideshow, ExampleCommandsEnum.CompositeSlideshow);
+            AddCommand(OpenImageFile, ExampleCommandsEnum.OpenImageFile);
+            AddCommand(SelectFolder, ExampleCommandsEnum.SelectFolder);
+            AddCommand(ShowProgressAndGraphs, ExampleCommandsEnum.ProgressAndGraphs);
+            AddCommand(SelectFromList, ExampleCommandsEnum.SelectFromList);
+            AddCommand(MultiSelectList, ExampleCommandsEnum.MultiSelectList);
+            AddCommand(ShowMessageBox, ExampleCommandsEnum.MessageBoxDemo);
+            AddCommand(TextInput, ExampleCommandsEnum.TextInputDemo);
+            AddCommand(PasswordInput, ExampleCommandsEnum.PasswordDemo);
+            AddCommand(CloseSimulation, ExampleCommandsEnum.CloseSimulation);
 
             // Flex the WolfCurses logo as an ANSI graphics splash before the menu; pressing ENTER reveals it.
             SetForm(typeof (LogoSplashDialog));
@@ -132,7 +132,7 @@ namespace WolfCurses.Example
             MessageBox.Show(
                 SimUnit,
                 "Enable hard mode?" + Environment.NewLine + "This makes the journey much tougher.",
-                MessageBoxButtons.YesNoCancel,
+                MessageBoxButtonsEnum.YesNoCancel,
                 result => ShowResult($"You picked: {result}"));
         }
 

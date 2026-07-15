@@ -22,10 +22,10 @@ namespace WolfCurses.Graphics
         /// <summary>The ASCII escape control character (0x1B) that begins every ANSI control sequence.</summary>
         private const char Escape = (char) 27;
 
-        private static readonly string Reset = Escape + "[0m";
-        private static readonly string DefaultBackground = Escape + "[49m";
+        private static readonly string _reset = Escape + "[0m";
+        private static readonly string _defaultBackground = Escape + "[49m";
 
-        /// <summary>Brightness ramp for <see cref="AnsiColorMode.None" />, ordered darkest to lightest.</summary>
+        /// <summary>Brightness ramp for <see cref="AnsiColorModeEnum.None" />, ordered darkest to lightest.</summary>
         private const string AsciiRamp = " .:-=+*#%@";
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace WolfCurses.Graphics
 
             options ??= new AnsiImageOptions();
 
-            var mode = options.ColorMode == AnsiColorMode.Auto
+            var mode = options.ColorMode == AnsiColorModeEnum.Auto
                 ? AnsiConsole.DetectColorMode()
                 : options.ColorMode;
 
@@ -54,13 +54,13 @@ namespace WolfCurses.Graphics
             PixelBuffer grid;
             switch (options.Fit)
             {
-                case AnsiImageFit.Stretch:
+                case AnsiImageFitEnum.Stretch:
                     // Fill the whole area exactly, ignoring aspect ratio (the picture is distorted to match).
                     (cols, rows) = ResolveBounds(options);
                     grid = image.Resize(cols, rows * 2);
                     break;
 
-                case AnsiImageFit.Cover:
+                case AnsiImageFitEnum.Cover:
                     // Fill the whole area preserving aspect ratio, cropping whatever spills over.
                     (cols, rows) = ResolveBounds(options);
                     grid = CoverResample(image, cols, rows * 2, options);
@@ -72,7 +72,7 @@ namespace WolfCurses.Graphics
                     break;
             }
 
-            return mode == AnsiColorMode.None
+            return mode == AnsiColorModeEnum.None
                 ? RenderAscii(grid, cols, rows, options)
                 : RenderHalfBlocks(grid, cols, rows, mode, options);
         }
@@ -97,7 +97,7 @@ namespace WolfCurses.Graphics
         {
             var (maxColumns, maxRows) = ResolveBounds(options);
 
-            if (options.Fit == AnsiImageFit.ScaleDown)
+            if (options.Fit == AnsiImageFitEnum.ScaleDown)
             {
                 // Never enlarge past the source's own pixels. Two pixels stack per character row, so the row budget
                 // caps at half the image height; the column budget caps at the image width.
@@ -140,7 +140,7 @@ namespace WolfCurses.Graphics
         }
 
         /// <summary>Draws the grid using half-block glyphs and per-cell foreground/background colors.</summary>
-        private static string RenderHalfBlocks(PixelBuffer grid, int cols, int rows, AnsiColorMode mode, AnsiImageOptions options)
+        private static string RenderHalfBlocks(PixelBuffer grid, int cols, int rows, AnsiColorModeEnum mode, AnsiImageOptions options)
         {
             var sb = new StringBuilder(rows * cols * 8);
             var leftPad = options.CenterHorizontally
@@ -210,7 +210,7 @@ namespace WolfCurses.Graphics
                     var bgEsc = bgColor.HasValue ? BackgroundEscape(bgColor.Value, mode) : null;
                     if (!string.Equals(currentBg, bgEsc, StringComparison.Ordinal))
                     {
-                        sb.Append(bgEsc ?? DefaultBackground);
+                        sb.Append(bgEsc ?? _defaultBackground);
                         currentBg = bgEsc;
                     }
 
@@ -219,7 +219,7 @@ namespace WolfCurses.Graphics
 
                 // Return the terminal to its default state at the end of every line so trailing content and the next
                 // line's left padding are never tinted.
-                sb.Append(Reset);
+                sb.Append(_reset);
             }
 
             return sb.ToString();
@@ -306,13 +306,13 @@ namespace WolfCurses.Graphics
         }
 
         /// <summary>Builds the escape that sets the foreground color for the given color mode.</summary>
-        private static string ForegroundEscape(Rgb24 c, AnsiColorMode mode)
+        private static string ForegroundEscape(Rgb24 c, AnsiColorModeEnum mode)
         {
             switch (mode)
             {
-                case AnsiColorMode.Palette256:
+                case AnsiColorModeEnum.Palette256:
                     return $"{Escape}[38;5;{Ansi256.FromRgb(c.R, c.G, c.B)}m";
-                case AnsiColorMode.Grayscale:
+                case AnsiColorModeEnum.Grayscale:
                     return $"{Escape}[38;5;{Ansi256.GrayFromRgb(c.R, c.G, c.B)}m";
                 default:
                     return $"{Escape}[38;2;{c.R};{c.G};{c.B}m";
@@ -320,13 +320,13 @@ namespace WolfCurses.Graphics
         }
 
         /// <summary>Builds the escape that sets the background color for the given color mode.</summary>
-        private static string BackgroundEscape(Rgb24 c, AnsiColorMode mode)
+        private static string BackgroundEscape(Rgb24 c, AnsiColorModeEnum mode)
         {
             switch (mode)
             {
-                case AnsiColorMode.Palette256:
+                case AnsiColorModeEnum.Palette256:
                     return $"{Escape}[48;5;{Ansi256.FromRgb(c.R, c.G, c.B)}m";
-                case AnsiColorMode.Grayscale:
+                case AnsiColorModeEnum.Grayscale:
                     return $"{Escape}[48;5;{Ansi256.GrayFromRgb(c.R, c.G, c.B)}m";
                 default:
                     return $"{Escape}[48;2;{c.R};{c.G};{c.B}m";
@@ -334,7 +334,7 @@ namespace WolfCurses.Graphics
         }
 
         /// <summary>
-        ///     Produces the pixel grid for <see cref="AnsiImageFit.Cover" />: crops the source to the sub-rectangle
+        ///     Produces the pixel grid for <see cref="AnsiImageFitEnum.Cover" />: crops the source to the sub-rectangle
         ///     whose proportions match the target area (anchored by the alignment options) and scales that crop to fill
         ///     the area exactly, so the whole scene is covered with no distortion.
         /// </summary>
@@ -374,23 +374,23 @@ namespace WolfCurses.Graphics
         }
 
         /// <summary>Left/center/right offset of an item with the given slack (unused space) around it.</summary>
-        private static int AnchorOffset(AnsiHorizontalAlignment alignment, int slack)
+        private static int AnchorOffset(AnsiHorizontalAlignmentEnum alignment, int slack)
         {
             switch (alignment)
             {
-                case AnsiHorizontalAlignment.Left: return 0;
-                case AnsiHorizontalAlignment.Right: return slack;
+                case AnsiHorizontalAlignmentEnum.Left: return 0;
+                case AnsiHorizontalAlignmentEnum.Right: return slack;
                 default: return slack / 2;
             }
         }
 
         /// <summary>Top/middle/bottom offset of an item with the given slack (unused space) around it.</summary>
-        private static int AnchorOffset(AnsiVerticalAlignment alignment, int slack)
+        private static int AnchorOffset(AnsiVerticalAlignmentEnum alignment, int slack)
         {
             switch (alignment)
             {
-                case AnsiVerticalAlignment.Top: return 0;
-                case AnsiVerticalAlignment.Bottom: return slack;
+                case AnsiVerticalAlignmentEnum.Top: return 0;
+                case AnsiVerticalAlignmentEnum.Bottom: return slack;
                 default: return slack / 2;
             }
         }

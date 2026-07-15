@@ -11,7 +11,7 @@ namespace WolfCurses.Controls
     ///     <see cref="FileDialog.OpenFile" /> / <see cref="FileDialog.SelectFolder" /> rather than adding it directly,
     ///     and remember to list <c>typeof(FileDialogWindow)</c> in your <see cref="SimulationApp.AllowedWindows" />.
     /// </summary>
-    public sealed class FileDialogWindow : Window<FileDialogCommands, FileDialogData>
+    public sealed class FileDialogWindow : Window<FileDialogCommandsEnum, FileDialogData>
     {
         /// <summary>Initializes a new instance of the <see cref="FileDialogWindow" /> class.</summary>
         /// <param name="simUnit">Core simulation which is controlling the window.</param>

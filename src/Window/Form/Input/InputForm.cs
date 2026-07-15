@@ -38,7 +38,7 @@ namespace WolfCurses.Window.Form.Input
         ///     Defines what type of dialog this will act like depending on this enumeration value. Up to implementation to define
         ///     desired behavior.
         /// </summary>
-        protected virtual DialogType DialogType => DialogType.Prompt;
+        protected virtual DialogTypeEnum DialogType => DialogTypeEnum.Prompt;
 
         /// <summary>
         ///     Determines if user input is currently allowed to be typed and filled into the input buffer.
@@ -50,10 +50,10 @@ namespace WolfCurses.Window.Form.Input
             {
                 switch (DialogType)
                 {
-                    case DialogType.Prompt:
+                    case DialogTypeEnum.Prompt:
                         return false;
-                    case DialogType.YesNo:
-                    case DialogType.Custom:
+                    case DialogTypeEnum.YesNo:
+                    case DialogTypeEnum.Custom:
                         return true;
                     default:
                         return false;
@@ -75,11 +75,11 @@ namespace WolfCurses.Window.Form.Input
             // Wait for user input by asking them to press ANY key.
             switch (DialogType)
             {
-                case DialogType.Prompt:
+                case DialogTypeEnum.Prompt:
                     _prompt.Append(InputManager.PRESSENTER);
                     break;
-                case DialogType.YesNo:
-                case DialogType.Custom:
+                case DialogTypeEnum.YesNo:
+                case DialogTypeEnum.Custom:
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -121,21 +121,21 @@ namespace WolfCurses.Window.Form.Input
                 case "YES":
                 case "TRUE":
                     _seenPrompt = true;
-                    OnDialogResponse(DialogResponse.Yes);
+                    OnDialogResponse(DialogResponseEnum.Yes);
                     return;
                 case "N":
                 case "NO":
                 case "FALSE":
                     _seenPrompt = true;
-                    OnDialogResponse(DialogResponse.No);
+                    OnDialogResponse(DialogResponseEnum.No);
                     return;
                 default:
                     // YesNo dialogs ignore anything that is not a yes or no until a valid response is given.
-                    if (DialogType == DialogType.YesNo)
+                    if (DialogType == DialogTypeEnum.YesNo)
                         return;
 
                     _seenPrompt = true;
-                    OnDialogResponse(DialogResponse.Custom);
+                    OnDialogResponse(DialogResponseEnum.Custom);
                     return;
             }
         }
@@ -145,6 +145,6 @@ namespace WolfCurses.Window.Form.Input
         ///     common to attach another state, or remove the current state based on the response.
         /// </summary>
         /// <param name="reponse">The response the dialog parsed from simulation input buffer.</param>
-        protected abstract void OnDialogResponse(DialogResponse reponse);
+        protected abstract void OnDialogResponse(DialogResponseEnum reponse);
     }
 }

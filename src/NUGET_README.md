@@ -118,10 +118,10 @@ Ready-made modal dialogs and a panel widget for common interactions. The dialogs
 using WolfCurses.Controls;
 using WolfCurses.Window.Control;
 
-new Box { Title = "Status", Border = BoxBorder.Double, Padding = 1 }.Render("All good."); // bordered panel
+new Box { Title = "Status", Border = BoxBorderEnum.Double, Padding = 1 }.Render("All good."); // bordered panel
 
 SelectList.Choose(SimUnit, "Pick", new[] { "A", "B", "C" }, index => { /* ... */ }); // or ChooseMany for multi-select
-MessageBox.Show(SimUnit, "Proceed?", MessageBoxButtons.YesNoCancel, result => { /* Yes/No/Cancel */ });
+MessageBox.Show(SimUnit, "Proceed?", MessageBoxButtonsEnum.YesNoCancel, result => { /* Yes/No/Cancel */ });
 TextInputDialog.Prompt(SimUnit, "Name?", name => { /* ... */ }, defaultValue: "Traveler",
     validator: v => v.Length < 2 ? "Too short" : null); // add masked: true for passwords
 ```

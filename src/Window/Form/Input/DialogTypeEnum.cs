@@ -7,7 +7,7 @@ namespace WolfCurses.Window.Form.Input
     ///     Determines what type of dialog this will be, as in should it just display a message and wait for any input before
     ///     firing response method.
     /// </summary>
-    public enum DialogType
+    public enum DialogTypeEnum
     {
         /// <summary>
         ///     Dialog will only display the message prompt and not ask for any input and instead ask the user to press RETURN KEY

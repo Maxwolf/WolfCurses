@@ -29,7 +29,7 @@ namespace WolfCurses.Tests.Graphics
             return buffer;
         }
 
-        private static AnsiImageOptions Opts(int cols, int rows, AnsiColorMode mode = AnsiColorMode.TrueColor,
+        private static AnsiImageOptions Opts(int cols, int rows, AnsiColorModeEnum mode = AnsiColorModeEnum.TrueColor,
             Rgb24? background = null) => new()
         {
             MaxColumns = cols,
@@ -95,7 +95,7 @@ namespace WolfCurses.Tests.Graphics
         public void Render_Palette256Mode_UsesIndexedEscapes()
         {
             var image = Cell(new Rgba32(255, 0, 0, 255), new Rgba32(0, 0, 0, 255));
-            var result = AnsiImageRenderer.Render(image, Opts(1, 1, AnsiColorMode.Palette256));
+            var result = AnsiImageRenderer.Render(image, Opts(1, 1, AnsiColorModeEnum.Palette256));
             Assert.Equal($"{ESC}[38;5;196m{ESC}[48;5;16m{Upper}{Reset}", result);
         }
 
@@ -104,7 +104,7 @@ namespace WolfCurses.Tests.Graphics
         {
             // White over black averages to mid brightness (127) -> ramp index 4 -> '='. No color escapes at all.
             var image = Cell(new Rgba32(255, 255, 255, 255), new Rgba32(0, 0, 0, 255));
-            var result = AnsiImageRenderer.Render(image, Opts(1, 1, AnsiColorMode.None));
+            var result = AnsiImageRenderer.Render(image, Opts(1, 1, AnsiColorModeEnum.None));
             Assert.Equal("=", result);
         }
 
@@ -112,7 +112,7 @@ namespace WolfCurses.Tests.Graphics
         public void Render_NoneMode_TransparentCellIsSpace()
         {
             var image = Cell(new Rgba32(0, 0, 0, 0), new Rgba32(0, 0, 0, 0));
-            var result = AnsiImageRenderer.Render(image, Opts(1, 1, AnsiColorMode.None));
+            var result = AnsiImageRenderer.Render(image, Opts(1, 1, AnsiColorModeEnum.None));
             Assert.Equal(" ", result);
         }
 
@@ -225,9 +225,9 @@ namespace WolfCurses.Tests.Graphics
             {
                 MaxColumns = 3,
                 MaxRows = 2,
-                ColorMode = AnsiColorMode.TrueColor,
+                ColorMode = AnsiColorModeEnum.TrueColor,
                 CellAspectRatio = 2.0,
-                Fit = AnsiImageFit.Stretch
+                Fit = AnsiImageFitEnum.Stretch
             };
 
             var result = AnsiImageRenderer.Render(image, options);
@@ -245,9 +245,9 @@ namespace WolfCurses.Tests.Graphics
             {
                 MaxColumns = 4,
                 MaxRows = 3,
-                ColorMode = AnsiColorMode.TrueColor,
+                ColorMode = AnsiColorModeEnum.TrueColor,
                 CellAspectRatio = 2.0,
-                Fit = AnsiImageFit.Cover
+                Fit = AnsiImageFitEnum.Cover
             };
 
             var result = AnsiImageRenderer.Render(image, options);
@@ -269,18 +269,18 @@ namespace WolfCurses.Tests.Graphics
             for (var x = 0; x < 4; x++)
                 image.SetPixel(x, y, x < 2 ? new Rgba32(255, 0, 0, 255) : new Rgba32(0, 0, 255, 255));
 
-            AnsiImageOptions Opt(AnsiHorizontalAlignment align) => new()
+            AnsiImageOptions Opt(AnsiHorizontalAlignmentEnum align) => new()
             {
                 MaxColumns = 2,
                 MaxRows = 4,
-                ColorMode = AnsiColorMode.TrueColor,
+                ColorMode = AnsiColorModeEnum.TrueColor,
                 CellAspectRatio = 2.0,
-                Fit = AnsiImageFit.Cover,
+                Fit = AnsiImageFitEnum.Cover,
                 HorizontalAlignment = align
             };
 
-            var left = AnsiImageRenderer.Render(image, Opt(AnsiHorizontalAlignment.Left));
-            var right = AnsiImageRenderer.Render(image, Opt(AnsiHorizontalAlignment.Right));
+            var left = AnsiImageRenderer.Render(image, Opt(AnsiHorizontalAlignmentEnum.Left));
+            var right = AnsiImageRenderer.Render(image, Opt(AnsiHorizontalAlignmentEnum.Right));
 
             Assert.Contains(Fg(255, 0, 0), left);
             Assert.DoesNotContain(Fg(0, 0, 255), left);
@@ -297,7 +297,7 @@ namespace WolfCurses.Tests.Graphics
                 MaxColumns = 80,
                 MaxRows = 40,
                 CellAspectRatio = 2.0,
-                Fit = AnsiImageFit.ScaleDown
+                Fit = AnsiImageFitEnum.ScaleDown
             };
             var (cols, rows) = AnsiImageRenderer.ComputeTargetCells(10, 10, scaleDown);
             Assert.Equal(10, cols);
@@ -309,7 +309,7 @@ namespace WolfCurses.Tests.Graphics
                 MaxColumns = 80,
                 MaxRows = 40,
                 CellAspectRatio = 2.0,
-                Fit = AnsiImageFit.Contain
+                Fit = AnsiImageFitEnum.Contain
             };
             var (containCols, _) = AnsiImageRenderer.ComputeTargetCells(10, 10, contain);
             Assert.True(containCols > 10);

@@ -12,7 +12,7 @@ namespace WolfCurses.Tests.Controls
     /// </summary>
     public class SelectListTests
     {
-        private static readonly string[] Colors = {"Crimson", "Emerald", "Sapphire", "Amber", "Teal"};
+        private static readonly string[] _colors = {"Crimson", "Emerald", "Sapphire", "Amber", "Teal"};
 
         private static void Send(SimulationApp app, string command)
         {
@@ -28,7 +28,7 @@ namespace WolfCurses.Tests.Controls
             var app = new ControlsHostApp();
             var chosen = -1;
 
-            SelectList.Choose(app, "Pick", Colors, index => chosen = index);
+            SelectList.Choose(app, "Pick", _colors, index => chosen = index);
             app.OnTick(false);
 
             Send(app, "3"); // Sapphire
@@ -45,7 +45,7 @@ namespace WolfCurses.Tests.Controls
             var app = new ControlsHostApp();
             string chosen = null;
 
-            SelectList.Choose(app, "Pick", Colors, c => c, item => chosen = item);
+            SelectList.Choose(app, "Pick", _colors, c => c, item => chosen = item);
             app.OnTick(false);
 
             Send(app, "1");
@@ -61,7 +61,7 @@ namespace WolfCurses.Tests.Controls
             var app = new ControlsHostApp();
             IReadOnlyList<string> chosen = null;
 
-            SelectList.ChooseMany(app, "Pick", Colors, c => c, items => chosen = items);
+            SelectList.ChooseMany(app, "Pick", _colors, c => c, items => chosen = items);
             app.OnTick(false);
 
             Send(app, "2"); // toggle Emerald on
@@ -83,13 +83,13 @@ namespace WolfCurses.Tests.Controls
             var app = new ControlsHostApp();
             IReadOnlyList<string> chosen = null;
 
-            SelectList.ChooseMany(app, "Pick", Colors, c => c, items => chosen = items);
+            SelectList.ChooseMany(app, "Pick", _colors, c => c, items => chosen = items);
             app.OnTick(false);
 
             Send(app, "A"); // select all
             Send(app, "S"); // confirm
 
-            Assert.Equal(Colors.Length, chosen.Count);
+            Assert.Equal(_colors.Length, chosen.Count);
 
             app.Destroy();
         }
@@ -102,7 +102,7 @@ namespace WolfCurses.Tests.Controls
 
             // Pre-check two items, then confirm without touching anything: the confirmed set must be exactly the
             // pre-checked set, proving the checkboxes opened in the requested state.
-            SelectList.ChooseMany(app, "Pick", Colors, c => c, items => chosen = items,
+            SelectList.ChooseMany(app, "Pick", _colors, c => c, items => chosen = items,
                 initiallySelected: new[] {"Crimson", "Sapphire"});
             app.OnTick(false);
 
@@ -120,7 +120,7 @@ namespace WolfCurses.Tests.Controls
             var app = new ControlsHostApp();
             IReadOnlyList<string> chosen = null;
 
-            SelectList.ChooseMany(app, "Pick", Colors, c => c, items => chosen = items,
+            SelectList.ChooseMany(app, "Pick", _colors, c => c, items => chosen = items,
                 initiallySelected: new[] {"Crimson", "Sapphire"}); // indices 0 and 2 checked
             app.OnTick(false);
 
@@ -139,7 +139,7 @@ namespace WolfCurses.Tests.Controls
             var app = new ControlsHostApp();
             IReadOnlyList<int> chosen = null;
 
-            SelectList.ChooseMany(app, "Pick", Colors, indices => chosen = indices,
+            SelectList.ChooseMany(app, "Pick", _colors, indices => chosen = indices,
                 initiallySelected: new[] {1, 3});
             app.OnTick(false);
 
@@ -156,7 +156,7 @@ namespace WolfCurses.Tests.Controls
             var app = new ControlsHostApp();
             IReadOnlyList<int> chosen = null;
 
-            SelectList.ChooseMany(app, "Pick", Colors, indices => chosen = indices,
+            SelectList.ChooseMany(app, "Pick", _colors, indices => chosen = indices,
                 initiallySelected: new[] {-1, 2, 99});
             app.OnTick(false);
 
@@ -173,7 +173,7 @@ namespace WolfCurses.Tests.Controls
             var app = new ControlsHostApp();
             IReadOnlyList<string> chosen = null;
 
-            SelectList.ChooseMany(app, "Pick", Colors, c => c, items => chosen = items,
+            SelectList.ChooseMany(app, "Pick", _colors, c => c, items => chosen = items,
                 initiallySelected: new[] {"Sapphire", "Chartreuse"}); // Chartreuse is not an option
             app.OnTick(false);
 
@@ -234,7 +234,7 @@ namespace WolfCurses.Tests.Controls
             var app = new ControlsHostApp();
             var cancelled = false;
 
-            SelectList.Choose(app, "Pick", Colors, _ => { }, () => cancelled = true);
+            SelectList.Choose(app, "Pick", _colors, _ => { }, () => cancelled = true);
             app.OnTick(false);
 
             Send(app, "C");
@@ -275,7 +275,7 @@ namespace WolfCurses.Tests.Controls
         {
             var app = new TestSimulationApp(); // does not allow SelectListWindow
             var ex = Assert.Throws<InvalidOperationException>(() =>
-                SelectList.Choose(app, "Pick", Colors, _ => { }));
+                SelectList.Choose(app, "Pick", _colors, _ => { }));
             Assert.Contains("AllowedWindows", ex.Message);
             app.Destroy();
         }
@@ -284,11 +284,11 @@ namespace WolfCurses.Tests.Controls
         public void Choose_WhenAlreadyOpen_ThrowsInsteadOfDroppingTheFirstCallback()
         {
             var app = new ControlsHostApp();
-            SelectList.Choose(app, "First", Colors, _ => { });
+            SelectList.Choose(app, "First", _colors, _ => { });
             app.OnTick(false);
 
             // A second open while the first is still showing must throw, not silently reconfigure the window.
-            Assert.Throws<InvalidOperationException>(() => SelectList.Choose(app, "Second", Colors, _ => { }));
+            Assert.Throws<InvalidOperationException>(() => SelectList.Choose(app, "Second", _colors, _ => { }));
 
             app.Destroy();
         }
@@ -297,12 +297,12 @@ namespace WolfCurses.Tests.Controls
         public void Choose_WhenAlreadyClosing_ThrowsInsteadOfSilentlyFailing()
         {
             var app = new ControlsHostApp();
-            SelectList.Choose(app, "Pick", Colors, _ => { });
+            SelectList.Choose(app, "Pick", _colors, _ => { });
             app.OnTick(false);
 
             app.WindowManager.FocusedWindow.RemoveWindowNextTick();
 
-            Assert.Throws<InvalidOperationException>(() => SelectList.Choose(app, "Pick", Colors, _ => { }));
+            Assert.Throws<InvalidOperationException>(() => SelectList.Choose(app, "Pick", _colors, _ => { }));
 
             app.Destroy();
         }

@@ -75,11 +75,11 @@ namespace WolfCurses.Tests.Controls
             var entries = FileDialogListing.BuildEntries(_root, filter, includeFiles: true);
 
             // Parent is always first.
-            Assert.Equal(FileDialogEntryKind.ParentDirectory, entries[0].Kind);
+            Assert.Equal(FileDialogEntryKindEnum.ParentDirectory, entries[0].Kind);
 
             // Folders (sorted) come before files.
             Assert.Equal("Alpha", entries[1].Name);
-            Assert.Equal(FileDialogEntryKind.Directory, entries[1].Kind);
+            Assert.Equal(FileDialogEntryKindEnum.Directory, entries[1].Kind);
             Assert.Equal("Beta", entries[2].Name);
 
             var names = entries.Select(e => e.Name).ToList();
@@ -88,8 +88,8 @@ namespace WolfCurses.Tests.Controls
             Assert.DoesNotContain("notes.txt", names); // filtered out
 
             // Files are ordered after all folders.
-            var firstFileIndex = entries.ToList().FindIndex(e => e.Kind == FileDialogEntryKind.File);
-            var lastDirIndex = entries.ToList().FindLastIndex(e => e.Kind == FileDialogEntryKind.Directory);
+            var firstFileIndex = entries.ToList().FindIndex(e => e.Kind == FileDialogEntryKindEnum.File);
+            var lastDirIndex = entries.ToList().FindLastIndex(e => e.Kind == FileDialogEntryKindEnum.Directory);
             Assert.True(firstFileIndex > lastDirIndex);
         }
 
@@ -98,7 +98,7 @@ namespace WolfCurses.Tests.Controls
         {
             var entries = FileDialogListing.BuildEntries(_root, Array.Empty<string>(), includeFiles: false);
 
-            Assert.DoesNotContain(entries, e => e.Kind == FileDialogEntryKind.File);
+            Assert.DoesNotContain(entries, e => e.Kind == FileDialogEntryKindEnum.File);
             Assert.Contains(entries, e => e.Name == "Alpha");
         }
 
@@ -119,14 +119,14 @@ namespace WolfCurses.Tests.Controls
             var drives = FileDialogListing.BuildDriveEntries();
 
             Assert.NotEmpty(drives); // every machine has at least one drive/root
-            Assert.All(drives, d => Assert.Equal(FileDialogEntryKind.Drive, d.Kind));
+            Assert.All(drives, d => Assert.Equal(FileDialogEntryKindEnum.Drive, d.Kind));
         }
 
         [Fact]
         public void Data_Initialize_OpenFile_LoadsStartFolderAndFilters()
         {
             var data = new FileDialogData();
-            data.Initialize(FileDialogMode.OpenFile, _root, new[] { ".png" }, _ => { }, null);
+            data.Initialize(FileDialogModeEnum.OpenFile, _root, new[] { ".png" }, _ => { }, null);
 
             Assert.True(data.Initialized);
             Assert.Equal(Path.GetFullPath(_root), data.CurrentDirectory);
@@ -138,17 +138,17 @@ namespace WolfCurses.Tests.Controls
         public void Data_Initialize_MissingFolder_FallsBackToDrives()
         {
             var data = new FileDialogData();
-            data.Initialize(FileDialogMode.OpenFile, Path.Combine(_root, "does-not-exist"), null, _ => { }, null);
+            data.Initialize(FileDialogModeEnum.OpenFile, Path.Combine(_root, "does-not-exist"), null, _ => { }, null);
 
             Assert.Null(data.CurrentDirectory); // drive-selection view
-            Assert.All(data.Entries, e => Assert.Equal(FileDialogEntryKind.Drive, e.Kind));
+            Assert.All(data.Entries, e => Assert.Equal(FileDialogEntryKindEnum.Drive, e.Kind));
         }
 
         [Fact]
         public void Data_GoUp_MovesToParentFolder()
         {
             var data = new FileDialogData();
-            data.Initialize(FileDialogMode.OpenFile, Path.Combine(_root, "Alpha"), null, _ => { }, null);
+            data.Initialize(FileDialogModeEnum.OpenFile, Path.Combine(_root, "Alpha"), null, _ => { }, null);
             Assert.Equal(Path.GetFullPath(Path.Combine(_root, "Alpha")), data.CurrentDirectory);
 
             data.GoUp();
@@ -160,7 +160,7 @@ namespace WolfCurses.Tests.Controls
         public void Data_LoadDirectory_Invalid_SetsErrorAndStaysPut()
         {
             var data = new FileDialogData();
-            data.Initialize(FileDialogMode.OpenFile, _root, null, _ => { }, null);
+            data.Initialize(FileDialogModeEnum.OpenFile, _root, null, _ => { }, null);
             var before = data.CurrentDirectory;
 
             data.LoadDirectory(Path.Combine(_root, "does-not-exist"));
@@ -184,7 +184,7 @@ namespace WolfCurses.Tests.Controls
         public void Data_TrailingSeparatorStart_GoUpReachesRealParentOnFirstPress()
         {
             var data = new FileDialogData();
-            data.Initialize(FileDialogMode.OpenFile, _root + Path.DirectorySeparatorChar, null, _ => { }, null);
+            data.Initialize(FileDialogModeEnum.OpenFile, _root + Path.DirectorySeparatorChar, null, _ => { }, null);
 
             // The stored path has no trailing separator...
             Assert.Equal(Path.TrimEndingDirectorySeparator(Path.GetFullPath(_root)), data.CurrentDirectory);

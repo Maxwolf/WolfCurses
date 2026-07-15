@@ -54,7 +54,7 @@ namespace WolfCurses.Tests.Controls
                 "└───────┘";
 
             Assert.Equal(expected,
-                new Box {Title = "T", TitleAlignment = BoxAlignment.Center, MinimumWidth = 7}.Render("x"));
+                new Box {Title = "T", TitleAlignment = BoxAlignmentEnum.Center, MinimumWidth = 7}.Render("x"));
         }
 
         [Fact]
@@ -66,7 +66,7 @@ namespace WolfCurses.Tests.Controls
                 "└───────┘";
 
             Assert.Equal(expected,
-                new Box {Title = "T", TitleAlignment = BoxAlignment.Right, MinimumWidth = 7}.Render("x"));
+                new Box {Title = "T", TitleAlignment = BoxAlignmentEnum.Right, MinimumWidth = 7}.Render("x"));
         }
 
         [Fact]
@@ -89,7 +89,7 @@ namespace WolfCurses.Tests.Controls
                 "|Hi|" + Text.NL +
                 "+--+";
 
-            Assert.Equal(expected, new Box {Border = BoxBorder.Ascii}.Render("Hi"));
+            Assert.Equal(expected, new Box {Border = BoxBorderEnum.Ascii}.Render("Hi"));
         }
 
         [Fact]
@@ -99,7 +99,7 @@ namespace WolfCurses.Tests.Controls
                 "ab " + Text.NL +
                 "cde";
 
-            Assert.Equal(expected, new Box {Border = BoxBorder.None}.Render("ab" + Text.NL + "cde"));
+            Assert.Equal(expected, new Box {Border = BoxBorderEnum.None}.Render("ab" + Text.NL + "cde"));
         }
 
         [Fact]

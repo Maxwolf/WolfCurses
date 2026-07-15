@@ -30,7 +30,7 @@ namespace WolfCurses.Tests.Forms
 
             form.OnInputBufferReturned(input);
 
-            Assert.Equal(DialogResponse.Yes, form.LastResponse);
+            Assert.Equal(DialogResponseEnum.Yes, form.LastResponse);
         }
 
         [Theory]
@@ -46,7 +46,7 @@ namespace WolfCurses.Tests.Forms
 
             form.OnInputBufferReturned(input);
 
-            Assert.Equal(DialogResponse.No, form.LastResponse);
+            Assert.Equal(DialogResponseEnum.No, form.LastResponse);
         }
 
         [Theory]
@@ -59,7 +59,7 @@ namespace WolfCurses.Tests.Forms
 
             form.OnInputBufferReturned(input);
 
-            Assert.Equal(DialogResponse.Custom, form.LastResponse);
+            Assert.Equal(DialogResponseEnum.Custom, form.LastResponse);
         }
 
         [Theory]
@@ -68,7 +68,7 @@ namespace WolfCurses.Tests.Forms
         [InlineData("1")]
         public void OnInputBufferReturned_YesNoDialog_InvalidInput_IsIgnoredUntilValidResponse(string input)
         {
-            // DialogType.YesNo documents that invalid data is ignored until a valid response is given.
+            // DialogTypeEnum.YesNo documents that invalid data is ignored until a valid response is given.
             var form = new YesNoDialogForm(NewWindow());
 
             form.OnInputBufferReturned(input);
@@ -77,7 +77,7 @@ namespace WolfCurses.Tests.Forms
             form.OnInputBufferReturned("yes");
 
             Assert.Equal(1, form.ResponseCount);
-            Assert.Equal(DialogResponse.Yes, form.LastResponse);
+            Assert.Equal(DialogResponseEnum.Yes, form.LastResponse);
         }
 
         [Fact]
@@ -88,7 +88,7 @@ namespace WolfCurses.Tests.Forms
 
             form.OnInputBufferReturned(string.Empty);
 
-            Assert.Equal(DialogResponse.Custom, form.LastResponse);
+            Assert.Equal(DialogResponseEnum.Custom, form.LastResponse);
         }
 
         [Fact]
@@ -100,7 +100,7 @@ namespace WolfCurses.Tests.Forms
 
             var custom = new CustomDialogForm(NewWindow());
             custom.OnInputBufferReturned(null);
-            Assert.Equal(DialogResponse.Custom, custom.LastResponse);
+            Assert.Equal(DialogResponseEnum.Custom, custom.LastResponse);
         }
 
         [Fact]
@@ -112,7 +112,7 @@ namespace WolfCurses.Tests.Forms
             form.OnInputBufferReturned("no");
 
             Assert.Equal(1, form.ResponseCount);
-            Assert.Equal(DialogResponse.Yes, form.LastResponse);
+            Assert.Equal(DialogResponseEnum.Yes, form.LastResponse);
         }
 
         [Fact]

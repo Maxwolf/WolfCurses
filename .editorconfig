@@ -1,0 +1,76 @@
+# Root EditorConfig for the WolfCurses repository.
+# Naming conventions below surface as IDE1006 build warnings because Directory.Build.props sets
+# EnforceCodeStyleInBuild. File organization (one type per file, file named after the type) is
+# MA0048 from Meziantou.Analyzer; every other MA rule is switched off in .globalconfig.
+root = true
+
+[*]
+charset = utf-8
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{csproj,props,targets,json,yml,yaml}]
+indent_size = 2
+
+[*.cs]
+#### Naming conventions ####
+
+# Surface naming-rule violations (IDE1006) as build warnings; without this line some SDKs
+# evaluate the naming rules only inside the IDE even with EnforceCodeStyleInBuild set.
+dotnet_diagnostic.IDE1006.severity = warning
+
+# Interfaces are PascalCase with an "I" prefix (IWindow, ITick).
+dotnet_naming_rule.interfaces_are_i_prefixed.symbols = interfaces
+dotnet_naming_rule.interfaces_are_i_prefixed.style = i_prefixed_pascal_case
+dotnet_naming_rule.interfaces_are_i_prefixed.severity = warning
+dotnet_naming_symbols.interfaces.applicable_kinds = interface
+dotnet_naming_symbols.interfaces.applicable_accessibilities = *
+dotnet_naming_style.i_prefixed_pascal_case.capitalization = pascal_case
+dotnet_naming_style.i_prefixed_pascal_case.required_prefix = I
+
+# Enums are PascalCase with an "Enum" suffix (DialogTypeEnum).
+dotnet_naming_rule.enums_are_enum_suffixed.symbols = enums
+dotnet_naming_rule.enums_are_enum_suffixed.style = enum_suffixed_pascal_case
+dotnet_naming_rule.enums_are_enum_suffixed.severity = warning
+dotnet_naming_symbols.enums.applicable_kinds = enum
+dotnet_naming_symbols.enums.applicable_accessibilities = *
+dotnet_naming_style.enum_suffixed_pascal_case.capitalization = pascal_case
+dotnet_naming_style.enum_suffixed_pascal_case.required_suffix = Enum
+
+# Async methods are PascalCase with an "Async" suffix.
+dotnet_naming_rule.async_methods_are_async_suffixed.symbols = async_methods
+dotnet_naming_rule.async_methods_are_async_suffixed.style = async_suffixed_pascal_case
+dotnet_naming_rule.async_methods_are_async_suffixed.severity = warning
+dotnet_naming_symbols.async_methods.applicable_kinds = method
+dotnet_naming_symbols.async_methods.applicable_accessibilities = *
+dotnet_naming_symbols.async_methods.required_modifiers = async
+dotnet_naming_style.async_suffixed_pascal_case.capitalization = pascal_case
+dotnet_naming_style.async_suffixed_pascal_case.required_suffix = Async
+
+# Constants are exempt from the field rule below (this repo mixes PascalCase and legacy
+# SCREAMING_CASE consts; neither is flagged). This rule is more specific than the field rule,
+# so it wins for const fields, and its severity of none means no diagnostic is reported.
+dotnet_naming_rule.constants_are_exempt.symbols = constant_fields
+dotnet_naming_rule.constants_are_exempt.style = pascal_case_style
+dotnet_naming_rule.constants_are_exempt.severity = none
+dotnet_naming_symbols.constant_fields.applicable_kinds = field
+dotnet_naming_symbols.constant_fields.applicable_accessibilities = *
+dotnet_naming_symbols.constant_fields.required_modifiers = const
+dotnet_naming_style.pascal_case_style.capitalization = pascal_case
+
+# Private and internal fields are camelCase with a leading underscore (_simUnit).
+dotnet_naming_rule.private_fields_are_underscore_camel_case.symbols = private_fields
+dotnet_naming_rule.private_fields_are_underscore_camel_case.style = underscore_camel_case
+dotnet_naming_rule.private_fields_are_underscore_camel_case.severity = warning
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private, internal, private_protected
+dotnet_naming_style.underscore_camel_case.capitalization = camel_case
+dotnet_naming_style.underscore_camel_case.required_prefix = _
+
+#### File organization ####
+
+# One type per file, file named after the type. MA0048 accepts Window.cs for Window<TCommands, TData>,
+# and a file containing a second type necessarily fails the match, so this one rule enforces both halves.
+dotnet_diagnostic.MA0048.severity = warning

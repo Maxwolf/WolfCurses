@@ -11,7 +11,7 @@ namespace WolfCurses.Utility
     ///     Collection of extension methods used for manipulating a enumerable collection of objects.
     /// </summary>
     /// <remarks>http://stackoverflow.com/a/2019433</remarks>
-    public static class EnumerableExtension
+    public static class EnumerableExtensions
     {
         /// <summary>Picks a random element from the list.</summary>
         /// <typeparam name="T">Type of list.</typeparam>

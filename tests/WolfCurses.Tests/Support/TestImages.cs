@@ -11,10 +11,10 @@ namespace WolfCurses.Tests.Support
     /// </summary>
     internal static class TestImages
     {
-        private static readonly Lazy<string> RepoRootLazy = new(FindRepoRoot);
+        private static readonly Lazy<string> _repoRootLazy = new(FindRepoRoot);
 
         /// <summary>The repository root directory, or null if it could not be located.</summary>
-        public static string RepoRoot => RepoRootLazy.Value;
+        public static string RepoRoot => _repoRootLazy.Value;
 
         /// <summary>Absolute path to the media folder (may not exist).</summary>
         public static string MediaFolder =>

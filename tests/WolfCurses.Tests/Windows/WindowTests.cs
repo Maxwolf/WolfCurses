@@ -35,24 +35,24 @@ namespace WolfCurses.Tests.Windows
         {
             // Mappings are refreshed eagerly by AddCommand, so commands work before the window ever renders.
             var window = NewWindow(out _);
-            window.AddTestCommand(TestCommands.First);
+            window.AddTestCommand(TestCommandsEnum.First);
 
             window.SendCommand("1");
 
-            Assert.Equal(new[] { TestCommands.First }, window.InvokedCommands);
+            Assert.Equal(new[] { TestCommandsEnum.First }, window.InvokedCommands);
         }
 
         [Fact]
         public void SendCommand_AfterRender_InvokesActionByEnumIntegerKey()
         {
             var window = NewWindow(out _);
-            window.AddTestCommand(TestCommands.First);
-            window.AddTestCommand(TestCommands.Second);
+            window.AddTestCommand(TestCommandsEnum.First);
+            window.AddTestCommand(TestCommandsEnum.Second);
             window.OnRenderWindow();
 
             window.SendCommand("2");
 
-            Assert.Equal(new[] { TestCommands.Second }, window.InvokedCommands);
+            Assert.Equal(new[] { TestCommandsEnum.Second }, window.InvokedCommands);
         }
 
         [Theory]
@@ -63,7 +63,7 @@ namespace WolfCurses.Tests.Windows
         public void SendCommand_UnknownOrBlankInput_DoesNotInvokeOrThrow(string input)
         {
             var window = NewWindow(out _);
-            window.AddTestCommand(TestCommands.First);
+            window.AddTestCommand(TestCommandsEnum.First);
             window.OnRenderWindow();
 
             window.SendCommand(input);
@@ -75,8 +75,8 @@ namespace WolfCurses.Tests.Windows
         public void OnRenderWindow_ListsCommandDescriptions()
         {
             var window = NewWindow(out _);
-            window.AddTestCommand(TestCommands.First);
-            window.AddTestCommand(TestCommands.Second);
+            window.AddTestCommand(TestCommandsEnum.First);
+            window.AddTestCommand(TestCommandsEnum.Second);
 
             var rendered = window.OnRenderWindow();
 
@@ -93,8 +93,8 @@ namespace WolfCurses.Tests.Windows
             var window = NewWindow(out _);
             var firstInvocations = 0;
             var secondInvocations = 0;
-            window.AddTestCommand(TestCommands.First, () => firstInvocations++);
-            window.AddTestCommand(TestCommands.First, () => secondInvocations++);
+            window.AddTestCommand(TestCommandsEnum.First, () => firstInvocations++);
+            window.AddTestCommand(TestCommandsEnum.First, () => secondInvocations++);
 
             var rendered = window.OnRenderWindow();
             window.SendCommand("1");
@@ -124,7 +124,7 @@ namespace WolfCurses.Tests.Windows
         public void SetForm_AttachesForm_AndSendCommandRoutesToIt()
         {
             var window = NewWindow(out _);
-            window.AddTestCommand(TestCommands.First);
+            window.AddTestCommand(TestCommandsEnum.First);
             window.OnRenderWindow();
 
             window.SetForm(typeof(TestForm));
@@ -140,7 +140,7 @@ namespace WolfCurses.Tests.Windows
         public void ClearForm_DetachesForm_AndMenuRoutingResumes()
         {
             var window = NewWindow(out _);
-            window.AddTestCommand(TestCommands.First);
+            window.AddTestCommand(TestCommandsEnum.First);
             window.OnRenderWindow();
             window.SetForm(typeof(TestForm));
 
@@ -150,14 +150,14 @@ namespace WolfCurses.Tests.Windows
             window.OnRenderWindow();
             window.SendCommand("1");
 
-            Assert.Equal(new[] { TestCommands.First }, window.InvokedCommands);
+            Assert.Equal(new[] { TestCommandsEnum.First }, window.InvokedCommands);
         }
 
         [Fact]
         public void OnRenderWindow_WithFormAttached_RendersFormInsteadOfMenu()
         {
             var window = NewWindow(out _);
-            window.AddTestCommand(TestCommands.First);
+            window.AddTestCommand(TestCommandsEnum.First);
             window.SetForm(typeof(TestForm));
 
             var rendered = window.OnRenderWindow();

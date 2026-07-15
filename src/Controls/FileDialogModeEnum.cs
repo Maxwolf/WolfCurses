@@ -6,7 +6,7 @@ namespace WolfCurses.Controls
     /// <summary>
     ///     What the <see cref="FileDialog" /> lets the user pick.
     /// </summary>
-    public enum FileDialogMode
+    public enum FileDialogModeEnum
     {
         /// <summary>
         ///     Navigate drives and folders and choose a single file (optionally restricted to certain extensions).

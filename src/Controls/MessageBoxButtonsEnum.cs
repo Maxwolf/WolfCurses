@@ -4,7 +4,7 @@
 namespace WolfCurses.Controls
 {
     /// <summary>Which buttons a <see cref="MessageBox" /> offers.</summary>
-    public enum MessageBoxButtons
+    public enum MessageBoxButtonsEnum
     {
         /// <summary>A single acknowledgement; any ENTER dismisses it.</summary>
         Ok,

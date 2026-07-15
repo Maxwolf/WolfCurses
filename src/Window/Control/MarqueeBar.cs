@@ -17,7 +17,7 @@ namespace WolfCurses.Window.Control
 
         private int _counter;
 
-        private Direction _currdir;
+        private DirectionEnum _currdir;
 
         private readonly string _pointer;
 
@@ -29,7 +29,7 @@ namespace WolfCurses.Window.Control
             _bar = "|                         |";
             _pointer = "***";
             _blankPointer = BlankPointer();
-            _currdir = Direction.Right;
+            _currdir = DirectionEnum.Right;
             _counter = 1;
         }
 
@@ -71,19 +71,19 @@ namespace WolfCurses.Window.Control
         /// </returns>
         public string Step()
         {
-            if (_currdir == Direction.Right)
+            if (_currdir == DirectionEnum.Right)
             {
                 PlacePointer(_counter, _pointer.Length);
                 _counter++;
                 if (_counter + _pointer.Length == _bar.Length)
-                    _currdir = Direction.Left;
+                    _currdir = DirectionEnum.Left;
             }
             else
             {
                 PlacePointer(_counter - _pointer.Length, _pointer.Length);
                 _counter--;
                 if (_counter == _pointer.Length)
-                    _currdir = Direction.Right;
+                    _currdir = DirectionEnum.Right;
             }
 
             return _bar + Environment.NewLine;
@@ -92,7 +92,7 @@ namespace WolfCurses.Window.Control
         /// <summary>
         ///     The direction.
         /// </summary>
-        private enum Direction
+        private enum DirectionEnum
         {
             /// <summary>
             ///     The right.

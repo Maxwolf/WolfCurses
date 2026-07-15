@@ -39,28 +39,28 @@ namespace WolfCurses
         private const char Escape = (char) 27;
 
         /// <summary>Control Sequence Introducer that begins every escape sequence this class emits.</summary>
-        private static readonly string Csi = Escape + "[";
+        private static readonly string _csi = Escape + "[";
 
         /// <summary>Begin synchronized update (DEC 2026): buffer everything until the matching end marker.</summary>
-        private static readonly string SyncBegin = Csi + "?2026h";
+        private static readonly string _syncBegin = _csi + "?2026h";
 
         /// <summary>End synchronized update (DEC 2026): apply the buffered update in one repaint.</summary>
-        private static readonly string SyncEnd = Csi + "?2026l";
+        private static readonly string _syncEnd = _csi + "?2026l";
 
         /// <summary>Disable auto-wrap (DECAWM) so an over-long row clips at the right edge instead of corrupting the next row.</summary>
-        private static readonly string WrapOff = Csi + "?7l";
+        private static readonly string _wrapOff = _csi + "?7l";
 
         /// <summary>Re-enable auto-wrap (DECAWM), restoring the terminal's default behavior after the frame.</summary>
-        private static readonly string WrapOn = Csi + "?7h";
+        private static readonly string _wrapOn = _csi + "?7h";
 
         /// <summary>Reset colors/attributes so an erase that follows fills with the default background.</summary>
-        private static readonly string SgrReset = Csi + "0m";
+        private static readonly string _sgrReset = _csi + "0m";
 
         /// <summary>Erase from the cursor (inclusive) to the end of the line.</summary>
-        private static readonly string EraseToLineEnd = Csi + "K";
+        private static readonly string _eraseToLineEnd = _csi + "K";
 
         /// <summary>Erase from the cursor (inclusive) to the end of the screen.</summary>
-        private static readonly string EraseBelow = Csi + "J";
+        private static readonly string _eraseBelow = _csi + "J";
 
         /// <summary>
         ///     A full redraw is forced after this many diffed frames so the screen self-heals from anything the size
@@ -177,22 +177,22 @@ namespace WolfCurses
                 // Move to the row, overwrite it in place, then reset attributes so a row without its own trailing
                 // reset cannot leak color into the erase below (which some terminals fill with the current
                 // background) or into the next frame.
-                body.Append(Csi).Append(row + 1).Append(";1H");
+                body.Append(_csi).Append(row + 1).Append(";1H");
                 body.Append(lines[row]);
-                body.Append(SgrReset);
+                body.Append(_sgrReset);
 
                 // Erase whatever the old (possibly longer) row left behind — but only when this row leaves room for
                 // a leftover tail. A row that already fills (or overflows) the line ends with the cursor sitting ON
                 // the last column, because auto-wrap is off, and erase-to-end-of-line includes the cursor cell — an
                 // unconditional erase would blank the row's just-written rightmost character.
                 if (VisibleLength(lines[row]) < consoleWidth)
-                    body.Append(EraseToLineEnd);
+                    body.Append(_eraseToLineEnd);
             }
 
             // A full redraw cannot trust anything on screen, so also erase every row below the managed region (the
             // guard skips this on a one-row console, where "below" would clamp onto the row just drawn).
             if (fullRedraw && lines.Length < consoleHeight)
-                body.Append(Csi).Append(lines.Length + 1).Append(";1H").Append(SgrReset).Append(EraseBelow);
+                body.Append(_csi).Append(lines.Length + 1).Append(";1H").Append(_sgrReset).Append(_eraseBelow);
 
             if (body.Length == 0)
                 return string.Empty;
@@ -200,11 +200,11 @@ namespace WolfCurses
             // Park the cursor at the end of the last row with content, which is where the input prompt echoes typed
             // characters — so a host that keeps the cursor visible gets it blinking exactly where typing appears.
             var (parkRow, parkColumn) = ParkPosition(lines);
-            body.Append(Csi).Append(parkRow).Append(';').Append(parkColumn).Append('H');
+            body.Append(_csi).Append(parkRow).Append(';').Append(parkColumn).Append('H');
 
             // Auto-wrap is off while drawing so an over-long row clips instead of wrapping into the row below (which
             // could also scroll the screen); both it and the synchronized-update marker are restored afterwards.
-            return SyncBegin + WrapOff + body + WrapOn + SyncEnd;
+            return _syncBegin + _wrapOff + body + _wrapOn + _syncEnd;
         }
 
         /// <summary>
