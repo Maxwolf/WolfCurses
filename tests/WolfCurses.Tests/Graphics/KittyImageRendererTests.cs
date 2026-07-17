@@ -37,11 +37,26 @@ namespace WolfCurses.Tests.Graphics
             return rendered.Split('\n')[0].TrimEnd('\r').Substring(1);
         }
 
-        /// <summary>Every APC command in a payload, as (parameters, base64 data) pairs.</summary>
+        /// <summary>
+        ///     Every APC command in a payload, as (parameters, base64 data) pairs. The <c>;payload</c> half is optional
+        ///     in the protocol — a delete command carries no data — so a command without one reports empty data rather
+        ///     than swallowing the next command's parameters looking for a semicolon.
+        /// </summary>
         private static (string Parameters, string Data)[] Commands(string payload)
         {
-            return Regex.Matches(payload, $"{ESC}_G([^;]*);([^{ESC}]*){ESC}\\\\")
+            return Regex.Matches(payload, $"{ESC}_G([^;{ESC}]*)(?:;([^{ESC}]*))?{ESC}\\\\")
                 .Select(m => (m.Groups[1].Value, m.Groups[2].Value))
+                .ToArray();
+        }
+
+        /// <summary>
+        ///     The commands that transmit the picture, i.e. everything after the leading "delete whatever is already
+        ///     here" command that every render begins with.
+        /// </summary>
+        private static (string Parameters, string Data)[] ImageCommands(string payload)
+        {
+            return Commands(payload)
+                .Where(c => !c.Parameters.StartsWith("a=d", StringComparison.Ordinal))
                 .ToArray();
         }
 
@@ -49,7 +64,7 @@ namespace WolfCurses.Tests.Graphics
         public void Render_SmallImage_IsOneSelfContainedCommand()
         {
             var image = Solid(2, 2, new Rgba32(255, 0, 0, 255));
-            var commands = Commands(Payload(new KittyImageRenderer(1, 1).Render(image, Opts(2, 2))));
+            var commands = ImageCommands(Payload(new KittyImageRenderer(1, 1).Render(image, Opts(2, 2))));
 
             var single = Assert.Single(commands);
 
@@ -59,10 +74,30 @@ namespace WolfCurses.Tests.Graphics
         }
 
         [Fact]
+        public void Render_BeginsByDeletingWhateverPictureIsAlreadyAtTheCursor()
+        {
+            // A kitty picture is an object in a layer of its own, not paint in the character cells, so drawing a second
+            // one at the same place does not replace the first — both are there, and a slideshow stacks every slide it
+            // has shown while leaking each one's pixels. Nothing else can clean this up: erasing rows only clears text,
+            // which is not what the terminal is showing. So each render disowns its predecessor first.
+            var image = Solid(2, 2, new Rgba32(255, 0, 0, 255));
+            var payload = Payload(new KittyImageRenderer(1, 1).Render(image, Opts(2, 2)));
+
+            // d=C: every placement overlapping the cursor — which is this picture's own spot and nothing else, so
+            // sibling pictures elsewhere in the frame survive. Capital C also frees the pixel data.
+            Assert.StartsWith($"{ESC}_Ga=d,d=C{ESC}\\", payload, StringComparison.Ordinal);
+
+            // ...and it must come before the transmission, or it would delete the picture just drawn.
+            var deleteAt = payload.IndexOf("a=d", StringComparison.Ordinal);
+            var transmitAt = payload.IndexOf("a=T", StringComparison.Ordinal);
+            Assert.True(deleteAt < transmitAt, "The delete has to precede the transmission.");
+        }
+
+        [Fact]
         public void Render_TransmittedPayload_IsTheImagesOwnRgbaBytes()
         {
             var image = Solid(2, 2, new Rgba32(10, 20, 30, 255));
-            var commands = Commands(Payload(new KittyImageRenderer(1, 1).Render(image, Opts(2, 2))));
+            var commands = ImageCommands(Payload(new KittyImageRenderer(1, 1).Render(image, Opts(2, 2))));
 
             var decoded = Convert.FromBase64String(commands.Single().Data);
             Assert.Equal(image.Data, decoded);
@@ -73,7 +108,7 @@ namespace WolfCurses.Tests.Graphics
         {
             // 32x32 RGBA is 4096 bytes, which base64s to 5464 characters: more than one 4096-character chunk.
             var image = Solid(32, 32, new Rgba32(1, 2, 3, 255));
-            var commands = Commands(Payload(new KittyImageRenderer(1, 1).Render(image, Opts(32, 32))));
+            var commands = ImageCommands(Payload(new KittyImageRenderer(1, 1).Render(image, Opts(32, 32))));
 
             Assert.Equal(2, commands.Length);
 
@@ -89,7 +124,7 @@ namespace WolfCurses.Tests.Graphics
         public void Render_ChunkedPayload_ReassemblesToTheOriginalPixels()
         {
             var image = Solid(32, 32, new Rgba32(9, 8, 7, 255));
-            var commands = Commands(Payload(new KittyImageRenderer(1, 1).Render(image, Opts(32, 32))));
+            var commands = ImageCommands(Payload(new KittyImageRenderer(1, 1).Render(image, Opts(32, 32))));
 
             var reassembled = Convert.FromBase64String(string.Concat(commands.Select(c => c.Data)));
             Assert.Equal(image.Data, reassembled);
@@ -102,7 +137,7 @@ namespace WolfCurses.Tests.Graphics
             // transmitted bytes instead of being dropped or composited.
             var image = new PixelBuffer(1, 1);
             image.SetPixel(0, 0, new Rgba32(255, 0, 0, 0));
-            var commands = Commands(Payload(new KittyImageRenderer(1, 1).Render(image, Opts(1, 1))));
+            var commands = ImageCommands(Payload(new KittyImageRenderer(1, 1).Render(image, Opts(1, 1))));
 
             var decoded = Convert.FromBase64String(commands.Single().Data);
             Assert.Equal(0, decoded[3]);
@@ -121,7 +156,7 @@ namespace WolfCurses.Tests.Graphics
                 BackgroundColor = new Rgb24(0, 0, 255)
             });
 
-            var decoded = Convert.FromBase64String(Commands(Payload(rendered)).Single().Data);
+            var decoded = Convert.FromBase64String(ImageCommands(Payload(rendered)).Single().Data);
             Assert.Equal(new byte[] {0, 0, 255, 255}, decoded);
         }
 

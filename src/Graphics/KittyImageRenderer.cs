@@ -37,6 +37,24 @@ namespace WolfCurses.Graphics
         private const int MaxPayloadChunk = 4096;
 
         /// <summary>
+        ///     Removes whatever picture is already placed where this one is about to go, and frees it.
+        ///     <para>
+        ///         Unlike sixel, a kitty picture is not painted into the character cells — it is an object the terminal
+        ///         keeps in a layer of its own, which survives anything done to the text underneath it. So a picture is
+        ///         not replaced by drawing another over it; both are simply there, the newer one merely on top, and a
+        ///         slideshow would stack every slide it ever showed (and leak each one's pixels, since nothing frees
+        ///         them). Erasing rows cannot help — that is text, and text is not what is on screen.
+        ///     </para>
+        ///     <para>
+        ///         <c>a=d</c> deletes; <c>d=C</c> means "every placement overlapping the cursor", which is precisely the
+        ///         picture this one is about to replace and nothing else — an application drawing several pictures in
+        ///         one frame puts them at different cursor positions, so they do not delete each other. The capital
+        ///         letter is what also frees the pixel data once no placement of it remains.
+        ///     </para>
+        /// </summary>
+        private static readonly string _replacePictureAtCursor = Escape + "_Ga=d,d=C" + Escape + "\\";
+
+        /// <summary>
         ///     Initializes a new instance of the <see cref="KittyImageRenderer" /> class.
         /// </summary>
         /// <param name="cellPixelWidth">
@@ -78,7 +96,7 @@ namespace WolfCurses.Graphics
                 pixels = ImageFit.Flatten(pixels, options.BackgroundColor.Value);
 
             var rows = Math.Max(1, (pixels.Height + CellPixelHeight - 1) / CellPixelHeight);
-            var payload = Encode(pixels);
+            var payload = _replacePictureAtCursor + Encode(pixels);
             return AnsiGraphics.PayloadBlock(payload, rows);
         }
 
