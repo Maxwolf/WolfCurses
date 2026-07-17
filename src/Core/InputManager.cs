@@ -12,6 +12,15 @@ namespace WolfCurses.Core
     ///     Deals with keep track of input to the simulation via whatever form that may end up taking. The default
     ///     implementation is a text user interface (TUI) which allows for the currently accepted commands to be seen and only
     ///     then accepted.
+    ///     <para>
+    ///         Console keys are read automatically: on every system tick this drains everything waiting in the
+    ///         console's own input buffer and routes it the standard way (<see cref="SendConsoleKey" />) — so a
+    ///         console host just pumps <see cref="SimulationApp.OnTick" /> and typing works, with nothing to wire.
+    ///         A host that wants to read keys itself — custom keybindings, input from somewhere that is not the
+    ///         console — sets <see cref="ReadsConsoleInput" /> to false and feeds the same public methods the
+    ///         automatic path uses. Headless is handled without being asked: with input redirected, or no console
+    ///         at all, nothing is ever read.
+    ///     </para>
     /// </summary>
     public sealed class InputManager : Module.Module
     {
@@ -43,6 +52,12 @@ namespace WolfCurses.Core
         private Queue<ConsoleKey> _keyQueue;
 
         /// <summary>
+        ///     Set when reading the console failed despite input not reporting as redirected — an unusual host whose
+        ///     console cannot be asked for keys. Remembered so the failure costs one exception ever, not one per tick.
+        /// </summary>
+        private bool _consoleUnreadable;
+
+        /// <summary>
         ///     Initializes a new instance of the <see cref="InputManager" /> class.
         /// </summary>
         /// <param name="simUnit">Core simulation which is controlling the window manager.</param>
@@ -52,12 +67,29 @@ namespace WolfCurses.Core
             _commandQueue = new Queue<string>();
             _keyQueue = new Queue<ConsoleKey>();
             InputBuffer = string.Empty;
+            ReadsConsoleInput = true;
         }
 
         /// <summary>
         ///     Input buffer that we will use to hold characters until need to send them to simulation.
         /// </summary>
         public string InputBuffer { get; private set; }
+
+        /// <summary>
+        ///     Whether this manager reads the console's own key buffer on every system tick (the default). Set false
+        ///     when the host wants to own key reading — custom keybindings, keys that mean something to the host
+        ///     before the simulation sees them, or input arriving from somewhere that is not a console — and feed
+        ///     keys in through <see cref="SendConsoleKey" /> (the same routing the automatic path uses) or the
+        ///     individual methods it is built from. With input redirected or no console attached the automatic read
+        ///     already does nothing, so headless hosts do not need to touch this.
+        /// </summary>
+        public bool ReadsConsoleInput { get; set; }
+
+        /// <summary>
+        ///     Where the automatic read gets keys instead of the real console, returning null when none are waiting.
+        ///     Test seam: the real path needs a console with keys in it, which a test host has no way to arrange.
+        /// </summary>
+        internal Func<ConsoleKeyInfo?> ConsoleKeySource { get; set; }
 
         /// <summary>
         ///     Fired when the simulation is closing and needs to clear out any data structures that it created so the program can
@@ -93,19 +125,115 @@ namespace WolfCurses.Core
         /// </param>
         public override void OnTick(bool systemTick, bool skipDay = false)
         {
+            // The console is read before anything is dispatched, so a key is acted on — and the frame reflecting it
+            // rendered — in the very turn it arrived rather than the next one. System ticks only: simulation ticks
+            // are the deterministic kind tests drive directly, and reading a live console from one would make them
+            // depend on whatever happened to be typed.
+            if (systemTick)
+                ReadConsoleKeys();
+
             // Key presses first, and all of them rather than one a tick: they are moments rather than instructions, so a
             // second one waiting does not replace the first, and anything holding a key down would fall behind forever
             // if only one were spent per tick. Ahead of the early return below on purpose — a tick with no commands in
             // it is still a tick, and was the obvious way to lose every key press in a screen that has no commands.
+            //
+            // Dequeue BEFORE the null-conditional dispatch: `FocusedWindow?.OnKeyPressed(_keyQueue.Dequeue())` skips
+            // evaluating its argument when there is no window at all, which left the queue full and this loop spinning
+            // forever. That was unreachable while hosts only sent keys at windows they could see; it became real the
+            // moment this class started reading the console itself, because a key can now arrive during the first
+            // second of a session — before OnFirstTick has attached any window. A key nobody has focus to hear is
+            // dropped, the same reasoning as ClearQueue: it has nothing to say to a window that was not there when it
+            // was pressed.
             while (_keyQueue.Count > 0)
-                _simUnit.WindowManager.FocusedWindow?.OnKeyPressed(_keyQueue.Dequeue());
+            {
+                var pressed = _keyQueue.Dequeue();
+                _simUnit.WindowManager.FocusedWindow?.OnKeyPressed(pressed);
+            }
 
             // Skip if there are no commands to tick.
             if (_commandQueue.Count <= 0)
                 return;
 
-            // Dequeue the next command to send and pass along to currently active game Windows if it exists.
-            _simUnit.WindowManager.FocusedWindow?.SendCommand(_commandQueue.Dequeue());
+            // Dequeue the next command to send and pass along to currently active game Windows if it exists. The same
+            // dequeue-first rule as the keys above — with no window the command is spent, not saved, or one typed
+            // before the first window existed would wait around and fire at whatever window appears later.
+            var command = _commandQueue.Dequeue();
+            _simUnit.WindowManager.FocusedWindow?.SendCommand(command);
+        }
+
+        /// <summary>
+        ///     Drains every key waiting in the console's own input buffer into the simulation.
+        ///     <para>
+        ///         WHILE it drains rather than taking one key per tick, and the difference is the entire feel of
+        ///         anything being steered. Windows repeats a held key about thirty times a second into the console's
+        ///         buffer; taking one per tick means the buffer only empties as fast as the host loop spins, and once
+        ///         a turn is slower than a thirtieth of a second the backlog is permanent — release the arrow key and
+        ///         the sprite keeps going for as long as it takes to pay off what piled up. Draining means what is
+        ///         left is only ever what was actually pressed since the last turn.
+        ///     </para>
+        /// </summary>
+        private void ReadConsoleKeys()
+        {
+            // The host said it reads keys itself; nothing here may compete with it for them.
+            if (!ReadsConsoleInput)
+                return;
+
+            // The test seam, when installed, stands in for the console entirely.
+            var source = ConsoleKeySource;
+            if (source != null)
+            {
+                for (var fed = source(); fed.HasValue; fed = source())
+                    SendConsoleKey(fed.Value);
+                return;
+            }
+
+            // Redirected input has no key buffer to poll — that is not an error, it is a headless host (tests, a
+            // pipe, a game engine), where input arrives through the public methods instead.
+            if (_consoleUnreadable || Console.IsInputRedirected)
+                return;
+
+            try
+            {
+                while (Console.KeyAvailable)
+                    SendConsoleKey(Console.ReadKey(true));
+            }
+            catch (InvalidOperationException)
+            {
+                // A console that reports as attached but cannot actually be read. Remember and stop asking — the
+                // host still has every public method, so this quietly becomes a feed-it-yourself simulation.
+                _consoleUnreadable = true;
+            }
+        }
+
+        /// <summary>
+        ///     Routes one console key the standard way: ENTER submits the input buffer as a command, BACKSPACE removes
+        ///     the last buffered character, and every other key both offers its character to the input buffer (which
+        ///     takes only printable text) and is reported to the focused window via <see cref="SendKeyPress" /> — both,
+        ///     because they are different paths on purpose: a letter is text for the prompt, an arrow key has no
+        ///     character to give and would otherwise vanish, and a form listening for keys wants to hear each of them
+        ///     either way.
+        ///     <para>
+        ///         This is what the automatic console read calls per key, public so a host that reads keys itself
+        ///         (<see cref="ReadsConsoleInput" /> set false, or input from somewhere else entirely) gets identical
+        ///         behavior by handing them here.
+        ///     </para>
+        /// </summary>
+        /// <param name="keyInfo">The key exactly as the console reported it.</param>
+        public void SendConsoleKey(ConsoleKeyInfo keyInfo)
+        {
+            switch (keyInfo.Key)
+            {
+                case ConsoleKey.Enter:
+                    SendInputBufferAsCommand();
+                    break;
+                case ConsoleKey.Backspace:
+                    RemoveLastCharOfInputBuffer();
+                    break;
+                default:
+                    AddCharToInputBuffer(keyInfo.KeyChar);
+                    SendKeyPress(keyInfo.Key);
+                    break;
+            }
         }
 
         /// <summary>

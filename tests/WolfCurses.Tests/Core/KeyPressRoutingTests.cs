@@ -137,6 +137,28 @@ namespace WolfCurses.Tests.Core
         }
 
         [Fact]
+        public void KeysPressedBeforeAnyWindowExists_AreDroppedWithoutHanging()
+        {
+            // The dispatch loop dequeues before the null-conditional dispatch, deliberately:
+            // `FocusedWindow?.OnKeyPressed(_keyQueue.Dequeue())` never evaluates the dequeue when there is no window,
+            // so the queue stayed full and the loop span forever. Unreachable while hosts only sent keys at windows
+            // they could see; the automatic console read made it real, because a key can arrive during the first
+            // second of a session, before OnFirstTick has attached anything. A regression here does not fail — it
+            // hangs, which is the loudest a test can be.
+            var app = new TestSimulationApp();
+            app.InputManager.SendKeyPress(ConsoleKey.A);
+
+            app.OnTick(false);
+
+            // And the key was spent, not saved: a window appearing later hears nothing stale.
+            app.WindowManager.Add(typeof(TestWindow));
+            app.WindowManager.FocusedWindow.SetForm(typeof(KeyRecordingForm));
+            app.OnTick(false);
+
+            Assert.Empty(((KeyRecordingForm) app.WindowManager.FocusedWindow.CurrentForm).ReceivedKeys);
+        }
+
+        [Fact]
         public void ClearingTheQueueDropsKeysThatNeverGotDelivered()
         {
             // Session reset: a key pressed at the old simulation has nothing to say to the new one.

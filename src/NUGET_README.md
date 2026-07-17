@@ -39,25 +39,12 @@ var app = new ExampleApp();
 
 while (!app.IsClosing)
 {
+    // Keys are read and routed automatically too, at the start of every tick: ENTER submits the typed
+    // command, BACKSPACE edits it, and every other key both fills the prompt and reaches the focused
+    // form. To own key reading yourself, set app.InputManager.ReadsConsoleInput = false and hand keys
+    // to app.InputManager.SendConsoleKey(key) — the identical routing — from wherever you get them.
     app.OnTick(true);
-
-    // Forward keystrokes into the input buffer.
-    if (Console.KeyAvailable)
-    {
-        var key = Console.ReadKey(true);
-        switch (key.Key)
-        {
-            case ConsoleKey.Enter:
-                app.InputManager.SendInputBufferAsCommand();
-                break;
-            case ConsoleKey.Backspace:
-                app.InputManager.RemoveLastCharOfInputBuffer();
-                break;
-            default:
-                app.InputManager.AddCharToInputBuffer(key.KeyChar);
-                break;
-        }
-    }
+    Thread.Sleep(1);
 }
 ```
 
