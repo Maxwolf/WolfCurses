@@ -77,9 +77,10 @@ namespace WolfCurses.Example
         [Description("Password input (masked).")] PasswordDemo = 13,
 
         /// <summary>
-        ///     Slideshow drawn with a chosen renderer, to compare half blocks against the true-pixel protocols.
+        ///     Slideshow drawn with a render type the user forces, anywhere from a terminal's real pixels down to the
+        ///     colorless ASCII fallback, so every rung of the ladder can be seen on the same pictures.
         /// </summary>
-        [Description("True-pixel slideshow (sixel / kitty).")] TruePixelSlideshow = 14,
+        [Description("Force slideshow render type (pixels down to ASCII).")] ForceRenderType = 14,
 
         /// <summary>
         ///     Closes the console application.

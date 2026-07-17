@@ -34,7 +34,7 @@ dotnet build WolfCurses.sln
 
 ## Example Implementation ##
 
-A runnable example console application lives in this repository at [`example/WolfCurses.Example`](example/WolfCurses.Example). It is its own project (referencing the library directly) and shows a few different menus, windows, and forms — plus a WolfCurses logo splash on startup, **Slideshow** / **Compositing** menu items that display the `media/` images (and a transparent penguin composited over them), and **file/folder browser** menu items that pick an image to display or a folder to report. Run it with:
+A runnable example console application lives in this repository at [`example/WolfCurses.Example`](example/WolfCurses.Example). It is its own project (referencing the library directly) and shows a few different menus, windows, and forms — plus a WolfCurses logo splash on startup, **Slideshow** / **Compositing** menu items that display the `media/` images (and a transparent penguin composited over them), a **Force slideshow render type** item that redraws those same photos with every render type from a terminal's real pixels down to colorless ASCII, and **file/folder browser** menu items that pick an image to display or a folder to report. Run it with:
 
 ```cmd
 dotnet run --project example/WolfCurses.Example
@@ -98,6 +98,8 @@ ImageRenderers.Default = ImageRenderers.For(AnsiConsole.ProbeGraphicsProtocol())
 ```
 
 `ProbeGraphicsProtocol` writes a query and reads the terminal's reply off standard input, so it must run **before your input loop starts** — otherwise the two steal each other's characters. Nothing inside the library reads input on its own (`InputManager` is fed by your host), so that is the only requirement. It never throws, is bounded by a timeout, and falls back to the environment guess if the terminal says nothing useful. The example app does exactly this in `Program.cs`.
+
+To see what any of this looks like on your own terminal, the example's **Force slideshow render type** menu item redraws the same photos with each render type in turn — kitty, sixel, half blocks in true color / 256 colors / grayscale, and the colorless ASCII fallback — alongside an *Auto* choice that reports whichever one the probe settled on. Forcing a protocol the terminal does not speak is instructive rather than harmful: you get the screenful of escape-sequence garbage that detection exists to avoid.
 
 If you subscribe your own handler to `ScreenBufferDirtyEvent` instead of using `ConsolePresenter`, call `AnsiGraphics.StripMarkers(frame)` before writing it — true-pixel renderers mark the rows a picture covers so the presenter knows not to erase through them, and those markers must not reach the terminal. Frames without images pass through untouched.
 

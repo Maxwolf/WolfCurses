@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using WolfCurses.Graphics;
 using WolfCurses.Tests.Support;
 using Xunit;
@@ -15,6 +17,9 @@ namespace WolfCurses.Tests.Graphics
         private const char ESC = (char) 27;
         private const char Upper = '▀';
         private const char Lower = '▄';
+
+        /// <summary>Mirror of the renderer's own brightness ramp, ordered darkest to lightest.</summary>
+        private const string AsciiRamp = " .:-=+*#%@";
 
         private static string Fg(int r, int g, int b) => $"{ESC}[38;2;{r};{g};{b}m";
         private static string Bg(int r, int g, int b) => $"{ESC}[48;2;{r};{g};{b}m";
@@ -114,6 +119,50 @@ namespace WolfCurses.Tests.Graphics
             var image = Cell(new Rgba32(0, 0, 0, 0), new Rgba32(0, 0, 0, 0));
             var result = AnsiImageRenderer.Render(image, Opts(1, 1, AnsiColorModeEnum.None));
             Assert.Equal(" ", result);
+        }
+
+        [Fact]
+        public void Render_GrayscaleMode_UsesGrayRampEscapes()
+        {
+            // Deliberately the same red-over-black cell as the Palette256 test above, so the two downgrades can be
+            // compared directly: red's luma (76) lands on the 24-step gray ramp at 239, where the color cube kept it
+            // red at 196. Black resolves to 16 in both, coming from the cube rather than the ramp's washed-out
+            // darkest step.
+            var image = Cell(new Rgba32(255, 0, 0, 255), new Rgba32(0, 0, 0, 255));
+            var result = AnsiImageRenderer.Render(image, Opts(1, 1, AnsiColorModeEnum.Grayscale));
+            Assert.Equal($"{ESC}[38;5;239m{ESC}[48;5;16m{Upper}{Reset}", result);
+        }
+
+        [Fact]
+        public void Render_NoneMode_MultiRowImage_IsPlainTextWithNoEscapes()
+        {
+            // The bottom rung of the fallback ladder promises "regular console text": a colorless terminal gets shaded
+            // characters and nothing it cannot print. Worth pinning on a multi-row image because the single-cell cases
+            // above cannot see line structure, and a stray escape or trailing reset only shows up once there is more
+            // than one cell to separate.
+            var image = new PixelBuffer(3, 6);
+            for (var y = 0; y < 6; y++)
+            {
+                for (var x = 0; x < 3; x++)
+                {
+                    var level = (byte) (y * 51);
+                    image.SetPixel(x, y, new Rgba32(level, level, level, 255));
+                }
+            }
+
+            var result = AnsiImageRenderer.Render(image, Opts(3, 3, AnsiColorModeEnum.None));
+            var lines = result.Split(Environment.NewLine);
+
+            // Ordinal on purpose: the default culture-sensitive search treats ESC as a zero-weight character and
+            // "finds" it at position 0 of any string at all, so this assertion would pass no matter what.
+            Assert.DoesNotContain(ESC.ToString(), result, StringComparison.Ordinal);
+            Assert.Equal(3, lines.Length);
+            Assert.All(lines, line => Assert.Equal(3, line.Length));
+
+            // Each row averages its two stacked pixels, so the ramp climbs as the gradient does.
+            Assert.All(lines, line => Assert.Single(line.Distinct()));
+            Assert.True(AsciiRamp.IndexOf(lines[0][0]) < AsciiRamp.IndexOf(lines[2][0]),
+                "a brightening gradient should climb the ramp from dark to light");
         }
 
         [Fact]
