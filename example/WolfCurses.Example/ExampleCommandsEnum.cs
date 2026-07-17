@@ -88,8 +88,13 @@ namespace WolfCurses.Example
         [Description("Show animated GIF (plays on loop).")] ShowAnimatedGif = 15,
 
         /// <summary>
+        ///     Bounces the DVD logo around a photograph like the screensaver did: one sprite, moving, not animated.
+        /// </summary>
+        [Description("Sprite Test (Basic) - DVD logo bounce.")] SpriteTestBasic = 16,
+
+        /// <summary>
         ///     Closes the console application.
         /// </summary>
-        [Description("End")] CloseSimulation = 16
+        [Description("End")] CloseSimulation = 17
     }
 }
