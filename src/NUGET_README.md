@@ -71,7 +71,11 @@ Display images (PNG with transparency, baseline and progressive JPEG, and more) 
 ```csharp
 using WolfCurses.Graphics;
 
-// Once at start-up: enables VT processing + UTF-8 output so the escapes/glyphs render (Windows).
+// Once at start-up: this package has no dependencies, so it ships no image decoder — choose one.
+// StbImageDecoder is a ~30-line adapter over StbImageSharp; copy it from the example app.
+ImageDecoders.Default = new StbImageDecoder();
+
+// Also once: enables VT processing + UTF-8 output so the escapes/glyphs render (Windows).
 // Already done for you if you create a ConsolePresenter, as in the usage snippet above.
 AnsiConsole.Enable();
 
@@ -80,7 +84,9 @@ private readonly string _logo = AnsiImage.RenderFile("media/logo.jpg");
 public override string OnRenderWindow() => _logo;
 ```
 
-By default the image is scaled to fit the console window while keeping its aspect ratio (no terminal resizing needed), transparent pixels let the background show through, and true color degrades gracefully to 256-color/grayscale/ASCII. Set `AnsiImageOptions.Fit` to `Cover`, `Stretch`, or `ScaleDown` to fill a scene instead of letterboxing, and composite a transparent image onto another with `background.Overlay(foreground)`. Options live on `AnsiImageOptions`; decoding is pluggable via `IImageDecoder` / `ImageDecoders.Default` (the built-in decoder is the managed, public-domain StbImageSharp).
+By default the image is scaled to fit the console window while keeping its aspect ratio (no terminal resizing needed), transparent pixels let the background show through, and true color degrades gracefully to 256-color/grayscale/ASCII. Set `AnsiImageOptions.Fit` to `Cover`, `Stretch`, or `ScaleDown` to fill a scene instead of letterboxing, and composite a transparent image onto another with `background.Overlay(foreground)`.
+
+**Decoding is yours to choose.** This package has **zero dependencies**, and reading PNG/JPEG bytes needs a third-party library — so rather than inflict one on every consumer, WolfCurses defines the `IImageDecoder` seam (a single method) and lets you fill it with whatever you already use. The example app's [StbImageSharp](https://github.com/StbSharp/StbImageSharp) adapter is managed, public-domain, and free of native binaries, so it runs everywhere .NET does: add the package, copy `Graphics/StbImageDecoder.cs`, assign `ImageDecoders.Default`. Loading an image before assigning one throws an error that spells this out, and `AnsiImage.FromPixels` needs no decoder at all.
 
 ### Real pixels: sixel and kitty
 
@@ -92,7 +98,7 @@ ImageRenderers.Default = ImageRenderers.ForCurrentTerminal();
 
 `SixelImageRenderer` (xterm with sixel, foot, WezTerm, mlterm, contour, recent Konsole/VTE, iTerm2, Windows Terminal 1.22+) reduces the picture to a per-image palette chosen by median cut. `KittyImageRenderer` (kitty, WezTerm, Ghostty) sends full 24-bit color with a real alpha channel. Anything unproven — including tmux/screen — falls back to `HalfBlockImageRenderer`, because guessing wrong the safe way costs quality while guessing wrong the other way prints escape sequences as garbage.
 
-`ForCurrentTerminal()` only reads environment variables, so it cannot hang or disturb input. xterm and Windows Terminal can't be settled that way (no version is published); to ask the terminal itself, call `ImageRenderers.For(AnsiConsole.ProbeGraphicsProtocol())` **before your input loop starts**. Everything is pure managed code: no native binaries, and the package's only dependency is still StbImageSharp.
+`ForCurrentTerminal()` only reads environment variables, so it cannot hang or disturb input. xterm and Windows Terminal can't be settled that way (no version is published); to ask the terminal itself, call `ImageRenderers.For(AnsiConsole.ProbeGraphicsProtocol())` **before your input loop starts**. Everything is pure managed code: no native binaries, and no package dependencies at all.
 
 ## Progress bars & graphs
 

@@ -13,6 +13,13 @@ namespace WolfCurses.Tests.Support
     {
         private static readonly Lazy<string> _repoRootLazy = new(FindRepoRoot);
 
+        /// <summary>
+        ///     The decoder the integration tests load fixtures with. Passed explicitly to
+        ///     <see cref="WolfCurses.Graphics.AnsiImage.FromFile" /> rather than installed as the process-wide default,
+        ///     so the library's unconfigured stand-in stays in place for the tests that assert its behavior.
+        /// </summary>
+        public static readonly StbImageDecoder Decoder = new();
+
         /// <summary>The repository root directory, or null if it could not be located.</summary>
         public static string RepoRoot => _repoRootLazy.Value;
 

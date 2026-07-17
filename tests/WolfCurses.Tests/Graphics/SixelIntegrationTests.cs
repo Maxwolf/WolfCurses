@@ -23,7 +23,7 @@ namespace WolfCurses.Tests.Graphics
 
         private static string RenderMedia(string fileName, AnsiImageOptions options, SixelImageRenderer renderer = null)
         {
-            var image = AnsiImage.FromFile(TestImages.Media(fileName));
+            var image = AnsiImage.FromFile(TestImages.Media(fileName), TestImages.Decoder);
             return (renderer ?? new SixelImageRenderer()).Render(image.Pixels, options);
         }
 

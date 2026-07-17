@@ -6,11 +6,15 @@ using Xunit;
 namespace WolfCurses.Tests.Graphics
 {
     /// <summary>
-    ///     End-to-end tests against the real fixture images at the repository root: they prove the default
-    ///     StbImageSharp decoder actually handles the formats in the media folder — including
-    ///     <em>progressive</em> JPEG (image_001, image_003) and a PNG with an alpha channel (the transparent Tux) — and
-    ///     that the full decode-plus-render pipeline produces sane output. They skip (rather than fail) when the
-    ///     repository fixtures are not present.
+    ///     End-to-end tests against the real fixture images at the repository root: they prove the whole
+    ///     decode-plus-render pipeline produces sane output on the formats in the media folder — including
+    ///     <em>progressive</em> JPEG (image_001, image_003) and a PNG with an alpha channel (the transparent Tux).
+    ///     They skip (rather than fail) when the repository fixtures are not present.
+    ///     <para>
+    ///         The decoder is passed in explicitly (<see cref="TestImages.Decoder" />) because the library ships none:
+    ///         these tests bring their own exactly as a consuming application does, which incidentally makes them a
+    ///         working demonstration of the <see cref="IImageDecoder" /> seam carrying real files end to end.
+    ///     </para>
     /// </summary>
     public class AnsiImageIntegrationTests
     {
@@ -31,7 +35,7 @@ namespace WolfCurses.Tests.Graphics
         {
             Assert.SkipUnless(TestImages.Available, "Repository image fixtures are not present.");
 
-            var image = AnsiImage.FromFile(TestImages.Media(fileName));
+            var image = AnsiImage.FromFile(TestImages.Media(fileName), TestImages.Decoder);
 
             Assert.Equal(width, image.Width);
             Assert.Equal(height, image.Height);
@@ -43,7 +47,7 @@ namespace WolfCurses.Tests.Graphics
             Assert.SkipUnless(TestImages.Available && File.Exists(TestImages.Logo),
                 "Project logo fixture is not present.");
 
-            var image = AnsiImage.FromFile(TestImages.Logo);
+            var image = AnsiImage.FromFile(TestImages.Logo, TestImages.Decoder);
 
             Assert.True(image.Width > 0);
             Assert.True(image.Height > 0);
@@ -58,7 +62,7 @@ namespace WolfCurses.Tests.Graphics
         {
             Assert.SkipUnless(TestImages.Available, "Repository image fixtures are not present.");
 
-            var image = AnsiImage.FromFile(TestImages.Media(fileName));
+            var image = AnsiImage.FromFile(TestImages.Media(fileName), TestImages.Decoder);
             var (cols, rows) = AnsiImageRenderer.ComputeTargetCells(image.Width, image.Height, _fixedBounds);
 
             var ansi = image.ToAnsi(_fixedBounds);
@@ -76,7 +80,7 @@ namespace WolfCurses.Tests.Graphics
             Assert.SkipUnless(TestImages.Available, "Repository image fixtures are not present.");
 
             // A JPEG has no alpha channel, so every cell has two opaque pixels and no cell degrades to a bare space.
-            var ansi = AnsiImage.FromFile(TestImages.Media("image_002.jpg")).ToAnsi(_fixedBounds);
+            var ansi = AnsiImage.FromFile(TestImages.Media("image_002.jpg"), TestImages.Decoder).ToAnsi(_fixedBounds);
             Assert.DoesNotContain(' ', ansi);
         }
 
@@ -90,7 +94,7 @@ namespace WolfCurses.Tests.Graphics
 
             // The Tux image has fully transparent corners; without a background those cells become spaces so the
             // terminal shows through. This proves the alpha channel is honored end to end.
-            var image = AnsiImage.FromFile(path);
+            var image = AnsiImage.FromFile(path, TestImages.Decoder);
             var ansi = image.ToAnsi(_fixedBounds);
             Assert.Contains(' ', ansi);
 

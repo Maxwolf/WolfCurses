@@ -12,6 +12,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The image decoder, which the library deliberately does not ship: WolfCurses defines the IImageDecoder seam
+         and leaves the dependency to the application. StbImageSharp is managed and public-domain with no native
+         binaries, so it runs anywhere .NET does. Graphics/StbImageDecoder.cs adapts it; Program.Main installs it. -->
+    <PackageReference Include="StbImageSharp" Version="2.30.15" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Copy the repository's shared media images next to the executable (into an images/ folder) so the logo
          splash, slideshow, and compositing demos can load them at runtime. -->
     <None Include="..\..\media\*.jpg" Link="images\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />

@@ -7,12 +7,16 @@ namespace WolfCurses.Graphics
 {
     /// <summary>
     ///     Turns an encoded image (the bytes of a PNG, JPEG, and so on) into a decoded <see cref="PixelBuffer" /> of
-    ///     RGBA pixels. The rest of the ANSI graphics feature only ever deals in <see cref="PixelBuffer" />, so swapping
-    ///     the decoder is the single seam a consuming application needs to touch to bring its own image loading library
-    ///     (for example if it wants to avoid the default third-party dependency, or support an exotic format).
+    ///     RGBA pixels. The rest of the ANSI graphics feature only ever deals in <see cref="PixelBuffer" />, so this is
+    ///     the single seam an application implements to bring its own image loading library.
+    ///     <para>
+    ///         The library ships no implementation — decoding real image formats means a third-party dependency, and
+    ///         which one is the application's call. Assign yours to <see cref="ImageDecoders.Default" /> at start-up,
+    ///         or pass it per-call to <see cref="AnsiImage.FromFile" /> and friends. The example app adapts
+    ///         StbImageSharp (managed, public domain, no native binaries) in about thirty lines.
+    ///     </para>
     /// </summary>
     /// <seealso cref="ImageDecoders" />
-    /// <seealso cref="StbImageDecoder" />
     public interface IImageDecoder
     {
         /// <summary>

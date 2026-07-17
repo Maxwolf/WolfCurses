@@ -29,7 +29,7 @@ namespace WolfCurses.Example
         /// <summary>
         ///     Slideshow that cycles through every image in the media folder using ANSI graphics.
         /// </summary>
-        [Description("Slideshow of all media images (ANSI graphics).")] Slideshow = 4,
+        [Description("Slideshow of all media images.")] Slideshow = 4,
 
         /// <summary>
         ///     Slideshow with the transparent penguin composited on top of each media image.
