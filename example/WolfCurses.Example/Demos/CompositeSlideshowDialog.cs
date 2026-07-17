@@ -3,7 +3,6 @@
 
 using System;
 using System.IO;
-using System.Linq;
 using WolfCurses.Graphics;
 using WolfCurses.Window;
 using WolfCurses.Window.Form;
@@ -30,16 +29,13 @@ namespace WolfCurses.Example.Demos
         /// <inheritdoc />
         protected override (string[] slides, string[] captions) BuildSlides()
         {
-            var files = DemoImages.ImageFiles();
-            var penguinPath = files.FirstOrDefault(f =>
-                Path.GetFileName(f).Equals(DemoImages.PenguinFileName, StringComparison.OrdinalIgnoreCase));
-
-            // Every image except the penguin itself is used as a background to place the penguin over.
-            var backgrounds = files.Where(f => f != penguinPath).ToArray();
-            if (penguinPath == null || backgrounds.Length == 0)
+            // The penguin is asked for by name rather than picked out of the slideshow list, which no longer contains
+            // it: the list is the photographs, and the penguin is the thing being put on top of them.
+            var backgrounds = DemoImages.SlideshowImages();
+            if (backgrounds.Length == 0 || !File.Exists(DemoImages.PenguinPath))
                 return (Array.Empty<string>(), Array.Empty<string>());
 
-            var penguin = AnsiImage.FromFile(penguinPath);
+            var penguin = AnsiImage.FromFile(DemoImages.PenguinPath);
             var options = DemoImages.FitOptions();
 
             var slides = new string[backgrounds.Length];

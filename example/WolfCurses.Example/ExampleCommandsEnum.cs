@@ -83,8 +83,13 @@ namespace WolfCurses.Example
         [Description("Force slideshow render type (pixels down to ASCII).")] ForceRenderType = 14,
 
         /// <summary>
+        ///     Plays the animated GIF from the media folder on a loop, at the speed the file asks for.
+        /// </summary>
+        [Description("Show animated GIF (plays on loop).")] ShowAnimatedGif = 15,
+
+        /// <summary>
         ///     Closes the console application.
         /// </summary>
-        [Description("End")] CloseSimulation = 15
+        [Description("End")] CloseSimulation = 16
     }
 }
