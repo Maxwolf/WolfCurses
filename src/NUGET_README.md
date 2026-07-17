@@ -82,6 +82,16 @@ public override string OnRenderWindow() => _logo;
 
 By default the image is scaled to fit the console window while keeping its aspect ratio (no terminal resizing needed), transparent pixels let the background show through, and true color degrades gracefully to 256-color/grayscale/ASCII. Set `AnsiImageOptions.Fit` to `Cover`, `Stretch`, or `ScaleDown` to fill a scene instead of letterboxing, and composite a transparent image onto another with `background.Overlay(foreground)`. Options live on `AnsiImageOptions`; decoding is pluggable via `IImageDecoder` / `ImageDecoders.Default` (the built-in decoder is the managed, public-domain StbImageSharp).
 
+### Real pixels: sixel and kitty
+
+Half blocks get two pixels per character cell and work anywhere. Terminals speaking a true-pixel protocol can do roughly two hundred times better, and how pixels become output is a seam:
+
+```csharp
+ImageRenderers.Default = new SixelImageRenderer();   // or new KittyImageRenderer()
+```
+
+`SixelImageRenderer` (xterm with sixel, foot, WezTerm, mlterm, contour, Windows Terminal 1.22+) reduces the picture to a per-image palette chosen by median cut. `KittyImageRenderer` (kitty, WezTerm, Ghostty, Konsole) sends full 24-bit color with a real alpha channel. Both are opt-in on purpose — detecting support means reading an escape-sequence reply, which would race the library's own input handling — so `HalfBlockImageRenderer` stays the default. Everything is pure managed code: no native binaries, and the package's only dependency is still StbImageSharp.
+
 ## Progress bars & graphs
 
 Drop-in display widgets in `WolfCurses.Window.Control` turn data into text you return from a window/form's render — no windows to register.

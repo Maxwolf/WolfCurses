@@ -84,16 +84,34 @@ namespace WolfCurses.Graphics
             return FromStream(stream, decoder);
         }
 
-        /// <summary>Renders this image to an ANSI string using the supplied options (or the defaults).</summary>
+        /// <summary>
+        ///     Renders this image to a string using the supplied options (or the defaults), drawn by whichever
+        ///     <see cref="IImageRenderer" /> is installed as <see cref="ImageRenderers.Default" /> — half-block text
+        ///     unless the application changed it at start-up.
+        /// </summary>
         public string ToAnsi(AnsiImageOptions options = null)
         {
-            return AnsiImageRenderer.Render(Pixels, options);
+            return ImageRenderers.Default.Render(Pixels, options);
         }
 
-        /// <summary>Renders this image to an ANSI string bounded to the given column and row budget.</summary>
+        /// <summary>
+        ///     Renders this image with an explicitly chosen <see cref="IImageRenderer" />, ignoring
+        ///     <see cref="ImageRenderers.Default" />. Use this to draw one image differently from the rest — a sixel
+        ///     photograph on a screen whose other images are half-block, say — without disturbing the global default.
+        /// </summary>
+        /// <param name="options">Rendering options, or null to use the defaults.</param>
+        /// <param name="renderer">The renderer to draw with.</param>
+        public string ToAnsi(AnsiImageOptions options, IImageRenderer renderer)
+        {
+            if (renderer == null)
+                throw new ArgumentNullException(nameof(renderer));
+            return renderer.Render(Pixels, options);
+        }
+
+        /// <summary>Renders this image bounded to the given column and row budget, using the default renderer.</summary>
         public string ToAnsi(int maxColumns, int maxRows)
         {
-            return AnsiImageRenderer.Render(Pixels, new AnsiImageOptions
+            return ToAnsi(new AnsiImageOptions
             {
                 MaxColumns = maxColumns,
                 MaxRows = maxRows

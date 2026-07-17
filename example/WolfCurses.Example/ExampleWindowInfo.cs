@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using WolfCurses.Graphics;
 using WolfCurses.Window;
 
 namespace WolfCurses.Example
@@ -33,6 +34,15 @@ namespace WolfCurses.Example
         ///     shared result dialog can show it back to the user.
         /// </summary>
         public string LastResult { get; set; }
+
+        /// <summary>
+        ///     The renderer the user picked for the true-pixel slideshow, and a label for it. Held here so the choice
+        ///     made in the menu's picker survives into the form that draws the slides.
+        /// </summary>
+        public IImageRenderer SelectedImageRenderer { get; set; }
+
+        /// <summary>Human-readable name of <see cref="SelectedImageRenderer" />, shown as the slideshow's title.</summary>
+        public string SelectedImageRendererName { get; set; }
 
         /// <summary>
         ///     Shows example of using the user data class to generate a piece of data that can be shown on the main interface and

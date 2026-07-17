@@ -6,6 +6,7 @@ using System.Text;
 using WolfCurses.Controls;
 using WolfCurses.Example.CustomInput;
 using WolfCurses.Example.Demos;
+using WolfCurses.Graphics;
 using WolfCurses.Example.Prompt;
 using WolfCurses.Example.Question;
 using WolfCurses.Window;
@@ -53,6 +54,7 @@ namespace WolfCurses.Example
             AddCommand(ShowMessageBox, ExampleCommandsEnum.MessageBoxDemo);
             AddCommand(TextInput, ExampleCommandsEnum.TextInputDemo);
             AddCommand(PasswordInput, ExampleCommandsEnum.PasswordDemo);
+            AddCommand(ShowTruePixelSlideshow, ExampleCommandsEnum.TruePixelSlideshow);
             AddCommand(CloseSimulation, ExampleCommandsEnum.CloseSimulation);
 
             // Flex the WolfCurses logo as an ANSI graphics splash before the menu; pressing ENTER reveals it.
@@ -89,6 +91,39 @@ namespace WolfCurses.Example
         private void ShowProgressAndGraphs()
         {
             SetForm(typeof (ProgressGraphsDialog));
+        }
+
+        /// <summary>
+        ///     Runs the slideshow through a renderer of the user's choosing. The protocol is picked rather than detected
+        ///     on purpose: asking a terminal what it supports means reading back an escape-sequence reply, which would
+        ///     race the simulation's own input handling — so a terminal that does not understand sixel or kitty prints
+        ///     the sequence as garbage instead of degrading. Letting the user choose keeps that an informed decision.
+        /// </summary>
+        private void ShowTruePixelSlideshow()
+        {
+            var choices = new[]
+            {
+                "Half blocks - works in any color terminal",
+                "Sixel - xterm, foot, WezTerm, mlterm, Windows Terminal 1.22+",
+                "Kitty - kitty, WezTerm, Ghostty, Konsole"
+            };
+
+            SelectList.Choose(
+                SimUnit,
+                "Draw the slideshow with which renderer?",
+                choices,
+                index =>
+                {
+                    (UserData.SelectedImageRenderer, UserData.SelectedImageRendererName) = index switch
+                    {
+                        1 => ((IImageRenderer) new SixelImageRenderer(), "Sixel slideshow"),
+                        2 => (new KittyImageRenderer(), "Kitty slideshow"),
+                        _ => (new HalfBlockImageRenderer(), "Half-block slideshow")
+                    };
+
+                    SetForm(typeof (TruePixelSlideshowDialog));
+                },
+                () => ShowResult("Slideshow cancelled."));
         }
 
         private void SelectFromList()
