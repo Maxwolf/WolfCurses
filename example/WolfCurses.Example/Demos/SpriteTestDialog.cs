@@ -46,13 +46,28 @@ namespace WolfCurses.Example.Demos
         /// <summary>How long a frame lasts. Thirty a second is smooth and leaves the machine alone.</summary>
         private static readonly TimeSpan _frameLength = TimeSpan.FromMilliseconds(33);
 
+        /// <summary>
+        ///     How long the frame rate is averaged over before it is shown.
+        ///     <para>
+        ///         Long enough to be worth reading. Dividing one frame's time into a second gives a number that jumps
+        ///         several frames wide on any scheduling hiccup and cannot be read at all; averaging over a stretch this
+        ///         long costs nothing, still reacts within an eyeblink, and holds still enough to compare against.
+        ///     </para>
+        /// </summary>
+        private static readonly TimeSpan _samplePeriod = TimeSpan.FromMilliseconds(500);
+
         private readonly Stopwatch _clock = new();
+        private readonly Stopwatch _sampleClock = new();
 
         private int _bounces;
+        private TimeSpan _costThisSample;
         private string _current = string.Empty;
         private int _deltaX = 2;
         private int _deltaY = 1;
         private string _error;
+        private double _framesPerSecond;
+        private int _framesThisSample;
+        private double _millisecondsPerFrame;
         private AnsiImageOptions _options;
         private SpriteScene _scene;
         private Sprite _sprite;
@@ -72,6 +87,7 @@ namespace WolfCurses.Example.Demos
             ParentWindow.PromptText = "Press ENTER to return to the menu";
             Build();
             _clock.Restart();
+            _sampleClock.Restart();
         }
 
         /// <inheritdoc />
@@ -89,7 +105,9 @@ namespace WolfCurses.Example.Demos
 
             // Composed and rendered here rather than in OnRenderForm, which the scene graph calls on every one of those
             // thousands of ticks. This is the expensive part of the frame and it happens once per move.
+            var started = Stopwatch.GetTimestamp();
             _current = _scene.ToAnsi(_options);
+            Sample(Stopwatch.GetElapsedTime(started));
         }
 
         /// <inheritdoc />
@@ -100,7 +118,15 @@ namespace WolfCurses.Example.Demos
 
             var sb = new StringBuilder();
             sb.AppendLine();
-            sb.AppendLine($"Sprite Test (Basic)  —  DVD logo over image_001.jpg  ({_bounces} bounces)");
+            sb.AppendLine("Sprite Test (Basic)  —  DVD logo over image_001.jpg");
+
+            // Nothing to say until the first period is up, and a rate invented from one frame would be a lie told
+            // precisely.
+            var rate = _framesPerSecond > 0
+                ? $"{_framesPerSecond:F1} fps | {_millisecondsPerFrame:F2} ms/frame"
+                : "measuring...";
+
+            sb.AppendLine($"{rate} | {_scene.Width}x{_scene.Height} canvas | {_bounces} bounces");
             sb.AppendLine();
             sb.Append(_current);
             return sb.ToString();
@@ -110,6 +136,39 @@ namespace WolfCurses.Example.Demos
         public override void OnInputBufferReturned(string input)
         {
             ClearForm();
+        }
+
+        /// <summary>
+        ///     Folds one frame into the running measurements, and publishes them once a period is up.
+        ///     <para>
+        ///         The two numbers answer different questions and it is worth keeping them apart. <b>ms/frame</b> is what
+        ///         the work costs — composing the scene and rendering it to a string — and is the number
+        ///         <see cref="CanvasWidth" /> moves. <b>fps</b> is how often that work actually happened, which is
+        ///         governed by <see cref="_frameLength" /> and by how fast the host loop comes back round, so it should
+        ///         sit near thirty and say nothing about the cost at all. They only meet if a frame ever costs more than
+        ///         its budget, at which point fps falls and ms/frame is the reason.
+        ///     </para>
+        ///     <para>
+        ///         So do not be surprised by fps a little under thirty on Windows: the host sleeps a millisecond between
+        ///         ticks, and the default timer granularity there is nearer fifteen, so the gate above is tested rather
+        ///         less often than it appears to be. That is the host's loop showing through, not the sprite's cost.
+        ///     </para>
+        /// </summary>
+        /// <param name="cost">What composing and rendering this frame took.</param>
+        private void Sample(TimeSpan cost)
+        {
+            _framesThisSample++;
+            _costThisSample += cost;
+
+            if (_sampleClock.Elapsed < _samplePeriod)
+                return;
+
+            _framesPerSecond = _framesThisSample / _sampleClock.Elapsed.TotalSeconds;
+            _millisecondsPerFrame = _costThisSample.TotalMilliseconds / _framesThisSample;
+
+            _framesThisSample = 0;
+            _costThisSample = TimeSpan.Zero;
+            _sampleClock.Restart();
         }
 
         /// <summary>Moves the sprite one frame and turns it round at the edges.</summary>
