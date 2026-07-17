@@ -99,8 +99,13 @@ namespace WolfCurses.Example
         [Description("Sprite Test (Advanced) - 5 animated, add/remove.")] SpriteTestAdvanced = 17,
 
         /// <summary>
+        ///     Two penguins and the arrow keys: walk one into the other and the scene reports which sprite was hit.
+        /// </summary>
+        [Description("Sprite Test (Collision) - arrow keys, two penguins.")] SpriteTestCollision = 18,
+
+        /// <summary>
         ///     Closes the console application.
         /// </summary>
-        [Description("End")] CloseSimulation = 18
+        [Description("End")] CloseSimulation = 19
     }
 }

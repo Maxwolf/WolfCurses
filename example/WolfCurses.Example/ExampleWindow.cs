@@ -58,6 +58,7 @@ namespace WolfCurses.Example
             AddCommand(ShowAnimatedGif, ExampleCommandsEnum.ShowAnimatedGif);
             AddCommand(ShowSpriteTest, ExampleCommandsEnum.SpriteTestBasic);
             AddCommand(ShowAdvancedSpriteTest, ExampleCommandsEnum.SpriteTestAdvanced);
+            AddCommand(ShowCollisionSpriteTest, ExampleCommandsEnum.SpriteTestCollision);
             AddCommand(CloseSimulation, ExampleCommandsEnum.CloseSimulation);
 
             // Flex the WolfCurses logo as an ANSI graphics splash before the menu; pressing ENTER reveals it.
@@ -109,6 +110,11 @@ namespace WolfCurses.Example
         private void ShowAdvancedSpriteTest()
         {
             SetForm(typeof (SpriteTestAdvancedDialog));
+        }
+
+        private void ShowCollisionSpriteTest()
+        {
+            SetForm(typeof (SpriteTestCollisionDialog));
         }
 
         /// <summary>

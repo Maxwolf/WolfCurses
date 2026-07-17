@@ -46,6 +46,17 @@ namespace WolfCurses.Window.Form
         void OnInputBufferReturned(string input);
 
         /// <summary>
+        ///     Fired when the host reports a key press and this form is the focused window's current one. See
+        ///     <see cref="IWindow.OnKeyPressed" /> for why a key press is a separate thing from the input buffer: an
+        ///     arrow key has no character, so it cannot be typed and would otherwise go unheard. Implemented as a default
+        ///     interface member so existing forms need not change.
+        /// </summary>
+        /// <param name="key">The key that was pressed.</param>
+        void OnKeyPressed(ConsoleKey key)
+        {
+        }
+
+        /// <summary>
         ///     Fired after the state has been completely attached to the simulation letting the state know it can browse the user
         ///     data and other properties below it.
         /// </summary>
