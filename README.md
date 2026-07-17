@@ -86,17 +86,17 @@ Anything unsupported fails with a message naming the format and the seam, not wi
 
 ### Real pixels: sixel and kitty ###
 
-Half blocks work everywhere, but they only get two pixels per character cell. Terminals that speak a true-pixel protocol can do far better — on a typical 10x20 cell that is about two hundred pixels per cell instead of two — and WolfCurses can drive them. Drawing is a seam mirroring the decoder one, so picking the best renderer for wherever you happen to be running is one line at start-up:
+Half blocks work everywhere, but they only get two pixels per character cell. Terminals that speak a true-pixel protocol can do far better — on a typical 10x20 cell that is about two hundred pixels per cell instead of two — and WolfCurses drives them **automatically**: creating your simulation asks the terminal, once, which protocol it can draw with and routes every image through the best answer, falling back to half blocks when the answer is nothing special. There is nothing to call. Drawing is a seam mirroring the decoder one, so overriding what the terminal said is one line:
 
 ```csharp
-// Use whatever this terminal can actually do; falls back to half blocks when that is nothing special.
-ImageRenderers.Default = ImageRenderers.ForCurrentTerminal();
+// Only to overrule detection — a renderer you assign always wins, before or after the simulation exists:
+ImageRenderers.Default = new SixelImageRenderer();
 
 // ...or draw one picture differently without disturbing the global default:
 var photo = image.ToAnsi(options, new KittyImageRenderer());
 ```
 
-- **`HalfBlockImageRenderer`** — the fallback, and the default until you change it. Colored `▀` characters; works in any terminal that can do color at all, and degrades further on its own to 256-color, grayscale, or plain ASCII.
+- **`HalfBlockImageRenderer`** — the fallback, and what detection leaves in place when the terminal offers nothing better. Colored `▀` characters; works in any terminal that can do color at all, and degrades further on its own to 256-color, grayscale, or plain ASCII.
 - **`SixelImageRenderer`** — real pixels via the DEC sixel protocol, supported by xterm (built with sixel), foot, WezTerm, mlterm, contour, recent Konsole and VTE, iTerm2, and Windows Terminal 1.22+. Sixel is indexed, so the picture is reduced to a palette (256 colors by default) chosen per-image by median cut — entries are spent where the picture actually has detail rather than on a fixed grid.
 - **`KittyImageRenderer`** — real pixels via the kitty graphics protocol, supported by kitty, WezTerm, and Ghostty. It transmits the pixels as they are — full 24-bit color and a real alpha channel, no palette — so it is preferred wherever both are available.
 
@@ -104,16 +104,9 @@ Both take the terminal's cell size in pixels (`new SixelImageRenderer(cellPixelW
 
 #### Detecting what the terminal can do ####
 
-`ImageRenderers.ForCurrentTerminal()` reads the environment the terminal advertises itself through (`TERM`, `KITTY_WINDOW_ID`, `TERM_PROGRAM`, `VTE_VERSION`, and so on). It asks the terminal nothing, so it cannot hang or disturb input, and it is safe to call anywhere — including with output redirected. It is deliberately biased towards half blocks: **guessing wrong the safe way costs picture quality, guessing wrong the other way fills the screen with raw escape sequences.** Multiplexers (tmux, screen) report as half blocks too, since they rewrite escape sequences and need per-user passthrough configuration to let graphics past.
+Detection happens when your `SimulationApp` is constructed, via `ImageRenderers.AutoDetect()`. It asks the terminal directly (`AnsiConsole.ProbeGraphicsProtocol()` writes a query and reads the reply off standard input — the only way to settle xterm, which has sixel only when built and started for it, and Windows Terminal, which publishes no version to say whether it is 1.22 or later), and falls back to the environment the terminal advertises itself through (`TERM`, `KITTY_WINDOW_ID`, `TERM_PROGRAM`, `VTE_VERSION`, and so on) when there is no terminal to ask. It is deliberately biased towards half blocks: **guessing wrong the safe way costs picture quality, guessing wrong the other way fills the screen with raw escape sequences.** Multiplexers (tmux, screen) report as half blocks too, since they rewrite escape sequences and need per-user passthrough configuration to let graphics past.
 
-Two common terminals cannot be settled from the environment at all — xterm only has sixel when built and started for it, and Windows Terminal publishes no version to say whether it is 1.22 or later — so both come back as half blocks. To settle them, ask the terminal itself:
-
-```csharp
-// In your Main, BEFORE the loop that reads keys:
-ImageRenderers.Default = ImageRenderers.For(AnsiConsole.ProbeGraphicsProtocol());
-```
-
-`ProbeGraphicsProtocol` writes a query and reads the terminal's reply off standard input, so it must run **before your input loop starts** — otherwise the two steal each other's characters. Nothing inside the library reads input on its own (`InputManager` is fed by your host), so that is the only requirement. It never throws, is bounded by a timeout, and falls back to the environment guess if the terminal says nothing useful. The example app does exactly this in `Program.cs`.
+Because the terminal answers on standard input, the probe must run **before your input loop starts** — and constructing the simulation naturally is. Nothing inside the library reads input on its own after that (`InputManager` is fed by your host), it never throws, and it is bounded by a timeout. Detection runs once per process and never overrules you: assign `ImageRenderers.Default` before creating the simulation and detection stands down entirely; assign it after and your choice replaces the answer. If you render images *before* creating the simulation, call `ImageRenderers.AutoDetect()` yourself at the top of `Main` — it is the same once-only detection, just earlier, and the constructor's later call becomes a no-op.
 
 To see what any of this looks like on your own terminal, the example's **Force slideshow render type** menu item redraws the same photos with each render type in turn — kitty, sixel, half blocks in true color / 256 colors / grayscale, and the colorless ASCII fallback — alongside an *Auto* choice that reports whichever one the probe settled on. Forcing a protocol the terminal does not speak is instructive rather than harmful: you get the screenful of escape-sequence garbage that detection exists to avoid.
 

@@ -119,8 +119,9 @@ namespace WolfCurses.Example
 
         /// <summary>
         ///     Runs the slideshow through a render type the user forces, so the one detection picked can be compared by
-        ///     eye against every other rung of the ladder. Program.Main already asked this terminal what it supports and
-        ///     installed the answer as <see cref="ImageRenderers.Default" />, which is the first choice here.
+        ///     eye against every other rung of the ladder. The library already asked this terminal what it supports —
+        ///     creating the simulation probes once at start-up — and installed the answer as
+        ///     <see cref="ImageRenderers.Default" />, which is the first choice here.
         ///     <para>
         ///         The rest are graded best to worst, and each is a genuinely different code path rather than the same
         ///         picture with a knob turned: real pixels (kitty, then sixel), then two pixels per character cell with
@@ -175,8 +176,8 @@ namespace WolfCurses.Example
         }
 
         /// <summary>
-        ///     Names the renderer that Program.Main's probe installed as <see cref="ImageRenderers.Default" />, so the
-        ///     "Auto" choice reports what will actually draw.
+        ///     Names the renderer that the library's start-up probe installed as <see cref="ImageRenderers.Default" />,
+        ///     so the "Auto" choice reports what will actually draw.
         ///     <para>
         ///         Asking <see cref="AnsiConsole.DetectGraphicsProtocol" /> again here would be a different question
         ///         with a possibly different answer: that one reads environment variables only, and on Windows Terminal

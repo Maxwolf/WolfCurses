@@ -3,7 +3,6 @@
 
 using System;
 using System.Threading;
-using WolfCurses.Graphics;
 
 namespace WolfCurses.Example
 {
@@ -44,13 +43,14 @@ namespace WolfCurses.Example
             // Worth doing when you need a format outside those three (WebP, TIFF), when decode speed turns out to
             // matter, or simply so one process is not decoding images two different ways.
 
-            // Ask the terminal whether it can draw real pixels, and if so draw every image that way from here on.
-            // This must happen before the key-reading loop below starts: the probe writes a question to the terminal
-            // and reads the answer back off standard input, so if both were running the loop would read the terminal's
-            // reply as typed input and the probe could swallow a real keystroke. It is also before the simulation is
-            // created, so the logo splash it puts up already benefits. Whatever the terminal says (including nothing
-            // at all, or that it is a plain console), the result is always a renderer that works here.
-            ImageRenderers.Default = ImageRenderers.For(AnsiConsole.ProbeGraphicsProtocol());
+            // Nothing here picks how images are drawn either, for the same reason. Creating the simulation below
+            // asks the terminal, once, whether it can draw real pixels (sixel or kitty) and routes every image
+            // through the best answer, falling back to character cells when the answer is nothing special — so this
+            // app gets true-pixel pictures on Windows Terminal 1.22+ without a line of set-up. The one rule is that
+            // the question must be asked before the key-reading loop below starts (the terminal answers on standard
+            // input, where the loop would read the reply as typed keys), and creating the simulation first satisfies
+            // that naturally. To overrule the terminal's answer, assign ImageRenderers.Default yourself — a choice
+            // made before this line is respected (detection stands down), and one made after simply replaces it.
 
             // Entry point for the entire simulation.
             ConsoleSimulationApp.Create();
