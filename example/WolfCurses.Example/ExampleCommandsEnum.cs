@@ -104,8 +104,14 @@ namespace WolfCurses.Example
         [Description("Sprite Test (Collision) - arrow keys, two penguins.")] SpriteTestCollision = 18,
 
         /// <summary>
+        ///     Deliberately loads three broken images to show the magenta-and-black error checkerboard and the
+        ///     diagnostics that come with it.
+        /// </summary>
+        [Description("Image error handling (broken files, checkerboard).")] ImageErrorDemo = 19,
+
+        /// <summary>
         ///     Closes the console application.
         /// </summary>
-        [Description("End")] CloseSimulation = 19
+        [Description("End")] CloseSimulation = 20
     }
 }
