@@ -34,7 +34,7 @@ namespace WolfCurses.Example.Demos
         /// <inheritdoc />
         protected override (string[] slides, string[] captions) BuildSlides()
         {
-            var files = DemoImages.ImageFiles();
+            var files = DemoImages.SlideshowImages();
             var renderer = UserData.SelectedImageRenderer ?? new HalfBlockImageRenderer();
 
             // The two halves of a forced render type: which renderer draws the pixels, and how much color it may spend

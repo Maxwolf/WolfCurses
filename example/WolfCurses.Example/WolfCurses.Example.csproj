@@ -12,9 +12,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The image decoder, which the library deliberately does not ship: WolfCurses defines the IImageDecoder seam
-         and leaves the dependency to the application. StbImageSharp is managed and public-domain with no native
-         binaries, so it runs anywhere .NET does. Graphics/StbImageDecoder.cs adapts it; Program.Main installs it. -->
+    <!-- Not what decodes the images here: WolfCurses decodes PNG, JPEG and GIF itself, and every picture this app
+         shows goes through those built-in decoders, which is the point of leaving it that way. This reference stays so
+         that Graphics/StbImageDecoder.cs keeps compiling — it is the worked example of the thirty-line adapter the
+         IImageDecoder seam takes, and the library's own "unsupported format" message points at it. Program.Main has
+         the one line that would install it, commented out. -->
     <PackageReference Include="StbImageSharp" Version="2.30.15" />
   </ItemGroup>
 
@@ -23,6 +25,7 @@
          splash, slideshow, and compositing demos can load them at runtime. -->
     <None Include="..\..\media\*.jpg" Link="images\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\media\*.png" Link="images\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\media\*.gif" Link="images\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

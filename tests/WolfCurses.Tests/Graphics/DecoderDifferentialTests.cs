@@ -27,8 +27,9 @@ namespace WolfCurses.Tests.Graphics
         [Theory]
         [InlineData("image_004.png")] // 8-bit truecolour
         [InlineData("transparent_test.png")] // 8-bit truecolour with alpha
-        [InlineData("cool.gif")] // GIF: 426x318, global table
-        [InlineData("science.gif")] // GIF: 540x540
+        [InlineData("cool.gif")] // GIF: 426x318, global table, one interlaced frame
+        [InlineData("animated.gif")] // GIF: 540x540, 91 frames
+        [InlineData("transparent_anim.gif")] // GIF: 200x197, 8 frames, transparency + disposal 2
         public void LosslessFormat_MatchesStbExactly(string fixture)
         {
             // PNG and GIF are lossless and every step of decoding them is exactly specified, so there is no rounding

@@ -2,13 +2,14 @@
 // Timestamp 07/17/2026
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace WolfCurses.Graphics.Decoding
 {
     /// <summary>
     ///     Decodes GIF images: both versions of the header, global and local colour tables, interlacing, the
-    ///     transparent colour index, and every extension block the format can carry.
+    ///     transparent colour index, every extension block the format can carry, and animation.
     ///     <para>
     ///         GIF is the built-in decoder that has to bring its own decompressor. PNG's zlib arrived in the framework
     ///         years ago and JPEG's entropy coding is inseparable from JPEG, but GIF's LZW predates DEFLATE, is used
@@ -17,16 +18,17 @@ namespace WolfCurses.Graphics.Decoding
     ///         headers, a colour table or two, and one framing rule applied to everything.
     ///     </para>
     ///     <para>
-    ///         <b>An animated GIF decodes to its first frame</b>, by decision rather than omission. Everything
-    ///         downstream of a decoder here paints one still picture into a terminal: no type carries a second frame
-    ///         and <see cref="AnsiImage" /> has no notion of time, so there is nowhere for the rest to go. The frame a
-    ///         file opens with is what a browser shows before its animation starts and what a thumbnailer picks, which
-    ///         makes it the answer least likely to surprise. Nothing past that frame is read at all, so the disposal
-    ///         methods and delays that only mean something to an animation are stepped over rather than honoured.
+    ///         <b>There are two ways in, and the difference is time.</b> <see cref="Decode" /> is the
+    ///         <see cref="IImageDecoder" /> seam and answers with one still picture — the first frame — because that is
+    ///         all the seam's return type can hold and all the rest of this library wants: an <see cref="AnsiImage" />
+    ///         has no notion of time. <see cref="DecodeFrames(Stream)" /> hands back every frame with its delay, for a
+    ///         caller that does. The first frame is what a browser shows before an animation starts and what a
+    ///         thumbnailer picks, so the still answer stays the least surprising one.
     ///     </para>
     ///     <para>
     ///         Instances hold no decode state and may be shared freely across threads, which is what lets a single one
-    ///         sit in <see cref="ImageDecoders.Default" /> for the life of the process.
+    ///         sit in <see cref="ImageDecoders.Default" /> for the life of the process. All the state an animation needs
+    ///         lives in the walk itself, so two threads may decode different files through the same decoder at once.
     ///     </para>
     /// </summary>
     /// <seealso cref="BuiltInImageDecoder" />
@@ -57,6 +59,18 @@ namespace WolfCurses.Graphics.Decoding
 
         /// <summary>The one extension label that says anything about pixels.</summary>
         private const byte GraphicControlLabel = 0xF9;
+
+        /// <summary>Leave the frame where it is and draw the next one over the top. Disposal method 0 and 1 both.</summary>
+        private const int DisposalKeep = 0;
+
+        /// <summary>Take the frame's rectangle back to the canvas before drawing the next one. Disposal method 2.</summary>
+        private const int DisposalRestoreBackground = 2;
+
+        /// <summary>Put back whatever the frame covered up. Disposal method 3.</summary>
+        private const int DisposalRestorePrevious = 3;
+
+        /// <summary>GIF counts delays in hundredths of a second.</summary>
+        private const int MillisecondsPerDelayUnit = 10;
 
         /// <summary>
         ///     GIF's four interlace passes as {yOrigin, yStep}. An interlaced frame's rows arrive in four groups —
@@ -97,11 +111,41 @@ namespace WolfCurses.Graphics.Decoding
             return DecodeBytes(DecoderGuards.ReadAll(source));
         }
 
-        /// <summary>Decodes a GIF already held in memory.</summary>
-        /// <param name="data">The complete file.</param>
-        /// <returns>The decoded image: the file's first frame, placed on the logical screen.</returns>
-        internal PixelBuffer DecodeBytes(byte[] data)
+        /// <summary>
+        ///     Decodes every frame of a GIF, in order, each one composited onto the logical screen and carrying the
+        ///     delay the file gives it. A still GIF is simply an animation of one frame, so this never fails for
+        ///     lack of animation.
+        ///     <para>
+        ///         <b>Frames arrive lazily, one at a time, and this matters.</b> Each frame is the whole logical screen
+        ///         (see <see cref="GifFrame.Image" /> for why it must be), which for the 540x540, 91-frame
+        ///         <c>media/animated.gif</c> in this repository comes to about 106 MB if every frame is held at once —
+        ///         for a file of under 4 MB. Enumerated one at a time and turned into something smaller as they come,
+        ///         which is what any caller here is going to do with them, the same file costs about two frames of
+        ///         memory. Calling <c>ToList()</c> is a choice to pay the 106 MB, and an available one.
+        ///     </para>
+        ///     <para>
+        ///         Bad data is reported from this call, not from the enumeration that follows it, so a caller cannot get
+        ///         an exception out of a <c>foreach</c> running long after the stream it came from was closed. Damage
+        ///         discovered mid-walk still surfaces from the enumeration, where the frames before it have already been
+        ///         handed over — a truncated GIF yields what arrived.
+        ///     </para>
+        /// </summary>
+        /// <param name="source">The stream to read the complete file from.</param>
+        /// <returns>The frames, in the order they are shown.</returns>
+        /// <exception cref="InvalidDataException">The data is not a GIF, or carries no image at all.</exception>
+        public IEnumerable<GifFrame> DecodeFrames(Stream source)
         {
+            return DecodeFramesBytes(DecoderGuards.ReadAll(source));
+        }
+
+        /// <summary>Decodes every frame of a GIF already held in memory.</summary>
+        /// <param name="data">The complete file.</param>
+        /// <returns>The frames, in the order they are shown.</returns>
+        internal IEnumerable<GifFrame> DecodeFramesBytes(byte[] data)
+        {
+            // Eagerly, ahead of the iterator: this method is not itself an iterator, so everything here runs when it is
+            // called rather than when the result is first enumerated. That is the point of the split. A caller who
+            // hands over bytes that are not a GIF should hear about it from the call that took them.
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
             if (!HasSignature(data))
@@ -110,20 +154,54 @@ namespace WolfCurses.Graphics.Decoding
                 throw new InvalidDataException(
                     $"GIF is {data.Length} bytes, too short to hold even a logical screen descriptor.");
 
-            // The logical screen is the canvas every frame is placed on, and the size of the image this returns —
-            // not the size of the frame, which is free to be smaller and to sit anywhere within it. GIF is
-            // little-endian throughout: a CompuServe format from 1987, laid out for the machines in front of it,
-            // where PNG came along later and chose network order.
-            var width = ReadUInt16(data, SignatureBytes);
-            var height = ReadUInt16(data, SignatureBytes + 2);
+            DecoderGuards.ValidateDimensions("GIF", ReadUInt16(data, SignatureBytes),
+                ReadUInt16(data, SignatureBytes + 2), MaxPixels);
+
+            return Frames(data);
+        }
+
+        /// <summary>Decodes a GIF already held in memory.</summary>
+        /// <param name="data">The complete file.</param>
+        /// <returns>The decoded image: the file's first frame, placed on the logical screen.</returns>
+        internal PixelBuffer DecodeBytes(byte[] data)
+        {
+            // Reading one frame out of the walk is all it costs to read one frame: the iterator is abandoned the moment
+            // this returns, so nothing past the first frame is decompressed, composited, or even looked at. Which is
+            // the whole of what this method has ever promised.
+            foreach (var frame in DecodeFramesBytes(data))
+                return frame.Image;
+
+            // Unreachable: a walk that finds no frame throws rather than ending quietly. Here because the compiler
+            // cannot know that, and because if it ever becomes reachable, an exception beats a null.
+            throw new InvalidDataException("GIF carries no image.");
+        }
+
+        /// <summary>
+        ///     Walks the file's blocks, maintaining the canvas that the frames are composited onto, and yields the
+        ///     canvas as it stands after each frame is drawn.
+        ///     <para>
+        ///         The canvas persisting across frames <b>is</b> the animation. A GIF's second and later frames are
+        ///         differences: a rectangle around what changed, with everything that did not change left transparent so
+        ///         the previous frame shows through. What each frame's disposal method then says is what to do with that
+        ///         rectangle once the frame's time is up, and it is the one part of the format that only means anything
+        ///         to something drawing the frames in order — which is why it is stepped over entirely by
+        ///         <see cref="DecodeBytes" /> and honoured here.
+        ///     </para>
+        /// </summary>
+        private IEnumerable<GifFrame> Frames(byte[] data)
+        {
+            // The logical screen is the canvas every frame is placed on, and the size of every image this yields — not
+            // the size of any frame, which is free to be smaller and to sit anywhere within it. GIF is little-endian
+            // throughout: a CompuServe format from 1987, laid out for the machines in front of it, where PNG came along
+            // later and chose network order.
+            var screenWidth = ReadUInt16(data, SignatureBytes);
+            var screenHeight = ReadUInt16(data, SignatureBytes + 2);
             var packed = data[SignatureBytes + 4];
 
-            DecoderGuards.ValidateDimensions("GIF", width, height, MaxPixels);
-
             // The background colour index names the entry the canvas is filled with where no frame covers it; see
-            // FillBackground, which is where the one condition on that lives. The pixel aspect ratio in the byte
-            // after it is skipped: it describes the display's pixels rather than the image's, and a PixelBuffer has
-            // nowhere to put it.
+            // BackgroundColor, which is where the one condition on that lives. The pixel aspect ratio in the byte after
+            // it is skipped: it describes the display's pixels rather than the image's, and a PixelBuffer has nowhere
+            // to put it.
             var backgroundIndex = data[SignatureBytes + 5];
             var offset = HeaderBytes;
 
@@ -131,11 +209,17 @@ namespace WolfCurses.Graphics.Decoding
             if ((packed & 0x80) != 0)
                 globalPalette = ReadColorTable(data, ref offset, 2 << (packed & 0x07));
 
-            // Blocks run one after another, each announced by a single byte, until a frame or the trailer. Only the
-            // first frame is wanted, so this walks whatever extensions sit in front of it and stops at the image —
-            // keeping the transparent index from the last graphic control extension it passed, since that is the one
-            // describing the frame about to arrive.
+            var canvas = new PixelBuffer(screenWidth, screenHeight);
+            byte[] restorePoint = null;
+            var painted = false;
+
+            // A graphic control extension describes the single frame that follows it, so these are picked up as one is
+            // passed and spent when the frame lands. A frame with no extension in front of it gets these defaults,
+            // which is what every GIF written before 89a is.
             var transparentIndex = -1;
+            var disposal = DisposalKeep;
+            var delay = 0;
+
             while (offset < data.Length)
             {
                 var introducer = data[offset++];
@@ -152,6 +236,8 @@ namespace WolfCurses.Graphics.Decoding
                         // Every extension there has ever been is framed identically, which is the point of the
                         // design: a decoder that has never heard of a label can still step over it exactly, so a
                         // comment, a plain-text block, and a NETSCAPE2.0 loop count all cost the same nothing here.
+                        // (The loop count is genuinely skipped, not merely unread: both this repository's animated
+                        // fixtures ask to loop forever, which is what any caller with a loop of its own does anyway.)
                         if (label != GraphicControlLabel)
                             break;
 
@@ -164,15 +250,98 @@ namespace WolfCurses.Graphics.Decoding
                         // byte is present either way and is arbitrary when the flag is clear, so it can only be read
                         // through the flag.
                         transparentIndex = (payload[0] & 0x01) != 0 ? payload[3] : -1;
+                        disposal = (payload[0] >> 2) & 0x07;
+                        delay = payload[1] | (payload[2] << 8);
                         break;
                     }
 
                     case ImageIntroducer:
-                        return DecodeFrame(data, ref offset, width, height, globalPalette, backgroundIndex,
-                            transparentIndex);
+                    {
+                        if (offset + ImageDescriptorBytes > data.Length)
+                            throw new InvalidDataException("GIF image descriptor runs past the end of the file.");
+
+                        var left = ReadUInt16(data, offset);
+                        var top = ReadUInt16(data, offset + 2);
+                        var frameWidth = ReadUInt16(data, offset + 4);
+                        var frameHeight = ReadUInt16(data, offset + 6);
+                        var framePacked = data[offset + 8];
+                        offset += ImageDescriptorBytes;
+
+                        // The frame gets a check of its own, and it is not the screen's check repeated: it is the
+                        // frame, not the canvas, that decides how many indices come out of the decompressor and
+                        // therefore what is allocated to hold them. Nothing stops a file declaring a 65535x65535 frame
+                        // on a 1x1 screen, and the clipping in Paint would throw all of it away — after paying for it.
+                        DecoderGuards.ValidateDimensions("GIF frame", frameWidth, frameHeight, MaxPixels);
+
+                        // A local colour table replaces the global one for this frame rather than adding to it. Most
+                        // files carry only a global one; an optimiser that gave each frame its own palette leaves the
+                        // global one unread, and a file with no global table at all is perfectly legal so long as every
+                        // frame brings its own.
+                        var palette = (framePacked & 0x80) != 0
+                            ? ReadColorTable(data, ref offset, 2 << (framePacked & 0x07))
+                            : globalPalette;
+                        if (palette == null)
+                            throw new InvalidDataException(
+                                "GIF frame has no colour table of its own and the file has no global one.");
+
+                        if (offset >= data.Length)
+                            throw new InvalidDataException("GIF frame ends before its LZW minimum code size.");
+
+                        var minCodeSize = data[offset++];
+                        var codes = ReadSubBlocks(data, ref offset);
+                        var indices = new byte[frameWidth * frameHeight];
+                        var count = new LzwDecoder(minCodeSize).Decode(codes, indices);
+
+                        // Once, and from the first frame's point of view, because that is the only frame the canvas is
+                        // ever blank behind. Every frame after it is composited over whatever the last one left.
+                        if (!painted)
+                            FillBackground(canvas, globalPalette, backgroundIndex, transparentIndex, left, top,
+                                frameWidth, frameHeight);
+
+                        // A frame asking to be undone afterwards has to be photographed before it is drawn, since
+                        // drawing it is what destroys the thing being kept.
+                        if (disposal == DisposalRestorePrevious)
+                            restorePoint = (byte[]) canvas.Data.Clone();
+
+                        Paint(canvas, left, top, frameWidth, frameHeight, (framePacked & 0x40) != 0, indices, count,
+                            palette, transparentIndex);
+                        painted = true;
+
+                        // A copy, not the canvas: the next frame is about to be drawn onto it, and a caller holding
+                        // what it was handed would watch it change underneath. This is the allocation the laziness
+                        // documented on DecodeFrames exists to keep down to one or two at a time.
+                        yield return new GifFrame(
+                            new PixelBuffer(screenWidth, screenHeight, (byte[]) canvas.Data.Clone()),
+                            TimeSpan.FromMilliseconds((long) delay * MillisecondsPerDelayUnit));
+
+                        // Disposal happens after the frame has had its time, which is now, and prepares the canvas the
+                        // next frame will be composited onto. Methods 0 and 1 both mean "leave it", which is what the
+                        // canvas already holds, so the overwhelmingly common case does nothing at all.
+                        switch (disposal)
+                        {
+                            case DisposalRestoreBackground:
+                                ClearRectangle(canvas, globalPalette, backgroundIndex, transparentIndex, left, top,
+                                    frameWidth, frameHeight);
+                                break;
+
+                            // Only ever null when a file declares this on a frame it cannot apply to, which the copy
+                            // above makes impossible; guarded because a decoder does not get to assume a file is sane.
+                            case DisposalRestorePrevious when restorePoint != null:
+                                Array.Copy(restorePoint, canvas.Data, restorePoint.Length);
+                                break;
+                        }
+
+                        transparentIndex = -1;
+                        disposal = DisposalKeep;
+                        delay = 0;
+                        break;
+                    }
 
                     case TrailerIntroducer:
-                        throw new InvalidDataException("GIF reaches its trailer without carrying an image.");
+                        if (!painted)
+                            throw new InvalidDataException("GIF reaches its trailer without carrying an image.");
+
+                        yield break;
 
                     default:
                         throw new InvalidDataException(
@@ -181,63 +350,20 @@ namespace WolfCurses.Graphics.Decoding
                 }
             }
 
-            throw new InvalidDataException("GIF ends without an image or a trailer.");
+            // Running out of file is only an error when nothing was found in it. A GIF that stops after some frames was
+            // truncated, and the frames that did arrive have already been handed over — refusing at this point would
+            // mean taking them back.
+            if (!painted)
+                throw new InvalidDataException("GIF ends without an image or a trailer.");
         }
 
-        /// <summary>Decodes the image descriptor at <paramref name="offset" /> and everything hanging off it.</summary>
-        private PixelBuffer DecodeFrame(byte[] data, ref int offset, int screenWidth, int screenHeight,
-            byte[] globalPalette, int backgroundIndex, int transparentIndex)
-        {
-            if (offset + ImageDescriptorBytes > data.Length)
-                throw new InvalidDataException("GIF image descriptor runs past the end of the file.");
-
-            var left = ReadUInt16(data, offset);
-            var top = ReadUInt16(data, offset + 2);
-            var frameWidth = ReadUInt16(data, offset + 4);
-            var frameHeight = ReadUInt16(data, offset + 6);
-            var packed = data[offset + 8];
-            offset += ImageDescriptorBytes;
-
-            // The frame gets a check of its own, and it is not the screen's check repeated: it is the frame, not the
-            // canvas, that decides how many indices come out of the decompressor and therefore what is allocated to
-            // hold them. Nothing stops a file declaring a 65535x65535 frame on a 1x1 screen, and the clipping below
-            // would throw all of it away — after paying for it.
-            DecoderGuards.ValidateDimensions("GIF frame", frameWidth, frameHeight, MaxPixels);
-
-            // A local colour table replaces the global one for this frame rather than adding to it. Most files carry
-            // only a global one; an optimiser that gave each frame its own palette leaves the global one unread, and
-            // a file with no global table at all is perfectly legal so long as every frame brings its own.
-            var palette = (packed & 0x80) != 0
-                ? ReadColorTable(data, ref offset, 2 << (packed & 0x07))
-                : globalPalette;
-            if (palette == null)
-                throw new InvalidDataException("GIF frame has no colour table of its own and the file has no global one.");
-
-            if (offset >= data.Length)
-                throw new InvalidDataException("GIF frame ends before its LZW minimum code size.");
-
-            var minCodeSize = data[offset++];
-            var codes = ReadSubBlocks(data, ref offset);
-            var indices = new byte[frameWidth * frameHeight];
-            var count = new LzwDecoder(minCodeSize).Decode(codes, indices);
-            var interlaced = (packed & 0x40) != 0;
-
-            return Compose(screenWidth, screenHeight, left, top, frameWidth, frameHeight, interlaced, indices, count,
-                palette, globalPalette, backgroundIndex, transparentIndex);
-        }
-
-        /// <summary>Paints decoded indices onto the logical screen, in whatever order the frame's passes ask for.</summary>
-        private static PixelBuffer Compose(int screenWidth, int screenHeight, int left, int top, int frameWidth,
-            int frameHeight, bool interlaced, byte[] indices, int count, byte[] palette, byte[] globalPalette,
-            int backgroundIndex, int transparentIndex)
+        /// <summary>Paints decoded indices onto the canvas, in whatever order the frame's passes ask for.</summary>
+        private static void Paint(PixelBuffer canvas, int left, int top, int frameWidth, int frameHeight,
+            bool interlaced, byte[] indices, int count, byte[] palette, int transparentIndex)
         {
             // A frame is composited onto the canvas rather than being the canvas: it may be smaller than the logical
-            // screen and sit anywhere within it, and a pixel holding the transparent index is simply not composited
-            // at all. Both leave the canvas showing, which is what FillBackground is deciding the colour of.
-            var canvas = new PixelBuffer(screenWidth, screenHeight);
-            FillBackground(canvas, globalPalette, backgroundIndex, transparentIndex, left, top, frameWidth,
-                frameHeight);
-
+            // screen and sit anywhere within it, and a pixel holding the transparent index is simply not composited at
+            // all — which in an animation is how a frame says "whatever was here is still right".
             var paletteCount = palette.Length / 3;
 
             var passes = interlaced ? _interlacePasses : _singlePass;
@@ -262,7 +388,7 @@ namespace WolfCurses.Graphics.Decoding
                     // frame reaching past the screen it was declared against is a broken encoder, not a broken file.
                     var x = left + column;
                     var y = top + row;
-                    if ((uint) x < (uint) screenWidth && (uint) y < (uint) screenHeight)
+                    if ((uint) x < (uint) canvas.Width && (uint) y < (uint) canvas.Height)
                         canvas.SetPixel(x, y, new Rgba32(
                             palette[index * 3], palette[index * 3 + 1], palette[index * 3 + 2], 255));
                 }
@@ -278,13 +404,53 @@ namespace WolfCurses.Graphics.Decoding
                 while (row >= frameHeight && pass + 1 < passes.Length)
                     row = passes[++pass][0];
             }
-
-            return canvas;
         }
 
         /// <summary>
-        ///     Fills the canvas the frame is about to be composited onto, which is only ever seen where the frame does
-        ///     not reach or does not paint.
+        ///     Fills the canvas the first frame is about to be composited onto, which is only ever seen where that frame
+        ///     does not reach or does not paint.
+        /// </summary>
+        private static void FillBackground(PixelBuffer canvas, byte[] globalPalette, int backgroundIndex,
+            int transparentIndex, int left, int top, int frameWidth, int frameHeight)
+        {
+            // Nothing survives under a frame that covers the screen, and a frame with no transparent index has no holes
+            // in it either — so the common case, which is every first frame an encoder writes, pays nothing.
+            if (transparentIndex < 0 && left <= 0 && top <= 0 && left + frameWidth >= canvas.Width &&
+                top + frameHeight >= canvas.Height)
+                return;
+
+            var fill = BackgroundColor(globalPalette, backgroundIndex, transparentIndex);
+            if (fill.A == 0)
+                return; // a new PixelBuffer is already transparent black
+
+            var data = canvas.Data;
+            for (var i = 0; i < data.Length; i += PixelBuffer.BytesPerPixel)
+            {
+                data[i] = fill.R;
+                data[i + 1] = fill.G;
+                data[i + 2] = fill.B;
+                data[i + 3] = fill.A;
+            }
+        }
+
+        /// <summary>
+        ///     Takes one frame's rectangle back to the canvas colour, for disposal method 2, leaving the rest of the
+        ///     screen as it was.
+        /// </summary>
+        private static void ClearRectangle(PixelBuffer canvas, byte[] globalPalette, int backgroundIndex,
+            int transparentIndex, int left, int top, int frameWidth, int frameHeight)
+        {
+            var fill = BackgroundColor(globalPalette, backgroundIndex, transparentIndex);
+
+            var right = Math.Min(left + frameWidth, canvas.Width);
+            var bottom = Math.Min(top + frameHeight, canvas.Height);
+            for (var y = Math.Max(top, 0); y < bottom; y++)
+            for (var x = Math.Max(left, 0); x < right; x++)
+                canvas.SetPixel(x, y, fill);
+        }
+
+        /// <summary>
+        ///     The colour the canvas shows where no frame is covering it.
         ///     <para>
         ///         The logical screen descriptor names an entry for exactly this, and a file with no transparency gets
         ///         it: that is what the specification says the background colour is for, and what ffmpeg and GDI+ both
@@ -295,32 +461,26 @@ namespace WolfCurses.Graphics.Decoding
         ///         way. (stb_image is the odd one out and simply has a bug here: it fills the background with the
         ///         palette entry's red and blue channels swapped, and only when the index is not zero.)
         ///     </para>
+        ///     <para>
+        ///         The same rule decides what disposal method 2 clears a frame's rectangle to, which is what keeps this
+        ///         class agreeing with itself across a whole animation rather than only on its first frame. It also
+        ///         happens to be what browsers do: every animation worth the name declares transparency, so in practice
+        ///         method 2 nearly always means "back to nothing".
+        ///     </para>
         /// </summary>
-        private static void FillBackground(PixelBuffer canvas, byte[] globalPalette, int backgroundIndex,
-            int transparentIndex, int left, int top, int frameWidth, int frameHeight)
+        private static Rgba32 BackgroundColor(byte[] globalPalette, int backgroundIndex, int transparentIndex)
         {
             if (transparentIndex >= 0)
-                return;
+                return new Rgba32(0, 0, 0, 0);
 
             // The index names an entry of the global table specifically, never a frame's local one, and means nothing
             // without it. One past the end is a decorative field that does not fit rather than corrupt pixel data, so
             // it is dropped rather than thrown over.
             if (globalPalette == null || backgroundIndex >= globalPalette.Length / 3)
-                return;
+                return new Rgba32(0, 0, 0, 0);
 
-            // Nothing survives under a frame that covers the screen, and with no transparent index there are no holes
-            // in it either — so the common case, which is every frame an encoder writes full-size, pays nothing.
-            if (left <= 0 && top <= 0 && left + frameWidth >= canvas.Width && top + frameHeight >= canvas.Height)
-                return;
-
-            var data = canvas.Data;
-            for (var i = 0; i < data.Length; i += PixelBuffer.BytesPerPixel)
-            {
-                data[i] = globalPalette[backgroundIndex * 3];
-                data[i + 1] = globalPalette[backgroundIndex * 3 + 1];
-                data[i + 2] = globalPalette[backgroundIndex * 3 + 2];
-                data[i + 3] = 255;
-            }
+            return new Rgba32(globalPalette[backgroundIndex * 3], globalPalette[backgroundIndex * 3 + 1],
+                globalPalette[backgroundIndex * 3 + 2], 255);
         }
 
         /// <summary>

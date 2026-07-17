@@ -133,10 +133,11 @@ namespace WolfCurses.Tests.Graphics
         [Fact]
         public void AnimatedGif_DecodesToItsFirstFrameRatherThanRefusing()
         {
-            // Scope, pinned: everything downstream of a decoder here paints one still picture, so an animation has
-            // nowhere to put its later frames. The first is what a browser shows before it starts and what a
-            // thumbnailer picks, which makes it the least surprising answer — but it is a decision, so it is asserted
-            // rather than left to be discovered.
+            // The seam's answer, pinned: IImageDecoder.Decode returns one PixelBuffer, so this is where an animation
+            // has to become a still. The first frame is what a browser shows before it starts and what a thumbnailer
+            // picks, which makes it the least surprising choice — but it is a choice, so it is asserted rather than
+            // left to be discovered. GifDecoder.DecodeFrames is the way in for a caller that wants the rest; see
+            // GifAnimationTests, which also pins that this frame and that one's first are the same picture.
             Assert.SkipUnless(File.Exists(TestImages.Media("cool.gif") ?? ""), "media/cool.gif is not present.");
 
             using var stream = File.OpenRead(TestImages.Media("cool.gif"));

@@ -27,7 +27,7 @@ namespace WolfCurses.Example.Demos
         /// <inheritdoc />
         protected override (string[] slides, string[] captions) BuildSlides()
         {
-            var files = DemoImages.ImageFiles();
+            var files = DemoImages.SlideshowImages();
             var options = DemoImages.FitOptions();
 
             var slides = new string[files.Length];

@@ -34,7 +34,7 @@ dotnet build WolfCurses.sln
 
 ## Example Implementation ##
 
-A runnable example console application lives in this repository at [`example/WolfCurses.Example`](example/WolfCurses.Example). It is its own project (referencing the library directly) and shows a few different menus, windows, and forms — plus a WolfCurses logo splash on startup, **Slideshow** / **Compositing** menu items that display the `media/` images (and a transparent penguin composited over them), a **Force slideshow render type** item that redraws those same photos with every render type from a terminal's real pixels down to colorless ASCII, and **file/folder browser** menu items that pick an image to display or a folder to report. Run it with:
+A runnable example console application lives in this repository at [`example/WolfCurses.Example`](example/WolfCurses.Example). It is its own project (referencing the library directly) and shows a few different menus, windows, and forms — plus a WolfCurses logo splash on startup, **Slideshow** / **Compositing** menu items that display the `media/` photographs (and a transparent penguin composited over them), a **Show animated GIF** item that plays an animated GIF on loop at the speed the file asks for, a **Force slideshow render type** item that redraws those same photos with every render type from a terminal's real pixels down to colorless ASCII, and **file/folder browser** menu items that pick an image to display or a folder to report. Run it with:
 
 ```cmd
 dotnet run --project example/WolfCurses.Example
@@ -76,7 +76,7 @@ public override string OnRenderWindow() => _logo;
 |---|---|---|
 | **PNG** | Every colour type (greyscale, truecolour, palette, both alpha variants), every bit depth 1–16, transparency in all three forms, Adam7 interlacing | — |
 | **JPEG** | Baseline, extended sequential, and **progressive**; 4:4:4 / 4:2:2 / 4:2:0 and any other sampling factors; restart markers; greyscale | Arithmetic coding, lossless and hierarchical modes, CMYK/YCCK |
-| **GIF** | 87a and 89a, interlacing, transparency, local colour tables | Animation — an animated GIF decodes to its first frame |
+| **GIF** | 87a and 89a, interlacing, transparency, local colour tables, animation (`GifDecoder.DecodeFrames`) | — |
 
 Anything unsupported fails with a message naming the format and the seam, not with garbage pixels. The decoders are checked against [StbImageSharp](https://github.com/StbSharp/StbImageSharp) on real files as part of the test suite — an independent implementation reading the same bytes, which is the only cheap way to catch a misread spec.
 

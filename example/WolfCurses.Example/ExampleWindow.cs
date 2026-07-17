@@ -55,6 +55,7 @@ namespace WolfCurses.Example
             AddCommand(TextInput, ExampleCommandsEnum.TextInputDemo);
             AddCommand(PasswordInput, ExampleCommandsEnum.PasswordDemo);
             AddCommand(ForceSlideshowRenderType, ExampleCommandsEnum.ForceRenderType);
+            AddCommand(ShowAnimatedGif, ExampleCommandsEnum.ShowAnimatedGif);
             AddCommand(CloseSimulation, ExampleCommandsEnum.CloseSimulation);
 
             // Flex the WolfCurses logo as an ANSI graphics splash before the menu; pressing ENTER reveals it.
@@ -91,6 +92,11 @@ namespace WolfCurses.Example
         private void ShowProgressAndGraphs()
         {
             SetForm(typeof (ProgressGraphsDialog));
+        }
+
+        private void ShowAnimatedGif()
+        {
+            SetForm(typeof (AnimatedGifDialog));
         }
 
         /// <summary>
