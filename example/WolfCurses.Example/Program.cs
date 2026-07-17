@@ -3,6 +3,7 @@
 
 using System;
 using System.Threading;
+using WolfCurses.Example.Graphics;
 using WolfCurses.Graphics;
 
 namespace WolfCurses.Example
@@ -30,6 +31,12 @@ namespace WolfCurses.Example
             Console.WriteLine("Starting...");
             Console.CursorVisible = false;
             Console.CancelKeyPress += Console_CancelKeyPress;
+
+            // Teach the library how to read image files. WolfCurses ships no decoder — that would mean a third-party
+            // dependency in the package — so an application that wants to show a PNG or a JPEG picks one and installs
+            // it here. Without this, anything that loads an image throws an explanatory error instead. It has to come
+            // before the simulation is created, because the logo splash goes up immediately and needs it.
+            ImageDecoders.Default = new StbImageDecoder();
 
             // Ask the terminal whether it can draw real pixels, and if so draw every image that way from here on.
             // This must happen before the key-reading loop below starts: the probe writes a question to the terminal

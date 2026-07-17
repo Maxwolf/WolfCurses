@@ -42,12 +42,16 @@ dotnet run --project example/WolfCurses.Example
 
 ## ANSI Graphics ##
 
-Wolf Curses can display images (PNG, JPEG — baseline *and* progressive — BMP, GIF, TGA, …) directly in the terminal. Images are converted to a block of text and ANSI color escape sequences that you drop into your window's rendered text like any other string, so the scene graph draws them along with everything else.
+Wolf Curses can display images directly in the terminal — PNG, JPEG (baseline *and* progressive), BMP, GIF, TGA and more, depending on the decoder you plug in (see below; the example's is one file). Images are converted to a block of text and ANSI color escape sequences that you drop into your window's rendered text like any other string, so the scene graph draws them along with everything else.
 
 ```csharp
 using WolfCurses.Graphics;
 
-// Once, at start-up, so the terminal interprets the escapes and shows the block glyphs
+// Once, at start-up. WolfCurses has no dependencies, so it ships no image decoder — pick one.
+// StbImageDecoder is a ~30-line adapter over StbImageSharp; copy it from the example app:
+ImageDecoders.Default = new StbImageDecoder();
+
+// Also once, so the terminal interprets the escapes and shows the block glyphs
 // (enables virtual-terminal processing + a UTF-8 output encoding on Windows):
 AnsiConsole.Enable();
 
@@ -65,7 +69,7 @@ public override string OnRenderWindow() => _logo;
 - **Two pixels per character.** It uses the Unicode half-block (`▀`) trick — foreground color for the top pixel, background color for the bottom — to double the vertical resolution and keep pixels square.
 - **Transparency.** Transparent PNG pixels let the terminal background show through; set `AnsiImageOptions.BackgroundColor` to composite the image onto a solid color instead.
 - **Graceful color downgrade.** True color by default, with automatic fallback to the 256-color palette, grayscale, or shaded ASCII on terminals that cannot do better (honoring `NO_COLOR`). Force a mode with `AnsiImageOptions.ColorMode`.
-- **Pluggable decoding.** Decoding is done through [StbImageSharp](https://github.com/StbSharp/StbImageSharp) (a managed, public-domain decoder, no native binaries). To use a different image library, implement `IImageDecoder` and assign `ImageDecoders.Default` once at start-up.
+- **Bring your own decoder.** The package has **zero dependencies**, which means it ships no image decoder: reading PNG or JPEG bytes needs a third-party library, and WolfCurses leaves that choice to you rather than inflicting it on everyone who installs it. Implement `IImageDecoder` — one method — over whatever you already use, and assign `ImageDecoders.Default` once at start-up. The example app has a ready-made adapter for [StbImageSharp](https://github.com/StbSharp/StbImageSharp) (managed, public domain, no native binaries, so it runs on every platform .NET does) at [`Graphics/StbImageDecoder.cs`](example/WolfCurses.Example/Graphics/StbImageDecoder.cs) — copy the file, add the package, done. Until one is assigned, loading an image throws an error that says exactly this; pixels you decoded yourself (`AnsiImage.FromPixels`) never need a decoder at all.
 - **Pluggable drawing.** How pixels become screen output is a seam too — see below.
 
 ### Real pixels: sixel and kitty ###
