@@ -34,7 +34,10 @@ namespace WolfCurses.Example.Demos
         /// <summary>How long the numbers are averaged over before they are published.</summary>
         private static readonly TimeSpan _samplePeriod = TimeSpan.FromMilliseconds(500);
 
-        private readonly Stopwatch _clock = Stopwatch.StartNew();
+        /// <summary>
+        ///     Times the current sample. Deliberately <b>not</b> started here — see <see cref="Record" />.
+        /// </summary>
+        private readonly Stopwatch _clock = new();
 
         private TimeSpan _costThisSample;
         private int _framesThisSample;
@@ -45,10 +48,23 @@ namespace WolfCurses.Example.Demos
         /// <summary>What producing a frame cost on average over the last complete period.</summary>
         public double MillisecondsPerFrame { get; private set; }
 
-        /// <summary>Folds one frame into the running measurements, publishing them when a period is up.</summary>
+        /// <summary>
+        ///     Folds one frame into the running measurements, publishing them when a period is up.
+        ///     <para>
+        ///         The clock starts on the first frame rather than when this object is built, and that is a fix rather
+        ///         than a flourish. A demo loads its pictures between the two — a 2000x1500 JPEG and a PNG that inflates
+        ///         to twenty-odd megabytes, which is most of a second — and a clock started at construction charges all
+        ///         of it to the first sample. The opening reading then says something like "3 fps", which is a true
+        ///         measurement of image decoding and a completely false one about drawing, delivered at exactly the
+        ///         moment somebody is looking to see whether this thing is fast.
+        ///     </para>
+        /// </summary>
         /// <param name="cost">What producing this frame took.</param>
         public void Record(TimeSpan cost)
         {
+            if (!_clock.IsRunning)
+                _clock.Start();
+
             _framesThisSample++;
             _costThisSample += cost;
 
@@ -61,6 +77,27 @@ namespace WolfCurses.Example.Demos
             _framesThisSample = 0;
             _costThisSample = TimeSpan.Zero;
             _clock.Restart();
+        }
+
+        /// <summary>
+        ///     Throws away the sample in progress, for when frames have stopped being produced for a reason that has
+        ///     nothing to say about how fast they are produced.
+        ///     <para>
+        ///         A modal dialog is the case that matters: the form underneath stops being ticked, so it stops
+        ///         recording frames, but a clock left running does not know that. The sample it eventually publishes
+        ///         divides the handful of frames from before the dialog by the wall-clock time <i>including</i> it —
+        ///         spend five seconds reading the message and the readout announces 2 fps, having measured the reading
+        ///         speed of a human. The last published numbers are kept, since they were true when measured and are a
+        ///         better answer than a fresh lie.
+        ///     </para>
+        /// </summary>
+        public void Restart()
+        {
+            // Reset rather than Restart: this leaves the clock stopped so Record starts it again on the first frame
+            // that actually arrives, which may be a while if whatever paused things is still paused.
+            _clock.Reset();
+            _framesThisSample = 0;
+            _costThisSample = TimeSpan.Zero;
         }
 
         /// <summary>The measurements as a line of text, or a note that there are none yet.</summary>

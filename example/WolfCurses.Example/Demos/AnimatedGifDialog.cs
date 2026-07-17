@@ -57,6 +57,24 @@ namespace WolfCurses.Example.Demos
         /// <summary>Measures real time between frames, rather than counting ticks of unknown length.</summary>
         private readonly Stopwatch _clock = new();
 
+        /// <summary>
+        ///     The same readout the sprite tests carry, and it says something different here — which is the useful part.
+        ///     <para>
+        ///         <b>ms/frame reads essentially zero, and that is the result rather than a fault.</b> Showing a frame
+        ///         costs an array lookup, because every one of them was turned into its string up front (the cached-in
+        ///         figure beside it is where that time went). The sprite tests compose and render on every frame and pay
+        ///         about a millisecond each time; the contrast between the two readouts is the whole argument for
+        ///         pre-rendering when the frames are known in advance.
+        ///     </para>
+        ///     <para>
+        ///         Which leaves <b>fps as a pure measure of pacing</b>, and the only number here worth watching: the
+        ///         file asks for 30ms a frame, so anything under about 33 fps means playback is not keeping up and the
+        ///         animation is running slow. On Windows it usually is, slightly — see <see cref="FrameCounter" /> for
+        ///         why the host loop cannot be relied on to come back round in under fifteen milliseconds.
+        ///     </para>
+        /// </summary>
+        private readonly FrameCounter _counter = new();
+
         private TimeSpan[] _delays = Array.Empty<TimeSpan>();
         private string _error;
         private int _index;
@@ -96,7 +114,10 @@ namespace WolfCurses.Example.Demos
             // never made up for later. With the host looping every millisecond that overshoot is about a millisecond,
             // and letting it accumulate into a debt the animation tries to repay is how a player ends up sprinting.
             _clock.Restart();
+
+            var started = Stopwatch.GetTimestamp();
             _index = (_index + 1) % _slides.Length;
+            _counter.Record(Stopwatch.GetElapsedTime(started));
         }
 
         /// <inheritdoc />
@@ -109,8 +130,10 @@ namespace WolfCurses.Example.Demos
 
             var sb = new StringBuilder();
             sb.AppendLine();
-            sb.AppendLine($"Animated GIF  (frame {_index + 1}/{_slides.Length}, " +
-                          $"{_delays[_index].TotalMilliseconds:F0}ms, decoded and rendered in {_loadTime.TotalMilliseconds:F0}ms)");
+            sb.AppendLine("Animated GIF  —  media/animated.gif on loop");
+            sb.AppendLine($"{_counter.Describe()} | frame {_index + 1}/{_slides.Length} | " +
+                          $"{_delays[_index].TotalMilliseconds:F0}ms each | " +
+                          $"cached in {_loadTime.TotalMilliseconds:F0}ms");
             sb.AppendLine();
             sb.Append(_slides[_index]);
             return sb.ToString();
