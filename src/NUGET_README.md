@@ -66,16 +66,12 @@ Windows derive from `Window<TCommands, TData>`, where each value of the `TComman
 
 ## ANSI graphics
 
-Display images (PNG with transparency, baseline and progressive JPEG, and more) right in the terminal. An image becomes a string of block characters and ANSI color escapes that you embed in your window's rendered text.
+Display images right in the terminal — PNG (with transparency), baseline and progressive JPEG, and GIF, all decoded by this package with no set-up and no dependencies. An image becomes a string of block characters and ANSI color escapes that you embed in your window's rendered text.
 
 ```csharp
 using WolfCurses.Graphics;
 
-// Once at start-up: this package has no dependencies, so it ships no image decoder — choose one.
-// StbImageDecoder is a ~30-line adapter over StbImageSharp; copy it from the example app.
-ImageDecoders.Default = new StbImageDecoder();
-
-// Also once: enables VT processing + UTF-8 output so the escapes/glyphs render (Windows).
+// Once: enables VT processing + UTF-8 output so the escapes/glyphs render (Windows).
 // Already done for you if you create a ConsolePresenter, as in the usage snippet above.
 AnsiConsole.Enable();
 
@@ -86,7 +82,9 @@ public override string OnRenderWindow() => _logo;
 
 By default the image is scaled to fit the console window while keeping its aspect ratio (no terminal resizing needed), transparent pixels let the background show through, and true color degrades gracefully to 256-color/grayscale/ASCII. Set `AnsiImageOptions.Fit` to `Cover`, `Stretch`, or `ScaleDown` to fill a scene instead of letterboxing, and composite a transparent image onto another with `background.Overlay(foreground)`.
 
-**Decoding is yours to choose.** This package has **zero dependencies**, and reading PNG/JPEG bytes needs a third-party library — so rather than inflict one on every consumer, WolfCurses defines the `IImageDecoder` seam (a single method) and lets you fill it with whatever you already use. The example app's [StbImageSharp](https://github.com/StbSharp/StbImageSharp) adapter is managed, public-domain, and free of native binaries, so it runs everywhere .NET does: add the package, copy `Graphics/StbImageDecoder.cs`, assign `ImageDecoders.Default`. Loading an image before assigning one throws an error that spells this out, and `AnsiImage.FromPixels` needs no decoder at all.
+**Decoders included, and replaceable.** PNG, JPEG and GIF are decoded by the package itself — written from their specifications in pure managed code, so images work out of the box and this still has **zero dependencies**. PNG covers every colour type, bit depth and Adam7; JPEG covers baseline *and* progressive at any chroma subsampling; GIF decodes to its first frame. They aim at correctness rather than speed, which is the right trade when the picture is about to be scaled down to fit a terminal anyway. Need another format, or more speed, or just to reuse the imaging library you already have? Implement `IImageDecoder` — a single method — and assign `ImageDecoders.Default` once at start-up; the example app has a [StbImageSharp](https://github.com/StbSharp/StbImageSharp) adapter to copy. `AnsiImage.FromPixels` needs no decoder at all.
+
+**Missing textures look missing.** An image that can't be loaded — wrong path, corrupt file, unsupported format — becomes the magenta-and-black checkerboard familiar from game engines rather than throwing, because the documented usage is a field initializer (where an exception becomes a confusing `TypeInitializationException`) and because in a text UI a stack trace lands on top of your interface. The reason stays in `AnsiImage.Error`; `ImageDecoders.Default.Decode(stream)` still throws if you want to handle it yourself.
 
 ### Real pixels: sixel and kitty
 

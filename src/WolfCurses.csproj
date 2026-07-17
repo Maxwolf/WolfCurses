@@ -19,9 +19,11 @@
   </ItemGroup>
 
   <!-- No PackageReference here, deliberately: the package has zero dependencies and is meant to keep it that way.
-       Decoding real image formats needs a third-party library, so that is a seam (IImageDecoder) the application
-       fills rather than a dependency inflicted on everyone installing WolfCurses. See the example app for a
-       StbImageSharp adapter to copy. -->
+       That includes image decoding, which is the one place the temptation is real - PNG, JPEG and GIF are decoded
+       from spec in src/Graphics/Decoding/ rather than by pulling in an imaging library, so that nobody installing a
+       terminal UI library inherits one just to show a logo. DEFLATE is the exception and needs no reference: it
+       comes from the BCL (System.IO.Compression.ZLibStream). Applications wanting another format or more speed fill
+       the IImageDecoder seam instead; see the example app for a StbImageSharp adapter to copy. -->
 
   <ItemGroup>
     <InternalsVisibleTo Include="WolfCurses.Tests" />

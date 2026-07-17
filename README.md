@@ -42,16 +42,12 @@ dotnet run --project example/WolfCurses.Example
 
 ## ANSI Graphics ##
 
-Wolf Curses can display images directly in the terminal — PNG, JPEG (baseline *and* progressive), BMP, GIF, TGA and more, depending on the decoder you plug in (see below; the example's is one file). Images are converted to a block of text and ANSI color escape sequences that you drop into your window's rendered text like any other string, so the scene graph draws them along with everything else.
+Wolf Curses can display images directly in the terminal — PNG, JPEG (baseline *and* progressive) and GIF work out of the box, with no set-up and no dependencies. Images are converted to a block of text and ANSI color escape sequences that you drop into your window's rendered text like any other string, so the scene graph draws them along with everything else.
 
 ```csharp
 using WolfCurses.Graphics;
 
-// Once, at start-up. WolfCurses has no dependencies, so it ships no image decoder — pick one.
-// StbImageDecoder is a ~30-line adapter over StbImageSharp; copy it from the example app:
-ImageDecoders.Default = new StbImageDecoder();
-
-// Also once, so the terminal interprets the escapes and shows the block glyphs
+// Once, so the terminal interprets the escapes and shows the block glyphs
 // (enables virtual-terminal processing + a UTF-8 output encoding on Windows):
 AnsiConsole.Enable();
 
@@ -69,8 +65,22 @@ public override string OnRenderWindow() => _logo;
 - **Two pixels per character.** It uses the Unicode half-block (`▀`) trick — foreground color for the top pixel, background color for the bottom — to double the vertical resolution and keep pixels square.
 - **Transparency.** Transparent PNG pixels let the terminal background show through; set `AnsiImageOptions.BackgroundColor` to composite the image onto a solid color instead.
 - **Graceful color downgrade.** True color by default, with automatic fallback to the 256-color palette, grayscale, or shaded ASCII on terminals that cannot do better (honoring `NO_COLOR`). Force a mode with `AnsiImageOptions.ColorMode`.
-- **Bring your own decoder.** The package has **zero dependencies**, which means it ships no image decoder: reading PNG or JPEG bytes needs a third-party library, and WolfCurses leaves that choice to you rather than inflicting it on everyone who installs it. Implement `IImageDecoder` — one method — over whatever you already use, and assign `ImageDecoders.Default` once at start-up. The example app has a ready-made adapter for [StbImageSharp](https://github.com/StbSharp/StbImageSharp) (managed, public domain, no native binaries, so it runs on every platform .NET does) at [`Graphics/StbImageDecoder.cs`](example/WolfCurses.Example/Graphics/StbImageDecoder.cs) — copy the file, add the package, done. Until one is assigned, loading an image throws an error that says exactly this; pixels you decoded yourself (`AnsiImage.FromPixels`) never need a decoder at all.
+- **Decoders included, and replaceable.** PNG, JPEG and GIF are decoded by the package itself, written from their specifications in pure managed code — so images work with no set-up and the package still has **zero dependencies**. A decoder is the one part of an image pipeline everybody needs and nobody wants to choose; owning the formats outright is what avoids making every consumer of a terminal UI library take a transitive dependency on an imaging library just to show a logo. What they are *not* is the fastest available, and they don't try to be — a picture bound for a terminal is about to be scaled down to a few thousand pixels anyway. Need a format outside those three, or speed, or just to not decode images two different ways in one process? Implement `IImageDecoder` — one method — and assign `ImageDecoders.Default` once at start-up. The example has a ready-made [StbImageSharp](https://github.com/StbSharp/StbImageSharp) adapter at [`Graphics/StbImageDecoder.cs`](example/WolfCurses.Example/Graphics/StbImageDecoder.cs) to copy. Pixels you decoded yourself (`AnsiImage.FromPixels`) never touch a decoder at all.
+- **Missing textures look missing.** An image that can't be loaded — wrong path, corrupt file, a format nothing installed can decode — becomes the magenta-and-black checkerboard you already know from a game engine, instead of throwing. Nothing real is that colour, so you spot it across the room without reading anything. This matters more than it sounds: the recommended usage above is a field initializer, where an exception surfaces as a `TypeInitializationException` from a stack that no longer mentions the image; and in a text UI the console *is* the screen, so a stack trace lands on top of your interface. The reason is still in `AnsiImage.Error` (and goes to `Trace`), and `ImageDecoders.Default.Decode(stream)` still throws if you'd rather handle it yourself — the seam's contract is unchanged, only the convenience layer is forgiving.
 - **Pluggable drawing.** How pixels become screen output is a seam too — see below.
+
+<details>
+<summary>What the built-in decoders cover</summary>
+
+| | Covered | Not covered |
+|---|---|---|
+| **PNG** | Every colour type (greyscale, truecolour, palette, both alpha variants), every bit depth 1–16, transparency in all three forms, Adam7 interlacing | — |
+| **JPEG** | Baseline, extended sequential, and **progressive**; 4:4:4 / 4:2:2 / 4:2:0 and any other sampling factors; restart markers; greyscale | Arithmetic coding, lossless and hierarchical modes, CMYK/YCCK |
+| **GIF** | 87a and 89a, interlacing, transparency, local colour tables | Animation — an animated GIF decodes to its first frame |
+
+Anything unsupported fails with a message naming the format and the seam, not with garbage pixels. The decoders are checked against [StbImageSharp](https://github.com/StbSharp/StbImageSharp) on real files as part of the test suite — an independent implementation reading the same bytes, which is the only cheap way to catch a misread spec.
+
+</details>
 
 ### Real pixels: sixel and kitty ###
 

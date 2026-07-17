@@ -13,6 +13,15 @@ namespace WolfCurses.Graphics
     ///     WolfCurses window's rendered text. Because the whole library is built around composing a screen as a string,
     ///     an image is "just more string" — assign the result into your window/form's text and the scene graph will
     ///     draw it like anything else.
+    ///     <para>
+    ///         PNG, JPEG and GIF need no set-up: <see cref="ImageDecoders.Default" /> starts as
+    ///         <see cref="BuiltInImageDecoder" />, which handles all three. Assign that property to use something else.
+    ///     </para>
+    ///     <para>
+    ///         <strong>Loading here never throws.</strong> A file that is missing, unreadable, corrupt or in a format
+    ///         nothing installed can decode becomes a magenta-and-black <see cref="ImageErrorTexture" /> with the
+    ///         reason in <see cref="Error" /> — see that property for why, and for how to get the exception instead.
+    ///     </para>
     /// </summary>
     /// <remarks>
     ///     Rendering is not free: each <see cref="ToAnsi(AnsiImageOptions)" /> / <see cref="RenderFile" /> call decodes
@@ -36,13 +45,36 @@ namespace WolfCurses.Graphics
     /// </example>
     public sealed class AnsiImage
     {
-        private AnsiImage(PixelBuffer pixels)
+        private AnsiImage(PixelBuffer pixels, Exception error = null)
         {
             Pixels = pixels;
+            Error = error;
         }
 
         /// <summary>The decoded pixels backing this image.</summary>
         public PixelBuffer Pixels { get; }
+
+        /// <summary>
+        ///     Why this image is a checkerboard, or null when it loaded properly.
+        ///     <para>
+        ///         Loading never throws — a picture that cannot be decoded becomes an
+        ///         <see cref="ImageErrorTexture" /> instead, so one bad file cannot take down an application over a
+        ///         picture, and so the failure is visible on the screen rather than buried in a stack trace behind
+        ///         the interface. This is the exception that would have been thrown: check it to handle the failure
+        ///         deliberately, or let the magenta speak for itself.
+        ///     </para>
+        ///     <para>
+        ///         Anything wanting the exception instead should call the decoder directly —
+        ///         <c>ImageDecoders.Default.Decode(stream)</c> throws exactly as it always did, and nothing about
+        ///         <see cref="IImageDecoder" /> changed. This substitution belongs to the convenience layer, which is
+        ///         also why it works the same for a third-party decoder as for the built-in ones.
+        ///     </para>
+        /// </summary>
+        /// <seealso cref="ImageErrorTexture" />
+        public Exception Error { get; }
+
+        /// <summary>True when this image failed to load and is showing the error checkerboard.</summary>
+        public bool IsError => Error != null;
 
         /// <summary>Image width in pixels.</summary>
         public int Width => Pixels.Width;
@@ -58,12 +90,24 @@ namespace WolfCurses.Graphics
             return new AnsiImage(pixels);
         }
 
-        /// <summary>Decodes an image from a stream using the given decoder, or <see cref="ImageDecoders.Default" />.</summary>
+        /// <summary>
+        ///     Decodes an image from a stream using the given decoder, or <see cref="ImageDecoders.Default" />. Returns
+        ///     an <see cref="ImageErrorTexture" /> with <see cref="Error" /> set rather than throwing when the data
+        ///     cannot be decoded.
+        /// </summary>
         public static AnsiImage FromStream(Stream source, IImageDecoder decoder = null)
         {
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
-            return new AnsiImage((decoder ?? ImageDecoders.Default).Decode(source));
+
+            try
+            {
+                return new AnsiImage((decoder ?? ImageDecoders.Default).Decode(source));
+            }
+            catch (Exception ex) when (IsLoadFailure(ex))
+            {
+                return Failed(ex);
+            }
         }
 
         /// <summary>Decodes an image from an in-memory byte array using the given decoder, or the default.</summary>
@@ -75,13 +119,59 @@ namespace WolfCurses.Graphics
             return FromStream(stream, decoder);
         }
 
-        /// <summary>Opens and decodes an image file using the given decoder, or the default.</summary>
+        /// <summary>
+        ///     Opens and decodes an image file using the given decoder, or the default. A file that is missing,
+        ///     unreadable or undecodable produces an <see cref="ImageErrorTexture" /> with <see cref="Error" /> set
+        ///     rather than an exception — a mistyped asset path is the single most common way to get here, and it is
+        ///     the case the checkerboard was invented for.
+        /// </summary>
         public static AnsiImage FromFile(string path, IImageDecoder decoder = null)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
-            using var stream = File.OpenRead(path);
-            return FromStream(stream, decoder);
+
+            try
+            {
+                using var stream = File.OpenRead(path);
+                return FromStream(stream, decoder);
+            }
+            catch (Exception ex) when (IsLoadFailure(ex))
+            {
+                // Only opening the file can land here: FromStream has already turned a decode failure into a texture
+                // of its own, so this is the missing-file and no-permission case.
+                return Failed(ex);
+            }
+        }
+
+        /// <summary>
+        ///     Builds the checkerboard for a failure, and reports the reason somewhere a developer might be watching.
+        /// </summary>
+        private static AnsiImage Failed(Exception error)
+        {
+            // Trace rather than Console, which in a text UI is the interface and must not be written to. With no
+            // listener attached this costs nothing; with a debugger attached it puts the reason in the Output window,
+            // which is the difference between "why is the logo pink" and "ah, that file is a WebP".
+            System.Diagnostics.Trace.WriteLine($"WolfCurses: image could not be loaded, showing the error texture. {error.Message}");
+
+            return new AnsiImage(ImageErrorTexture.Create(), error);
+        }
+
+        /// <summary>
+        ///     Whether an exception is a picture failing to load — worth a checkerboard — or something that has
+        ///     nothing to do with pictures and must not be swallowed.
+        ///     <para>
+        ///         Caught broadly on purpose. Decoders are a seam, so the exception could come from any imaging
+        ///         library an application has plugged in, and those throw whatever they like; an allow-list of types
+        ///         would quietly stop working the moment somebody installed a decoder it had not heard of. What is
+        ///         excluded is the class of failure that is not about this image at all and will not be fixed by
+        ///         giving up on it.
+        ///     </para>
+        /// </summary>
+        private static bool IsLoadFailure(Exception ex)
+        {
+            // Out of memory says the process is in trouble, not that the file is bad — and a checkerboard needs an
+            // allocation of its own, so trying to make one here is the worst possible response.
+            return ex is not OutOfMemoryException;
         }
 
         /// <summary>

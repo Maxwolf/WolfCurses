@@ -7,25 +7,27 @@ namespace WolfCurses.Graphics
 {
     /// <summary>
     ///     Holds the process-wide <see cref="IImageDecoder" /> used whenever an <see cref="AnsiImage" /> is created
-    ///     without an explicit decoder. An application that loads encoded images (PNG, JPEG, and so on) must assign one
-    ///     here once at start-up.
+    ///     without an explicit decoder. It starts as <see cref="BuiltInImageDecoder" />, so PNG, JPEG and GIF load with
+    ///     no set-up at all and most applications never touch this class.
     ///     <para>
-    ///         There is deliberately no built-in decoder: every real one is a third-party dependency, and the library
-    ///         does not impose that choice on applications that do not need it (or that already have an image library
-    ///         of their own). Until something is assigned, the default is a stand-in that throws an explanatory error
-    ///         rather than decoding — see <see cref="UnconfiguredImageDecoder" />. The example app assigns
-    ///         StbImageSharp in <c>Program.Main</c> and is worth copying.
+    ///         Assign here to replace that: a faster decoder, one that handles a format outside those three, or simply
+    ///         the imaging library an application already has, so images are not decoded two different ways in one
+    ///         process. Do it once at start-up, before the first image is loaded.
+    ///     </para>
+    ///     <para>
+    ///         Having both a working default and a seam is the whole design. A default means the library can show a
+    ///         picture out of the box without a dependency; the seam means nobody is stuck with it.
     ///     </para>
     /// </summary>
+    /// <seealso cref="BuiltInImageDecoder" />
     public static class ImageDecoders
     {
-        private static IImageDecoder _default = new UnconfiguredImageDecoder();
+        private static IImageDecoder _default = new BuiltInImageDecoder();
 
         /// <summary>
         ///     The decoder used by <see cref="AnsiImage" /> when the caller does not pass one explicitly. Never null;
-        ///     assigning null throws so a mis-configured start-up fails loudly rather than at first image load. Until
-        ///     assigned it is a stand-in whose only behavior is to throw an <see cref="InvalidOperationException" />
-        ///     explaining that a decoder has to be chosen.
+        ///     assigning null throws, so a mis-configured start-up fails loudly at the assignment rather than as a
+        ///     <see cref="NullReferenceException" /> at the first image load.
         /// </summary>
         public static IImageDecoder Default
         {
