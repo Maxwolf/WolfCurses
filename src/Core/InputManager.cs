@@ -1,6 +1,7 @@
 ﻿// Created by Maxwolf (bigmaxwolf.com)
 // Timestamp 12/31/2015@2:38 PM
 
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
@@ -32,6 +33,16 @@ namespace WolfCurses.Core
         private Queue<string> _commandQueue;
 
         /// <summary>
+        ///     Holds key presses waiting to be handed to the focused window.
+        ///     <para>
+        ///         Deliberately not the command queue, which drops a command identical to one already waiting — sensible
+        ///         for a state-based simulation where asking twice means nothing, and quite wrong here: holding an arrow
+        ///         key is a stream of identical presses and every one of them is meant to move something.
+        ///     </para>
+        /// </summary>
+        private Queue<ConsoleKey> _keyQueue;
+
+        /// <summary>
         ///     Initializes a new instance of the <see cref="InputManager" /> class.
         /// </summary>
         /// <param name="simUnit">Core simulation which is controlling the window manager.</param>
@@ -39,6 +50,7 @@ namespace WolfCurses.Core
         {
             _simUnit = simUnit;
             _commandQueue = new Queue<string>();
+            _keyQueue = new Queue<ConsoleKey>();
             InputBuffer = string.Empty;
         }
 
@@ -59,6 +71,10 @@ namespace WolfCurses.Core
             // Clear the command queue.
             _commandQueue.Clear();
             _commandQueue = null;
+
+            // And any key presses that arrived but were never handed on.
+            _keyQueue.Clear();
+            _keyQueue = null;
         }
 
         /// <summary>
@@ -77,6 +93,13 @@ namespace WolfCurses.Core
         /// </param>
         public override void OnTick(bool systemTick, bool skipDay = false)
         {
+            // Key presses first, and all of them rather than one a tick: they are moments rather than instructions, so a
+            // second one waiting does not replace the first, and anything holding a key down would fall behind forever
+            // if only one were spent per tick. Ahead of the early return below on purpose — a tick with no commands in
+            // it is still a tick, and was the obvious way to lose every key press in a screen that has no commands.
+            while (_keyQueue.Count > 0)
+                _simUnit.WindowManager.FocusedWindow?.OnKeyPressed(_keyQueue.Dequeue());
+
             // Skip if there are no commands to tick.
             if (_commandQueue.Count <= 0)
                 return;
@@ -180,6 +203,26 @@ namespace WolfCurses.Core
         }
 
         /// <summary>
+        ///     Reports a key press to the focused window on the next tick, whatever the key was.
+        ///     <para>
+        ///         This is how a key that is not text gets heard at all. <see cref="AddCharToInputBuffer" /> takes
+        ///         characters, and an arrow key, a function key or Home has none to give it, so the buffer drops them —
+        ///         correct for a line being typed and useless for anything being steered. A host that wants both calls
+        ///         both: printable keys fill the buffer as they always have <i>and</i> arrive here.
+        ///     </para>
+        ///     <para>
+        ///         Queued rather than delivered at once so it lands inside a tick, like every other input this class
+        ///         hands on: a form is free to answer a key by putting a window up, and doing that from the middle of the
+        ///         host's read loop would be editing the window stack from outside the simulation's own turn.
+        ///     </para>
+        /// </summary>
+        /// <param name="key">The key the host saw pressed.</param>
+        public void SendKeyPress(ConsoleKey key)
+        {
+            _keyQueue.Enqueue(key);
+        }
+
+        /// <summary>
         ///     Removes the last character from input buffer if greater than zero.
         /// </summary>
         public void RemoveLastCharOfInputBuffer()
@@ -215,12 +258,15 @@ namespace WolfCurses.Core
         }
 
         /// <summary>
-        ///     Removes any commands that are waiting to be dispatched so they cannot execute against windows created
-        ///     after a session reset.
+        ///     Removes any commands and key presses that are waiting to be dispatched so they cannot execute against
+        ///     windows created after a session reset.
         /// </summary>
         public void ClearQueue()
         {
             _commandQueue.Clear();
+
+            // Key presses go too, for the same reason: one typed at the old session has nothing to say to the new one.
+            _keyQueue.Clear();
         }
     }
 }

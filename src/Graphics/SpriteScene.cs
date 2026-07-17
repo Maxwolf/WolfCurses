@@ -96,6 +96,32 @@ namespace WolfCurses.Graphics
         }
 
         /// <summary>
+        ///     Every other sprite on the scene whose box overlaps the given one's — what touched what, which is the
+        ///     question a game asks constantly and the reason <see cref="Sprite.Intersects" /> exists.
+        ///     <para>
+        ///         Invisible sprites are skipped. <see cref="Sprite.Visible" /> is documented as the gentler way of
+        ///         taking a sprite off the scene, and something that is not on the scene cannot be bumped into; a caller
+        ///         who wants the geometry regardless has <see cref="Sprite.Intersects" /> to ask directly. The given
+        ///         sprite's own visibility is not consulted, since it is the one doing the asking.
+        ///     </para>
+        ///     <para>
+        ///         The sprite need not be on this scene, which is occasionally useful: a rectangle can be tried
+        ///         somewhere before anything is moved there.
+        ///     </para>
+        /// </summary>
+        /// <param name="sprite">The sprite to test everything else against.</param>
+        /// <returns>The sprites it is touching, in the order they are drawn.</returns>
+        public IEnumerable<Sprite> SpritesTouching(Sprite sprite)
+        {
+            if (sprite == null)
+                throw new ArgumentNullException(nameof(sprite));
+
+            foreach (var other in Sprites)
+                if (other != null && !ReferenceEquals(other, sprite) && other.Visible && other.Intersects(sprite))
+                    yield return other;
+        }
+
+        /// <summary>
         ///     Composes the scene and renders it to an ANSI string, the way <see cref="AnsiImage.ToAnsi(AnsiImageOptions)" />
         ///     would.
         /// </summary>

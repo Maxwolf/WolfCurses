@@ -356,6 +356,19 @@ namespace WolfCurses.Window
         }
 
         /// <summary>
+        ///     Fired when the host reports a key press and this window is the focused one. Hands it to the current form,
+        ///     which is where anything being steered rather than typed at is going to live. Unlike the input buffer, this
+        ///     is not gated on the window accepting input: a key press is not text and does not enter the buffer, so the
+        ///     rules protecting the buffer have nothing to say about it — a form that wants to be driven by arrow keys
+        ///     while refusing typed commands is an ordinary thing to want and this is what allows it.
+        /// </summary>
+        /// <param name="key">The key that was pressed.</param>
+        public virtual void OnKeyPressed(ConsoleKey key)
+        {
+            Form?.OnKeyPressed(key);
+        }
+
+        /// <summary>
         ///     Called after the Windows has been added to list of modes and made active.
         /// </summary>
         public virtual void OnWindowPostCreate()

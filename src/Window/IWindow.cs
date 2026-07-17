@@ -56,6 +56,26 @@ namespace WolfCurses.Window
         /// </summary>
         bool MaskInput => false;
 
+        /// <summary>
+        ///     Fired when the host reports a key press, before and apart from anything the input buffer does with it.
+        ///     <para>
+        ///         This is the only way to hear a key that is not text. The input buffer holds a line the user is typing,
+        ///         so it takes characters — and an arrow key, a function key or Home has no character to give it, which
+        ///         means it is dropped. That is the right answer for a prompt and the wrong one for anything that wants
+        ///         to be steered, so both are offered: printable keys still fill the buffer exactly as they always have,
+        ///         and every key is also reported here for whoever cares.
+        ///     </para>
+        ///     <para>
+        ///         The host decides what counts as a key press, since the library reads no input of its own. Enter and
+        ///         Backspace are conventionally the host's to handle as buffer control rather than pass along. Implemented
+        ///         as a default interface member so existing windows need not change.
+        ///     </para>
+        /// </summary>
+        /// <param name="key">The key that was pressed.</param>
+        void OnKeyPressed(ConsoleKey key)
+        {
+        }
+
         /// <summary>Creates and adds the specified type of state to currently active game Windows.</summary>
         /// <param name="stateType">The state Type.</param>
         void SetForm(Type stateType);

@@ -81,7 +81,13 @@ namespace WolfCurses.Example
                             ConsoleSimulationApp.Instance.InputManager.RemoveLastCharOfInputBuffer();
                             break;
                         default:
+                            // Both, and they are not the same thing. The input buffer takes text, so it is offered the
+                            // character and quietly ignores anything that is not printable. An arrow key has no
+                            // character at all, so without the second line it would simply be dropped and nothing could
+                            // ever be steered; reporting the key press as well is what lets a form hear one. Windows and
+                            // forms that do not care override nothing and pay nothing.
                             ConsoleSimulationApp.Instance.InputManager.AddCharToInputBuffer(key.KeyChar);
+                            ConsoleSimulationApp.Instance.InputManager.SendKeyPress(key.Key);
                             break;
                     }
                 }
