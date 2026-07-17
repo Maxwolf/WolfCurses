@@ -142,6 +142,26 @@ namespace WolfCurses.Tests.Graphics
         }
 
         [Fact]
+        public void Build_KeepsPaletteEntriesInFirstSeenOrder()
+        {
+            // Entry order is contract, not cosmetics: palette register numbers are positional in the sixel stream,
+            // the counting sort is stable so its ties resolve by this order, and the encoder's output is only
+            // reproducible across versions if the same image always yields the same entry sequence. First-seen scan
+            // order is what the Dictionary this class used to build on produced; a hash-ordered export would pass
+            // every pixel-level test while silently reordering every multi-color palette (a review catch).
+            var palette = ColorPalette.Build(Row(
+                new Rgba32(0, 255, 0, 255),
+                new Rgba32(255, 255, 255, 255),
+                new Rgba32(255, 0, 0, 255),
+                new Rgba32(0, 255, 0, 255)), 128, 256);
+
+            Assert.Equal(3, palette.Colors.Length);
+            Assert.Equal(new Rgb24(0, 255, 0), palette.Colors[0]);
+            Assert.Equal(new Rgb24(255, 255, 255), palette.Colors[1]);
+            Assert.Equal(new Rgb24(255, 0, 0), palette.Colors[2]);
+        }
+
+        [Fact]
         public void Build_NullImage_Throws()
         {
             Assert.Throws<ArgumentNullException>(() => ColorPalette.Build(null, 128, 256));

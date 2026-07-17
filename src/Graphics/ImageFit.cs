@@ -30,6 +30,25 @@ namespace WolfCurses.Graphics
         public static PixelBuffer FitToPixels(PixelBuffer image, AnsiImageOptions options, int cellPixelWidth,
             int cellPixelHeight)
         {
+            var (cropX, cropY, cropWidth, cropHeight, targetWidth, targetHeight) =
+                ResolveFit(image, options, cellPixelWidth, cellPixelHeight);
+
+            var source = cropX == 0 && cropY == 0 && cropWidth == image.Width && cropHeight == image.Height
+                ? image
+                : image.Crop(cropX, cropY, cropWidth, cropHeight);
+            return source.Resize(targetWidth, targetHeight);
+        }
+
+        /// <summary>
+        ///     Works out the geometry <see cref="FitToPixels" /> would apply without touching a pixel: the source
+        ///     rectangle that survives (only <see cref="AnsiImageFitEnum.Cover" /> ever crops) and the output pixel
+        ///     dimensions it is scaled to. Exposed separately so a renderer can decide to take the crop-then-scale
+        ///     path itself — e.g. encoding an upscale straight from source pixels — while staying exactly consistent
+        ///     with what the materializing path would have produced.
+        /// </summary>
+        public static (int CropX, int CropY, int CropWidth, int CropHeight, int TargetWidth, int TargetHeight)
+            ResolveFit(PixelBuffer image, AnsiImageOptions options, int cellPixelWidth, int cellPixelHeight)
+        {
             var (maxColumns, maxRows) = AnsiImageRenderer.ResolveBounds(options);
             var areaWidth = Math.Max(1, maxColumns * cellPixelWidth);
             var areaHeight = Math.Max(1, maxRows * cellPixelHeight);
@@ -37,7 +56,7 @@ namespace WolfCurses.Graphics
             switch (options.Fit)
             {
                 case AnsiImageFitEnum.Stretch:
-                    return image.Resize(areaWidth, areaHeight);
+                    return (0, 0, image.Width, image.Height, areaWidth, areaHeight);
 
                 case AnsiImageFitEnum.Cover:
                     return Cover(image, areaWidth, areaHeight, options);
@@ -53,15 +72,32 @@ namespace WolfCurses.Graphics
 
                     var width = Math.Max(1, (int) Math.Round(image.Width * scale, MidpointRounding.AwayFromZero));
                     var height = Math.Max(1, (int) Math.Round(image.Height * scale, MidpointRounding.AwayFromZero));
-                    return image.Resize(width, height);
+                    return (0, 0, image.Width, image.Height, width, height);
             }
+        }
+
+        /// <summary>
+        ///     The crop half of <see cref="AnsiImageFitEnum.Cover" /> on its own: the source-resolution sub-rectangle
+        ///     whose proportions match the area, without the scale-to-fill step. A renderer that can hand scaling to
+        ///     the terminal (kitty's <c>c=</c>/<c>r=</c> keys) needs exactly this much done on the CPU and no more.
+        /// </summary>
+        public static PixelBuffer CoverCrop(PixelBuffer image, int areaWidth, int areaHeight, AnsiImageOptions options)
+        {
+            var (cropX, cropY, cropWidth, cropHeight, _, _) = Cover(image, areaWidth, areaHeight, options);
+
+            // A crop that keeps everything is the image itself; skip the whole-buffer copy.
+            if (cropX == 0 && cropY == 0 && cropWidth == image.Width && cropHeight == image.Height)
+                return image;
+
+            return image.Crop(cropX, cropY, cropWidth, cropHeight);
         }
 
         /// <summary>
         ///     Fills the area completely without distortion: crops the source to the sub-rectangle whose proportions
         ///     match the area (anchored by the alignment options) and scales that to fill it exactly.
         /// </summary>
-        private static PixelBuffer Cover(PixelBuffer image, int areaWidth, int areaHeight, AnsiImageOptions options)
+        private static (int CropX, int CropY, int CropWidth, int CropHeight, int TargetWidth, int TargetHeight)
+            Cover(PixelBuffer image, int areaWidth, int areaHeight, AnsiImageOptions options)
         {
             var imageAspect = image.Width / (double) image.Height;
             var areaAspect = areaWidth / (double) areaHeight;
@@ -90,7 +126,7 @@ namespace WolfCurses.Graphics
             var cropX = AnsiImageRenderer.AnchorOffset(options.HorizontalAlignment, image.Width - cropWidth);
             var cropY = AnsiImageRenderer.AnchorOffset(options.VerticalAlignment, image.Height - cropHeight);
 
-            return image.Crop(cropX, cropY, cropWidth, cropHeight).Resize(areaWidth, areaHeight);
+            return (cropX, cropY, cropWidth, cropHeight, areaWidth, areaHeight);
         }
 
         /// <summary>

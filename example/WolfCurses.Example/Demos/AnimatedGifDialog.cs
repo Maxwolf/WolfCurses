@@ -30,10 +30,11 @@ namespace WolfCurses.Example.Demos
     ///         shape that fits in memory.</b> The obvious alternative — decode once, keep the frames, render whichever
     ///         is showing — sounds cheaper and is not: a frame is the whole 540x540 screen (it has to be; see
     ///         <see cref="GifFrame.Image" />), so holding all 91 costs about 106 MB, for a file of under 4 MB. Rendered
-    ///         to half blocks and dropped, the same 91 frames come to 0.9 MB of text and take about a third of a second.
+    ///         to half blocks and dropped, the same 91 frames come to a couple of MB of text in about half a second.
     ///         The decoder hands frames over one at a time for exactly this reason, so the pixels never pile up. The
-    ///         cost lands instead on whoever draws real pixels — about 16 MB of sixel, or 95 MB of kitty, since those
-    ///         payloads are the image rather than an approximation of it.
+    ///         cost lands instead on whoever draws real pixels — at a 200x50 terminal about 41 MB of sixel, which
+    ///         grows with the window, or about 135 MB of kitty, which does not: kitty transmits the source's own
+    ///         540x540 pixels and lets the terminal scale, so its cost is capped by the file rather than the screen.
     ///     </para>
     /// </summary>
     [ParentWindow(typeof (ExampleWindow))]
@@ -81,10 +82,10 @@ namespace WolfCurses.Example.Demos
         ///     <para>
         ///         A sprite test changes renderer between one frame and the next, because it draws every frame anyway.
         ///         This one drew all ninety-one of them before it started, so switching means drawing them all again —
-        ///         about a third of a second into half blocks, and <b>seven seconds</b> into sixel. The wait is the
-        ///         entire cost of true pixels here, paid once at the door, and afterwards playback is an array lookup
-        ///         either way. Watch the "cached in" figure rather than the fps: fps will read about 32 whichever is
-        ///         chosen, which is exactly the finding.
+        ///         about half a second into half blocks, and <b>about two seconds</b> into sixel (down from seven
+        ///         before the 2026-07-17 renderer rework). The wait is the entire cost of true pixels here, paid once
+        ///         at the door, and afterwards playback is an array lookup either way. Watch the "cached in" figure
+        ///         rather than the fps: fps will read about 32 whichever is chosen, which is exactly the finding.
         ///     </para>
         /// </summary>
         private readonly RendererSwitch _renderer = new();
@@ -125,7 +126,7 @@ namespace WolfCurses.Example.Demos
             // Every frame has to be built again, because every frame is a string that the other renderer wrote. There
             // is nothing to reuse: the pixels were thrown away as each one was rendered, deliberately, since keeping
             // them would cost a hundred megabytes. So this re-decodes the file too, and the screen simply stops for as
-            // long as that takes — which on sixel is about seven seconds, and is the honest price of the switch.
+            // long as that takes — about two seconds on sixel, and is the honest price of the switch.
             _renderer.Toggle();
             Load();
 

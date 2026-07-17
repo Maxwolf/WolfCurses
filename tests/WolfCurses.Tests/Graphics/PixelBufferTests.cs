@@ -241,5 +241,178 @@ namespace WolfCurses.Tests.Graphics
             Assert.Equal(255, background.GetPixel(0, 0).B);
             Assert.Equal(0, background.GetPixel(1, 1).A); // still untouched/transparent
         }
+
+        [Theory]
+        [InlineData(900, 620)] // enlarge: the sixel/kitty canvas case
+        [InlineData(300, 150)] // shrink: the photograph-into-a-small-terminal case
+        public void Resize_AboveTheParallelThreshold_MatchesTheSequentialReference(int newWidth, int newHeight)
+        {
+            // Big resizes fan out across threads, one destination row each. Rows write disjoint slices of the
+            // destination and read only the immutable source, so the bytes must come out identical to the plain
+            // sequential algorithm — this compares against a verbatim copy of it, so a race, a mis-hoisted capture,
+            // or a wrong row boundary shows up as a byte difference rather than as a rare on-screen shimmer.
+            var source = NoisyBuffer(640, 400);
+
+            var actual = source.Resize(newWidth, newHeight);
+            var expected = ReferenceResize(source, newWidth, newHeight);
+
+            Assert.Equal(expected, actual.Data);
+        }
+
+        [Fact]
+        public void Resize_AboveTheParallelThreshold_IsDeterministicAcrossRuns()
+        {
+            // A scheduling race would be intermittent, so the identity check gets several chances to catch it.
+            var source = NoisyBuffer(640, 400);
+            var first = source.Resize(900, 620).Data;
+
+            for (var run = 0; run < 5; run++)
+                Assert.Equal(first, source.Resize(900, 620).Data);
+        }
+
+        /// <summary>
+        ///     A deterministic pseudorandom image big enough (256K pixels) to cross the parallel threshold, with the
+        ///     alpha variety the resize arithmetic cares about: opaque, fully transparent and part-transparent pixels.
+        /// </summary>
+        private static PixelBuffer NoisyBuffer(int width, int height)
+        {
+            var data = new byte[width * height * 4];
+            var state = 12345u;
+            for (var i = 0; i < data.Length; i += 4)
+            {
+                state = state * 1664525u + 1013904223u;
+                data[i] = (byte) (state >> 8);
+                data[i + 1] = (byte) (state >> 16);
+                data[i + 2] = (byte) (state >> 24);
+                data[i + 3] = (state & 3) switch
+                {
+                    0 => (byte) 0,
+                    1 => (byte) 255,
+                    _ => (byte) (state >> 4)
+                };
+            }
+
+            return new PixelBuffer(width, height, data);
+        }
+
+        /// <summary>
+        ///     The sequential area-averaging resize, kept verbatim from before the row loop went parallel, so the
+        ///     production code has an independent answer to be equal to. Any deliberate change to the resize
+        ///     arithmetic must be made in both places — that is this copy's entire job.
+        /// </summary>
+        private static byte[] ReferenceResize(PixelBuffer image, int newWidth, int newHeight)
+        {
+            var dst = new byte[newWidth * newHeight * 4];
+            var scaleX = (double) image.Width / newWidth;
+            var scaleY = (double) image.Height / newHeight;
+            var data = image.Data;
+
+            var columnLeft = new double[newWidth];
+            var columnRight = new double[newWidth];
+            var columnStart = new int[newWidth];
+            var columnEnd = new int[newWidth];
+            for (var dx = 0; dx < newWidth; dx++)
+            {
+                var left = dx * scaleX;
+                var right = (dx + 1) * scaleX;
+                var end = (int) Math.Ceiling(right);
+
+                columnLeft[dx] = left;
+                columnRight[dx] = right;
+                columnStart[dx] = (int) Math.Floor(left);
+                columnEnd[dx] = end > image.Width ? image.Width : end;
+            }
+
+            for (var dy = 0; dy < newHeight; dy++)
+            {
+                var srcTop = dy * scaleY;
+                var srcBottom = (dy + 1) * scaleY;
+                var y0 = (int) Math.Floor(srcTop);
+                var y1 = (int) Math.Ceiling(srcBottom);
+                if (y1 > image.Height) y1 = image.Height;
+
+                var singleRow = y1 - y0 == 1;
+                var rowBase = dy * newWidth * 4;
+                var sourceRowBase = y0 * image.Width * 4;
+
+                for (var dx = 0; dx < newWidth; dx++)
+                {
+                    var srcLeft = columnLeft[dx];
+                    var srcRight = columnRight[dx];
+                    var x0 = columnStart[dx];
+                    var x1 = columnEnd[dx];
+
+                    var di = rowBase + dx * 4;
+
+                    if (singleRow && x1 - x0 == 1)
+                    {
+                        var single = sourceRowBase + x0 * 4;
+                        if (data[single + 3] != 0)
+                        {
+                            dst[di] = data[single];
+                            dst[di + 1] = data[single + 1];
+                            dst[di + 2] = data[single + 2];
+                            dst[di + 3] = data[single + 3];
+                        }
+
+                        continue;
+                    }
+
+                    double sumR = 0, sumG = 0, sumB = 0;
+                    double sumAlphaWeighted = 0;
+                    double sumColorWeight = 0;
+                    double sumCoverage = 0;
+
+                    for (var sy = y0; sy < y1; sy++)
+                    {
+                        var yOverlap = Math.Min(srcBottom, sy + 1) - Math.Max(srcTop, sy);
+                        if (yOverlap <= 0) continue;
+
+                        var rowOffset = sy * image.Width * 4;
+                        for (var sx = x0; sx < x1; sx++)
+                        {
+                            var xOverlap = Math.Min(srcRight, sx + 1) - Math.Max(srcLeft, sx);
+                            if (xOverlap <= 0) continue;
+
+                            var coverage = xOverlap * yOverlap;
+                            var i = rowOffset + sx * 4;
+                            double a = data[i + 3];
+                            var colorWeight = coverage * (a / 255.0);
+
+                            sumR += data[i] * colorWeight;
+                            sumG += data[i + 1] * colorWeight;
+                            sumB += data[i + 2] * colorWeight;
+                            sumAlphaWeighted += coverage * a;
+                            sumColorWeight += colorWeight;
+                            sumCoverage += coverage;
+                        }
+                    }
+
+                    if (sumCoverage <= 0)
+                        continue;
+
+                    var outA = sumAlphaWeighted / sumCoverage;
+
+                    if (sumColorWeight > 0)
+                    {
+                        dst[di] = ReferenceClamp(sumR / sumColorWeight);
+                        dst[di + 1] = ReferenceClamp(sumG / sumColorWeight);
+                        dst[di + 2] = ReferenceClamp(sumB / sumColorWeight);
+                    }
+
+                    dst[di + 3] = ReferenceClamp(outA);
+                }
+            }
+
+            return dst;
+        }
+
+        private static byte ReferenceClamp(double value)
+        {
+            var rounded = (int) Math.Round(value, MidpointRounding.AwayFromZero);
+            if (rounded < 0) return 0;
+            if (rounded > 255) return 255;
+            return (byte) rounded;
+        }
     }
 }

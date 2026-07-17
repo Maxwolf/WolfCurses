@@ -11,11 +11,13 @@ namespace WolfCurses.Example.Demos
     ///     <para>
     ///         <b>It opens on the probe's answer</b>, which is the honest thing for a demo to do: this app exists to
     ///         show what the library does on the terminal it finds itself in, and quietly substituting a cheaper
-    ///         renderer would be showing something else. The cost is real and worth seeing — on a terminal that speaks
-    ///         sixel the same sprite frame is about <b>92ms against 3.7ms in half blocks</b>, so the fps readout beside
-    ///         this reads single figures until TAB is pressed and then leaps to thirty. That is not sixel being badly
-    ///         written: a sixel cell is ten by twenty real pixels, so filling a 200x50 terminal means quantizing and
-    ///         encoding 1.6 million of them for every single frame, where half blocks emit two per cell.
+    ///         renderer would be showing something else. Since the 2026-07-17 rework every renderer holds 30fps on
+    ///         these scenes, so the number that moves when TAB is pressed is <b>ms/frame</b>, not fps: the same sprite
+    ///         frame costs about <b>21ms in sixel against 5ms in half blocks</b> (it was ~205ms before the rework,
+    ///         when sixel upscaled the canvas to 1.6 million terminal pixels on the CPU and then quantized every one
+    ///         of them; now it palettes the ~100K source pixels and stretches runs arithmetically). The gap is still
+    ///         real — sixel does many times the work for its ten-by-twenty real pixels per cell — it just fits inside
+    ///         the frame budget now.
     ///     </para>
     ///     <para>
     ///         On a terminal the probe found nothing on, both sides of the switch are half blocks and pressing TAB will
