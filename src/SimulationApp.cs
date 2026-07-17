@@ -3,9 +3,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using WolfCurses.Core;
+using WolfCurses.Graphics;
 using WolfCurses.Window.Control;
 
 namespace WolfCurses
@@ -73,6 +73,14 @@ namespace WolfCurses
         /// </param>
         protected SimulationApp(int? randomSeed)
         {
+            // Ask the terminal, once per process, which graphics protocol it can draw with, and route every image
+            // through the best answer — so pictures come out as real pixels on a capable terminal and as character
+            // cells anywhere else, with the host doing nothing. It has to happen before the host's key-reading loop
+            // starts (the terminal answers on standard input), and constructing the simulation is the one moment
+            // guaranteed to be before it. A host that already assigned ImageRenderers.Default keeps its choice;
+            // this only fills in the default nobody made.
+            ImageRenderers.AutoDetect();
+
             // We are not closing...
             IsClosing = false;
 

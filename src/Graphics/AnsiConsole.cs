@@ -234,7 +234,9 @@ namespace WolfCurses.Graphics
         ///         already running, the two will steal each other's characters: the reply would be typed into the
         ///         simulation and a real keystroke could be swallowed here. Nothing in the library reads input on its
         ///         own (<see cref="Core.InputManager" /> is fed by the host), so "before the host's loop starts" is the
-        ///         only requirement.
+        ///         only requirement. Constructing a <see cref="SimulationApp" /> does exactly this automatically (via
+        ///         <see cref="ImageRenderers.AutoDetect()" />) and installs the answer as the default renderer, so most
+        ///         applications never call it themselves.
         ///     </para>
         ///     <para>
         ///         It never throws and is bounded by <paramref name="timeoutMilliseconds" />: every terminal worth

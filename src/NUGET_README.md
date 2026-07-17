@@ -88,15 +88,15 @@ By default the image is scaled to fit the console window while keeping its aspec
 
 ### Real pixels: sixel and kitty
 
-Half blocks get two pixels per character cell and work anywhere. Terminals speaking a true-pixel protocol can do roughly two hundred times better, and how pixels become output is a seam — so using the best one available is a line at start-up:
+Half blocks get two pixels per character cell and work anywhere. Terminals speaking a true-pixel protocol can do roughly two hundred times better, and WolfCurses uses the best one available **automatically**: creating your simulation asks the terminal, once, which protocol it understands and routes every image through the answer. How pixels become output is still a seam, so overruling the terminal is one line — a renderer you assign always wins, before or after the simulation exists:
 
 ```csharp
-ImageRenderers.Default = ImageRenderers.ForCurrentTerminal();
+ImageRenderers.Default = new SixelImageRenderer();
 ```
 
-`SixelImageRenderer` (xterm with sixel, foot, WezTerm, mlterm, contour, recent Konsole/VTE, iTerm2, Windows Terminal 1.22+) reduces the picture to a per-image palette chosen by median cut. `KittyImageRenderer` (kitty, WezTerm, Ghostty) sends full 24-bit color with a real alpha channel. Anything unproven — including tmux/screen — falls back to `HalfBlockImageRenderer`, because guessing wrong the safe way costs quality while guessing wrong the other way prints escape sequences as garbage.
+`SixelImageRenderer` (xterm with sixel, foot, WezTerm, mlterm, contour, recent Konsole/VTE, iTerm2, Windows Terminal 1.22+) reduces the picture to a per-image palette chosen by median cut. `KittyImageRenderer` (kitty, WezTerm, Ghostty) sends full 24-bit color with a real alpha channel. Anything unproven — including tmux/screen and anything with output redirected — falls back to `HalfBlockImageRenderer`, because guessing wrong the safe way costs quality while guessing wrong the other way prints escape sequences as garbage.
 
-`ForCurrentTerminal()` only reads environment variables, so it cannot hang or disturb input. xterm and Windows Terminal can't be settled that way (no version is published); to ask the terminal itself, call `ImageRenderers.For(AnsiConsole.ProbeGraphicsProtocol())` **before your input loop starts**. Everything is pure managed code: no native binaries, and no package dependencies at all.
+Detection (`ImageRenderers.AutoDetect()`) probes the terminal over standard input — the only way to settle xterm and Windows Terminal, which advertise nothing — so it must run **before your input loop starts**, which constructing the simulation naturally is; it never throws, is bounded by a timeout, and falls back to the environment's guess (`TERM`, `KITTY_WINDOW_ID`, `VTE_VERSION`, ...). It runs once per process, and drawing images *before* the simulation exists just means calling it yourself first. Everything is pure managed code: no native binaries, and no package dependencies at all.
 
 ## Progress bars & graphs
 
