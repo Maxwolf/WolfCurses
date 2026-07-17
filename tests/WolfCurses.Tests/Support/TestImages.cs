@@ -14,9 +14,10 @@ namespace WolfCurses.Tests.Support
         private static readonly Lazy<string> _repoRootLazy = new(FindRepoRoot);
 
         /// <summary>
-        ///     The decoder the integration tests load fixtures with. Passed explicitly to
+        ///     The third-party decoder the tests use: to load fixtures for the rendering tests, and as the independent
+        ///     oracle the built-in decoders are compared against. Passed explicitly to
         ///     <see cref="WolfCurses.Graphics.AnsiImage.FromFile" /> rather than installed as the process-wide default,
-        ///     so the library's unconfigured stand-in stays in place for the tests that assert its behavior.
+        ///     so the default stays what a real application would get.
         /// </summary>
         public static readonly StbImageDecoder Decoder = new();
 

@@ -9,20 +9,21 @@ using WolfCurses.Graphics;
 namespace WolfCurses.Example.Graphics
 {
     /// <summary>
-    ///     Teaches WolfCurses how to read PNG and JPEG files, by adapting StbImageSharp to the library's
-    ///     <see cref="IImageDecoder" /> seam. This lives here in the example rather than in the library on purpose: a
-    ///     decoder for real image formats means a third-party dependency, and WolfCurses leaves that choice to the
-    ///     application instead of forcing it on everyone who installs the package.
+    ///     Replaces WolfCurses' built-in decoders with StbImageSharp, by adapting it to the library's
+    ///     <see cref="IImageDecoder" /> seam. This file is the whole of what that takes — copy it, swap StbImageSharp
+    ///     for whatever imaging library you already have, and assign <c>ImageDecoders.Default</c> at start-up.
     ///     <para>
-    ///         This is the whole of it — an application that wants image loading adds the StbImageSharp package, copies
-    ///         this file, and assigns <c>ImageDecoders.Default</c> at start-up (see <see cref="Program" />). Swap in any
-    ///         other library — ImageSharp, SkiaSharp, System.Drawing, your own — by implementing the same one method.
+    ///         Nothing in this app installs it any more. WolfCurses decodes PNG, JPEG and GIF itself now, so the
+    ///         example runs on the built-in decoders — which is the more useful thing for it to demonstrate, since it
+    ///         proves they handle real photographs in a real application. This stays because it is what the library's
+    ///         own "that format is not one of the three" error points at, and because compiling it here is what keeps
+    ///         that pointer honest. <see cref="Program" /> has the one commented line that switches to it.
     ///     </para>
     ///     <para>
-    ///         StbImageSharp is used here because it suits a package that runs everywhere: a managed, public-domain
-    ///         port of the widely used stb_image, with no native binaries to ship per platform. It decodes what a text
-    ///         UI is likely to embed — PNG (with an alpha channel for transparency), baseline <em>and</em> progressive
-    ///         JPEG, BMP, GIF, TGA, PSD.
+    ///         Worth doing when an application needs a format outside the built-in three (WebP, TIFF, PSD), when
+    ///         decode speed turns out to matter, or simply so that one process is not decoding images two different
+    ///         ways. StbImageSharp suits a package that runs everywhere: a managed, public-domain port of the widely
+    ///         used stb_image, with no native binaries to ship per platform.
     ///     </para>
     /// </summary>
     public sealed class StbImageDecoder : IImageDecoder

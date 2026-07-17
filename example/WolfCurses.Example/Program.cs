@@ -3,7 +3,6 @@
 
 using System;
 using System.Threading;
-using WolfCurses.Example.Graphics;
 using WolfCurses.Graphics;
 
 namespace WolfCurses.Example
@@ -32,11 +31,18 @@ namespace WolfCurses.Example
             Console.CursorVisible = false;
             Console.CancelKeyPress += Console_CancelKeyPress;
 
-            // Teach the library how to read image files. WolfCurses ships no decoder — that would mean a third-party
-            // dependency in the package — so an application that wants to show a PNG or a JPEG picks one and installs
-            // it here. Without this, anything that loads an image throws an explanatory error instead. It has to come
-            // before the simulation is created, because the logo splash goes up immediately and needs it.
-            ImageDecoders.Default = new StbImageDecoder();
+            // Nothing here teaches the library to read image files, deliberately: it already knows. WolfCurses decodes
+            // PNG, JPEG and GIF itself, so the logo splash and every picture in this app load with no set-up line at
+            // all, and the package still has no dependencies. This app is the proof — every image it shows goes
+            // through the built-in decoders.
+            //
+            // Swapping in something else is one line, and StbImageDecoder next door is a complete example of the
+            // thirty-line adapter it takes to wrap an imaging library you already have. Uncomment to use it here:
+            //
+            //     ImageDecoders.Default = new StbImageDecoder();
+            //
+            // Worth doing when you need a format outside those three (WebP, TIFF), when decode speed turns out to
+            // matter, or simply so one process is not decoding images two different ways.
 
             // Ask the terminal whether it can draw real pixels, and if so draw every image that way from here on.
             // This must happen before the key-reading loop below starts: the probe writes a question to the terminal
