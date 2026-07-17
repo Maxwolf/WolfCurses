@@ -1,3 +1,4 @@
+using System;
 using WolfCurses.Graphics;
 using Xunit;
 
@@ -42,30 +43,81 @@ namespace WolfCurses.Tests.Graphics
         }
 
         [Fact]
-        public void BuildAnsiUpdate_PlaceholderRows_AreNeitherWrittenNorErased()
+        public void BuildAnsiUpdate_PlaceholderRows_AreClearedAheadOfThePictureButNeverAfterIt()
         {
-            // Rows 2 and 3 are covered by the picture whose payload sits on row 1. The terminal is showing image
-            // there; touching them at all would punch a hole in it.
+            // Rows 2 and 3 are covered by the picture whose payload sits on row 1. They are blanked ahead of the
+            // payload so the picture replaces whatever was on them, and then never touched again: once the picture is
+            // down, addressing a row it covers would punch a hole in it.
             var update = ConsolePresenter.BuildAnsiUpdate(
                 new[] {PayloadRow, AnsiGraphics.RowPlaceholder, AnsiGraphics.RowPlaceholder, "prompt"},
                 null, 80, 25);
 
-            Assert.DoesNotContain($"{Esc}[2;1H", update);
-            Assert.DoesNotContain($"{Esc}[3;1H", update);
-            Assert.Contains($"{Esc}[4;1Hprompt", update);
+            var payloadAt = update.IndexOf(FakePayload, StringComparison.Ordinal);
+            var beforePicture = update.Substring(0, payloadAt);
+            var afterPicture = update.Substring(payloadAt);
+
+            Assert.Contains($"{Esc}[2;1H{Esc}[0m{Esc}[K", beforePicture, StringComparison.Ordinal);
+            Assert.Contains($"{Esc}[3;1H{Esc}[0m{Esc}[K", beforePicture, StringComparison.Ordinal);
+            Assert.DoesNotContain($"{Esc}[2;1H", afterPicture, StringComparison.Ordinal);
+            Assert.DoesNotContain($"{Esc}[3;1H", afterPicture, StringComparison.Ordinal);
+            Assert.Contains($"{Esc}[4;1Hprompt", afterPicture, StringComparison.Ordinal);
         }
 
         [Fact]
-        public void BuildAnsiUpdate_TextRowBecomingPlaceholder_IsStillNotErased()
+        public void BuildAnsiUpdate_TextRowBecomingPlaceholder_IsClearedBeforeThePictureIsPainted()
         {
-            // Even when the previous frame had text on a row that is now covered by a picture, the presenter must not
-            // erase it: the picture drawn on the payload row above has already painted over it. The payload row
-            // changing is what repaints the area.
+            // The previous frame had text on a row the new picture covers. It cannot be left alone on the theory that
+            // the picture paints over it — a picture only paints where it has pixels, so text reaching past the
+            // picture's right edge would survive underneath it. Blanking the row first is what makes the picture
+            // genuinely replace what was there.
             var update = ConsolePresenter.BuildAnsiUpdate(
                 new[] {PayloadRow, AnsiGraphics.RowPlaceholder},
                 new[] {"old text", "more old text"}, 80, 25);
 
-            Assert.DoesNotContain($"{Esc}[2;1H", update);
+            var payloadAt = update.IndexOf(FakePayload, StringComparison.Ordinal);
+
+            Assert.Contains($"{Esc}[2;1H", update.Substring(0, payloadAt), StringComparison.Ordinal);
+            Assert.DoesNotContain($"{Esc}[2;1H", update.Substring(payloadAt), StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void BuildAnsiUpdate_SmallerPictureReplacingABiggerOne_ClearsEveryRowItCovers()
+        {
+            // The slideshow bug, reduced: slide A covers rows 1-4, the narrower slide B only rows 1-2. Rows 3-4 fall
+            // outside B and are ordinary lines in the new frame, so the row diff already erases them — but rows 1-2
+            // are B's own, and B paints only where it has pixels. Without clearing them first, whatever of A stuck out
+            // to the right of B stayed on screen, and a slideshow piled up every slide it had shown.
+            var slideA = new[] {PayloadRow, AnsiGraphics.RowPlaceholder, AnsiGraphics.RowPlaceholder,
+                AnsiGraphics.RowPlaceholder};
+            var slideB = new[] {AnsiGraphics.RowPlaceholder + "NARROWER", AnsiGraphics.RowPlaceholder, "", ""};
+
+            var update = ConsolePresenter.BuildAnsiUpdate(slideB, slideA, 80, 25);
+            var payloadAt = update.IndexOf("NARROWER", StringComparison.Ordinal);
+            var beforePicture = update.Substring(0, payloadAt);
+
+            Assert.Contains($"{Esc}[1;1H{Esc}[0m{Esc}[K", beforePicture, StringComparison.Ordinal);
+            Assert.Contains($"{Esc}[2;1H{Esc}[0m{Esc}[K", beforePicture, StringComparison.Ordinal);
+
+            // Rows 3-4 are no longer picture at all; the ordinary diff blanks them.
+            Assert.Contains($"{Esc}[3;1H{Esc}[0m{Esc}[K", update, StringComparison.Ordinal);
+            Assert.Contains($"{Esc}[4;1H{Esc}[0m{Esc}[K", update, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void BuildAnsiUpdate_PictureThatDidNotChange_IsNotClearedOrRepainted()
+        {
+            // The clearing must be tied to the picture being repainted, not to the picture merely existing. A frame
+            // where only the caption changed must leave the picture completely untouched — blanking rows it still
+            // occupies and not repainting them would erase it.
+            var before = new[] {"caption 1", PayloadRow, AnsiGraphics.RowPlaceholder};
+            var after = new[] {"caption 2", PayloadRow, AnsiGraphics.RowPlaceholder};
+
+            var update = ConsolePresenter.BuildAnsiUpdate(after, before, 80, 25);
+
+            Assert.Contains($"{Esc}[1;1Hcaption 2", update, StringComparison.Ordinal);
+            Assert.DoesNotContain($"{Esc}[2;1H", update, StringComparison.Ordinal);
+            Assert.DoesNotContain($"{Esc}[3;1H", update, StringComparison.Ordinal);
+            Assert.DoesNotContain(FakePayload, update);
         }
 
         [Fact]
@@ -176,7 +228,11 @@ namespace WolfCurses.Tests.Graphics
             // The picture starts on row 2 and covers row 3, so the prompt belongs on row 4 — the placeholder row
             // keeping the count honest is what puts it there.
             Assert.Contains($"{Esc}[4;1Hprompt >", written, System.StringComparison.Ordinal);
-            Assert.DoesNotContain($"{Esc}[3;1H", written, System.StringComparison.Ordinal);
+
+            // Row 3 is inside the picture. It gets blanked on the way in, so the picture replaces what was there, but
+            // nothing may address it once the sixel is down — that would cut a row out of the picture.
+            var payloadAt = written.IndexOf($"{Esc}P0;1;0q", StringComparison.Ordinal);
+            Assert.DoesNotContain($"{Esc}[3;1H", written.Substring(payloadAt), StringComparison.Ordinal);
         }
     }
 }

@@ -179,21 +179,22 @@ namespace WolfCurses
                 if (AnsiGraphics.IsRowPlaceholder(lines[row]))
                     continue;
 
-                // Move to the row, overwrite it in place, then reset attributes so a row without its own trailing
-                // reset cannot leak color into the erase below (which some terminals fill with the current
-                // background) or into the next frame.
-                body.Append(_csi).Append(row + 1).Append(";1H");
-
                 // A true-pixel payload (sixel/kitty) is written as-is and then deliberately left alone: it sets no
                 // color attributes to reset, and it must not be erased after. Terminals leave the cursor below a
                 // sixel they have just drawn, so the erase-to-end-of-line below would blank a row of the picture
                 // rather than the harmless tail it is meant for.
                 if (AnsiGraphics.IsPayloadRow(lines[row]))
                 {
+                    ErasePictureArea(body, lines, row);
+                    body.Append(_csi).Append(row + 1).Append(";1H");
                     body.Append(AnsiGraphics.PayloadOf(lines[row]));
                     continue;
                 }
 
+                // Move to the row, overwrite it in place, then reset attributes so a row without its own trailing
+                // reset cannot leak color into the erase below (which some terminals fill with the current
+                // background) or into the next frame.
+                body.Append(_csi).Append(row + 1).Append(";1H");
                 body.Append(lines[row]);
                 body.Append(_sgrReset);
 
@@ -221,6 +222,34 @@ namespace WolfCurses
             // Auto-wrap is off while drawing so an over-long row clips instead of wrapping into the row below (which
             // could also scroll the screen); both it and the synchronized-update marker are restored afterwards.
             return _syncBegin + _wrapOff + body + _wrapOn + _syncEnd;
+        }
+
+        /// <summary>
+        ///     Blanks every screen row a true-pixel picture is about to be painted onto — its payload row plus the
+        ///     placeholder rows below it.
+        ///     <para>
+        ///         This is what lets one picture actually replace another. A sixel or kitty picture paints only where it
+        ///         has pixels, so drawing a smaller one over a larger one leaves the old picture's right-hand side (and
+        ///         anything else it covered that the new one does not reach) still on screen — a slideshow would
+        ///         accumulate every slide it had shown. Rows the old picture covered *below* the new one need no help
+        ///         here: they are ordinary lines in the new frame, so the row diff rewrites and erases them already.
+        ///         Only the overlap is invisible to it.
+        ///     </para>
+        ///     <para>
+        ///         Blanking immediately before repainting is the one place this class breaks its own never-blank-first
+        ///         rule, and it is safe for the same reason the rule exists: both go out inside a single synchronized
+        ///         update, so a terminal honoring DEC 2026 never shows the intermediate state. It only happens when the
+        ///         payload changed — a picture that is merely still on screen is never touched.
+        ///     </para>
+        /// </summary>
+        private static void ErasePictureArea(StringBuilder body, string[] lines, int payloadRow)
+        {
+            var lastCovered = payloadRow;
+            while (lastCovered + 1 < lines.Length && AnsiGraphics.IsRowPlaceholder(lines[lastCovered + 1]))
+                lastCovered++;
+
+            for (var row = payloadRow; row <= lastCovered; row++)
+                body.Append(_csi).Append(row + 1).Append(";1H").Append(_sgrReset).Append(_eraseToLineEnd);
         }
 
         /// <summary>
