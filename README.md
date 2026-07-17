@@ -110,7 +110,7 @@ Because the terminal answers on standard input, the probe must run **before your
 
 To see what any of this looks like on your own terminal, the example's **Force slideshow render type** menu item redraws the same photos with each render type in turn — kitty, sixel, half blocks in true color / 256 colors / grayscale, and the colorless ASCII fallback — alongside an *Auto* choice that reports whichever one the probe settled on. Forcing a protocol the terminal does not speak is instructive rather than harmful: you get the screenful of escape-sequence garbage that detection exists to avoid.
 
-If you subscribe your own handler to `ScreenBufferDirtyEvent` instead of using `ConsolePresenter`, call `AnsiGraphics.StripMarkers(frame)` before writing it — true-pixel renderers mark the rows a picture covers so the presenter knows not to erase through them, and those markers must not reach the terminal. Frames without images pass through untouched.
+Frames present themselves through a built-in `ConsolePresenter` (flicker-free: changed rows only, overwritten in place, one write per update). Subscribing your own handler to `ScreenBufferDirtyEvent` takes presentation over — the built-in presenter stands down — and a handler that writes frames itself instead of handing them to a `ConsolePresenter` must call `AnsiGraphics.StripMarkers(frame)` first: true-pixel renderers mark the rows a picture covers so the presenter knows not to erase through them, and those markers must not reach the terminal. Frames without images pass through untouched.
 
 ## File & folder browser ##
 

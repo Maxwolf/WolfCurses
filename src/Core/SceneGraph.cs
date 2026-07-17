@@ -3,6 +3,7 @@
 
 using System;
 using System.Text;
+using WolfCurses.Graphics;
 
 namespace WolfCurses.Core
 {
@@ -11,6 +12,16 @@ namespace WolfCurses.Core
     ///     idea about how other modules work and only serves to query them for string data which will be compiled into a
     ///     console only view of the simulation which is intended to be the lowest level of visualization but theoretically
     ///     anything could be a renderer for the simulation.
+    ///     <para>
+    ///         Frames also draw themselves: while nothing is subscribed to <see cref="ScreenBufferDirtyEvent" />, each
+    ///         changed frame is written to the attached console through a <see cref="ConsolePresenter" /> this class
+    ///         creates on first use — so a console host gets flicker-free presentation without writing any presentation
+    ///         code at all. Subscribing to the event takes presentation over completely: the built-in presenter stands
+    ///         down while any handler is attached, which is also what keeps a host that wired its own presenter (the
+    ///         only way, before this existed) behaving exactly as it always did. With no console attached — output
+    ///         redirected, or no terminal at all — nothing is written anywhere and the frames simply wait in the event
+    ///         for whoever wants them.
+    ///     </para>
     /// </summary>
     public class SceneGraph : Module.Module
     {
@@ -44,6 +55,13 @@ namespace WolfCurses.Core
         private readonly SimulationApp _simUnit;
 
         /// <summary>
+        ///     Draws the frames nobody else claimed. Created on the first frame that can actually be drawn — never
+        ///     earlier, so a simulation that runs headless (tests, a game engine, output piped to a file) never
+        ///     constructs one and never touches the console at all.
+        /// </summary>
+        private ConsolePresenter _autoPresenter;
+
+        /// <summary>
         ///     Initializes a new instance of the <see cref="SceneGraph" /> class.
         /// </summary>
         /// <param name="simUnit">Core simulation which is controlling the window manager.</param>
@@ -61,12 +79,20 @@ namespace WolfCurses.Core
         private string ScreenBuffer { get; set; }
 
         /// <summary>
+        ///     Where auto-presented frames go instead of the console. Test seam: the real path needs an attached
+        ///     terminal to be observable, which a test host does not have. Null (always, outside tests) means frames
+        ///     go to the built-in <see cref="ConsolePresenter" />.
+        /// </summary>
+        internal Action<string> AutoPresentSink { get; set; }
+
+        /// <summary>
         ///     Fired when the simulation is closing and needs to clear out any data structures that it created so the program can
         ///     exit cleanly.
         /// </summary>
         public override void Destroy()
         {
             ScreenBuffer = string.Empty;
+            _autoPresenter = null;
         }
 
         /// <summary>
@@ -93,7 +119,45 @@ namespace WolfCurses.Core
 
             // Update the screen buffer with altered data.
             ScreenBuffer = tuiContent;
-            ScreenBufferDirtyEvent?.Invoke(ScreenBuffer);
+
+            // A subscriber owns presentation outright — the frame is handed over and the built-in presenter stays
+            // out of it entirely. Checked per frame rather than once, so a host attaching (or detaching) a handler
+            // mid-run hands presentation over (or takes it back) on the very next changed frame.
+            var subscribers = ScreenBufferDirtyEvent;
+            if (subscribers != null)
+            {
+                subscribers(ScreenBuffer);
+                return;
+            }
+
+            AutoPresent(ScreenBuffer);
+        }
+
+        /// <summary>
+        ///     Draws a frame nobody subscribed for. Silently does nothing without a real console to draw on — that is
+        ///     not an error, it is a simulation being run headless (tests, a game engine, output piped to a file),
+        ///     where the frames stay available in <see cref="ScreenBuffer" /> and the event for whoever wants them.
+        /// </summary>
+        /// <param name="frame">The complete frame to draw.</param>
+        private void AutoPresent(string frame)
+        {
+            // The test seam, when installed, stands in for the console entirely.
+            var sink = AutoPresentSink;
+            if (sink != null)
+            {
+                sink(frame);
+                return;
+            }
+
+            if (AnsiConsole.SafeIsOutputRedirected())
+                return;
+
+            // First drawable frame: build the presenter that will now serve for the rest of the simulation's life.
+            // Its constructor readies the console for ANSI output (VT processing on Windows + UTF-8), so nothing
+            // else has to have done that first. If a subscriber later takes over and then detaches again, the
+            // presenter's own per-row diff recovers on its next frame — its first draw is always a full redraw.
+            _autoPresenter ??= new ConsolePresenter();
+            _autoPresenter.Present(frame);
         }
 
         /// <summary>
@@ -161,6 +225,13 @@ namespace WolfCurses.Core
 
         /// <summary>
         ///     Fired when the screen back buffer has changed from what is currently being shown, this forces a redraw.
+        ///     <para>
+        ///         Subscribing takes over presentation: while any handler is attached the built-in console presenter
+        ///         stands down and the frames are yours to draw — hand them to your own
+        ///         <see cref="ConsolePresenter" />, or call <see cref="AnsiGraphics.StripMarkers" /> before writing
+        ///         them any other way. With no subscribers, <see cref="SceneGraph" /> presents each changed frame to
+        ///         the attached console itself, so most console hosts never touch this event at all.
+        ///     </para>
         /// </summary>
         public event ScreenBufferDirty ScreenBufferDirtyEvent;
 
