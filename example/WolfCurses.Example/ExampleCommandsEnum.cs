@@ -77,8 +77,13 @@ namespace WolfCurses.Example
         [Description("Password input (masked).")] PasswordDemo = 13,
 
         /// <summary>
+        ///     Slideshow drawn with a chosen renderer, to compare half blocks against the true-pixel protocols.
+        /// </summary>
+        [Description("True-pixel slideshow (sixel / kitty).")] TruePixelSlideshow = 14,
+
+        /// <summary>
         ///     Closes the console application.
         /// </summary>
-        [Description("End")] CloseSimulation = 14
+        [Description("End")] CloseSimulation = 15
     }
 }

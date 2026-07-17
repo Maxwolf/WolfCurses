@@ -374,7 +374,7 @@ namespace WolfCurses.Graphics
         }
 
         /// <summary>Left/center/right offset of an item with the given slack (unused space) around it.</summary>
-        private static int AnchorOffset(AnsiHorizontalAlignmentEnum alignment, int slack)
+        internal static int AnchorOffset(AnsiHorizontalAlignmentEnum alignment, int slack)
         {
             switch (alignment)
             {
@@ -385,7 +385,7 @@ namespace WolfCurses.Graphics
         }
 
         /// <summary>Top/middle/bottom offset of an item with the given slack (unused space) around it.</summary>
-        private static int AnchorOffset(AnsiVerticalAlignmentEnum alignment, int slack)
+        internal static int AnchorOffset(AnsiVerticalAlignmentEnum alignment, int slack)
         {
             switch (alignment)
             {

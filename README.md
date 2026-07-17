@@ -66,6 +66,29 @@ public override string OnRenderWindow() => _logo;
 - **Transparency.** Transparent PNG pixels let the terminal background show through; set `AnsiImageOptions.BackgroundColor` to composite the image onto a solid color instead.
 - **Graceful color downgrade.** True color by default, with automatic fallback to the 256-color palette, grayscale, or shaded ASCII on terminals that cannot do better (honoring `NO_COLOR`). Force a mode with `AnsiImageOptions.ColorMode`.
 - **Pluggable decoding.** Decoding is done through [StbImageSharp](https://github.com/StbSharp/StbImageSharp) (a managed, public-domain decoder, no native binaries). To use a different image library, implement `IImageDecoder` and assign `ImageDecoders.Default` once at start-up.
+- **Pluggable drawing.** How pixels become screen output is a seam too — see below.
+
+### Real pixels: sixel and kitty ###
+
+Half blocks work everywhere, but they only get two pixels per character cell. Terminals that speak a true-pixel protocol can do far better — on a typical 10x20 cell that is about two hundred pixels per cell instead of two — and WolfCurses can drive them. Drawing is a seam mirroring the decoder one, so switching is a single line at start-up:
+
+```csharp
+// Everything drawn from now on uses sixel instead of half blocks:
+ImageRenderers.Default = new SixelImageRenderer();
+
+// ...or draw one picture differently without disturbing the global default:
+var photo = image.ToAnsi(options, new KittyImageRenderer());
+```
+
+- **`HalfBlockImageRenderer`** — the default. Colored `▀` characters; works in any terminal that can do color at all.
+- **`SixelImageRenderer`** — real pixels via the DEC sixel protocol, supported by xterm (built with sixel), foot, WezTerm, mlterm, contour, and Windows Terminal 1.22+. Sixel is indexed, so the picture is reduced to a palette (256 colors by default) chosen per-image by median cut — entries are spent where the picture actually has detail rather than on a fixed grid.
+- **`KittyImageRenderer`** — real pixels via the kitty graphics protocol, supported by kitty, WezTerm, Ghostty, and Konsole. It transmits the pixels as they are — full 24-bit color and a real alpha channel, no palette — so it is the better choice where it is available.
+
+Both are **opt-in on purpose**: there is no reliable way to ask a terminal what it supports without reading back an escape-sequence reply, which would race the library's own input handling — so a terminal that does not understand the protocol would print it as garbage rather than degrade. Choose based on what your application knows about where it runs, and keep `HalfBlockImageRenderer` as the safe default.
+
+Both take the terminal's cell size in pixels (`new SixelImageRenderer(cellPixelWidth: 10, cellPixelHeight: 20)`), which is what converts between the pixels they draw in and the character cells the rest of the library speaks in. The defaults suit most terminals; raise them if pictures come out smaller than expected.
+
+If you subscribe your own handler to `ScreenBufferDirtyEvent` instead of using `ConsolePresenter`, call `AnsiGraphics.StripMarkers(frame)` before writing it — true-pixel renderers mark the rows a picture covers so the presenter knows not to erase through them, and those markers must not reach the terminal. Frames without images pass through untouched.
 
 ## File & folder browser ##
 

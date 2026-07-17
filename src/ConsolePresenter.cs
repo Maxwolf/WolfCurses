@@ -174,10 +174,26 @@ namespace WolfCurses
                 if (!fullRedraw && string.Equals(lines[row], shownLines[row], StringComparison.Ordinal))
                     continue;
 
+                // A row covered by a true-pixel picture drawn on an earlier row holds no content of its own; the
+                // terminal is showing image there. Writing or erasing it would punch a hole in the picture.
+                if (AnsiGraphics.IsRowPlaceholder(lines[row]))
+                    continue;
+
                 // Move to the row, overwrite it in place, then reset attributes so a row without its own trailing
                 // reset cannot leak color into the erase below (which some terminals fill with the current
                 // background) or into the next frame.
                 body.Append(_csi).Append(row + 1).Append(";1H");
+
+                // A true-pixel payload (sixel/kitty) is written as-is and then deliberately left alone: it sets no
+                // color attributes to reset, and it must not be erased after. Terminals leave the cursor below a
+                // sixel they have just drawn, so the erase-to-end-of-line below would blank a row of the picture
+                // rather than the harmless tail it is meant for.
+                if (AnsiGraphics.IsPayloadRow(lines[row]))
+                {
+                    body.Append(AnsiGraphics.PayloadOf(lines[row]));
+                    continue;
+                }
+
                 body.Append(lines[row]);
                 body.Append(_sgrReset);
 
@@ -228,14 +244,17 @@ namespace WolfCurses
         }
 
         /// <summary>
-        ///     One-based row and column of the cell just after the last visible character of the last non-empty row,
-        ///     or the home position for an empty frame.
+        ///     One-based row and column of the cell just after the last visible character of the last row holding text,
+        ///     or the home position for a frame with no text in it. Rows belonging to a true-pixel picture are skipped:
+        ///     they are image, not text, so there is no "after the last character" on them for a prompt to sit at.
         /// </summary>
         internal static (int Row, int Column) ParkPosition(string[] lines)
         {
             for (var row = lines.Length - 1; row >= 0; row--)
             {
                 if (lines[row].Length == 0)
+                    continue;
+                if (AnsiGraphics.IsRowPlaceholder(lines[row]) || AnsiGraphics.IsPayloadRow(lines[row]))
                     continue;
                 return (row + 1, VisibleLength(lines[row]) + 1);
             }
@@ -342,7 +361,14 @@ namespace WolfCurses
                         continue;
 
                     Console.SetCursorPosition(0, windowTop + row);
+
+                    // A console that cannot interpret escape sequences cannot show a sixel or kitty picture either, so
+                    // there is nothing on these rows to protect — blank them rather than printing the marker
+                    // characters, which would otherwise show up as garbage glyphs.
                     var line = lines[row];
+                    if (AnsiGraphics.IsRowPlaceholder(line) || AnsiGraphics.IsPayloadRow(line))
+                        line = string.Empty;
+
                     Console.Write(line.Length >= maxLength ? line.Substring(0, maxLength) : line.PadRight(maxLength));
                 }
 
