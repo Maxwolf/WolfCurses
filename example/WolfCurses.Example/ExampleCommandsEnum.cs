@@ -93,8 +93,14 @@ namespace WolfCurses.Example
         [Description("Sprite Test (Basic) - DVD logo bounce.")] SpriteTestBasic = 16,
 
         /// <summary>
+        ///     Five animated GIFs at random sizes bouncing through one another, added and removed from the scene on a
+        ///     loop: sprite-over-sprite blending, scene editing, scaling, and animation all at once.
+        /// </summary>
+        [Description("Sprite Test (Advanced) - 5 animated, add/remove.")] SpriteTestAdvanced = 17,
+
+        /// <summary>
         ///     Closes the console application.
         /// </summary>
-        [Description("End")] CloseSimulation = 17
+        [Description("End")] CloseSimulation = 18
     }
 }
