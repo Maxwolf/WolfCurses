@@ -70,23 +70,34 @@ public override string OnRenderWindow() => _logo;
 
 ### Real pixels: sixel and kitty ###
 
-Half blocks work everywhere, but they only get two pixels per character cell. Terminals that speak a true-pixel protocol can do far better — on a typical 10x20 cell that is about two hundred pixels per cell instead of two — and WolfCurses can drive them. Drawing is a seam mirroring the decoder one, so switching is a single line at start-up:
+Half blocks work everywhere, but they only get two pixels per character cell. Terminals that speak a true-pixel protocol can do far better — on a typical 10x20 cell that is about two hundred pixels per cell instead of two — and WolfCurses can drive them. Drawing is a seam mirroring the decoder one, so picking the best renderer for wherever you happen to be running is one line at start-up:
 
 ```csharp
-// Everything drawn from now on uses sixel instead of half blocks:
-ImageRenderers.Default = new SixelImageRenderer();
+// Use whatever this terminal can actually do; falls back to half blocks when that is nothing special.
+ImageRenderers.Default = ImageRenderers.ForCurrentTerminal();
 
 // ...or draw one picture differently without disturbing the global default:
 var photo = image.ToAnsi(options, new KittyImageRenderer());
 ```
 
-- **`HalfBlockImageRenderer`** — the default. Colored `▀` characters; works in any terminal that can do color at all.
-- **`SixelImageRenderer`** — real pixels via the DEC sixel protocol, supported by xterm (built with sixel), foot, WezTerm, mlterm, contour, and Windows Terminal 1.22+. Sixel is indexed, so the picture is reduced to a palette (256 colors by default) chosen per-image by median cut — entries are spent where the picture actually has detail rather than on a fixed grid.
-- **`KittyImageRenderer`** — real pixels via the kitty graphics protocol, supported by kitty, WezTerm, Ghostty, and Konsole. It transmits the pixels as they are — full 24-bit color and a real alpha channel, no palette — so it is the better choice where it is available.
-
-Both are **opt-in on purpose**: there is no reliable way to ask a terminal what it supports without reading back an escape-sequence reply, which would race the library's own input handling — so a terminal that does not understand the protocol would print it as garbage rather than degrade. Choose based on what your application knows about where it runs, and keep `HalfBlockImageRenderer` as the safe default.
+- **`HalfBlockImageRenderer`** — the fallback, and the default until you change it. Colored `▀` characters; works in any terminal that can do color at all, and degrades further on its own to 256-color, grayscale, or plain ASCII.
+- **`SixelImageRenderer`** — real pixels via the DEC sixel protocol, supported by xterm (built with sixel), foot, WezTerm, mlterm, contour, recent Konsole and VTE, iTerm2, and Windows Terminal 1.22+. Sixel is indexed, so the picture is reduced to a palette (256 colors by default) chosen per-image by median cut — entries are spent where the picture actually has detail rather than on a fixed grid.
+- **`KittyImageRenderer`** — real pixels via the kitty graphics protocol, supported by kitty, WezTerm, and Ghostty. It transmits the pixels as they are — full 24-bit color and a real alpha channel, no palette — so it is preferred wherever both are available.
 
 Both take the terminal's cell size in pixels (`new SixelImageRenderer(cellPixelWidth: 10, cellPixelHeight: 20)`), which is what converts between the pixels they draw in and the character cells the rest of the library speaks in. The defaults suit most terminals; raise them if pictures come out smaller than expected.
+
+#### Detecting what the terminal can do ####
+
+`ImageRenderers.ForCurrentTerminal()` reads the environment the terminal advertises itself through (`TERM`, `KITTY_WINDOW_ID`, `TERM_PROGRAM`, `VTE_VERSION`, and so on). It asks the terminal nothing, so it cannot hang or disturb input, and it is safe to call anywhere — including with output redirected. It is deliberately biased towards half blocks: **guessing wrong the safe way costs picture quality, guessing wrong the other way fills the screen with raw escape sequences.** Multiplexers (tmux, screen) report as half blocks too, since they rewrite escape sequences and need per-user passthrough configuration to let graphics past.
+
+Two common terminals cannot be settled from the environment at all — xterm only has sixel when built and started for it, and Windows Terminal publishes no version to say whether it is 1.22 or later — so both come back as half blocks. To settle them, ask the terminal itself:
+
+```csharp
+// In your Main, BEFORE the loop that reads keys:
+ImageRenderers.Default = ImageRenderers.For(AnsiConsole.ProbeGraphicsProtocol());
+```
+
+`ProbeGraphicsProtocol` writes a query and reads the terminal's reply off standard input, so it must run **before your input loop starts** — otherwise the two steal each other's characters. Nothing inside the library reads input on its own (`InputManager` is fed by your host), so that is the only requirement. It never throws, is bounded by a timeout, and falls back to the environment guess if the terminal says nothing useful. The example app does exactly this in `Program.cs`.
 
 If you subscribe your own handler to `ScreenBufferDirtyEvent` instead of using `ConsolePresenter`, call `AnsiGraphics.StripMarkers(frame)` before writing it — true-pixel renderers mark the rows a picture covers so the presenter knows not to erase through them, and those markers must not reach the terminal. Frames without images pass through untouched.
 

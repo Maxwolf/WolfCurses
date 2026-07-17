@@ -3,6 +3,7 @@
 
 using System;
 using System.Threading;
+using WolfCurses.Graphics;
 
 namespace WolfCurses.Example
 {
@@ -29,6 +30,14 @@ namespace WolfCurses.Example
             Console.WriteLine("Starting...");
             Console.CursorVisible = false;
             Console.CancelKeyPress += Console_CancelKeyPress;
+
+            // Ask the terminal whether it can draw real pixels, and if so draw every image that way from here on.
+            // This must happen before the key-reading loop below starts: the probe writes a question to the terminal
+            // and reads the answer back off standard input, so if both were running the loop would read the terminal's
+            // reply as typed input and the probe could swallow a real keystroke. It is also before the simulation is
+            // created, so the logo splash it puts up already benefits. Whatever the terminal says (including nothing
+            // at all, or that it is a plain console), the result is always a renderer that works here.
+            ImageRenderers.Default = ImageRenderers.For(AnsiConsole.ProbeGraphicsProtocol());
 
             // Entry point for the entire simulation.
             ConsoleSimulationApp.Create();

@@ -69,6 +69,14 @@ namespace WolfCurses.Tests.Forms
         }
 
         [Fact]
+        public void AnsiGraphicsProtocol_Values()
+        {
+            Assert.Equal(0, (int) AnsiGraphicsProtocolEnum.None);
+            Assert.Equal(1, (int) AnsiGraphicsProtocolEnum.Sixel);
+            Assert.Equal(2, (int) AnsiGraphicsProtocolEnum.Kitty);
+        }
+
+        [Fact]
         public void AnsiAlignment_Values()
         {
             Assert.Equal(0, (int) AnsiHorizontalAlignmentEnum.Left);
