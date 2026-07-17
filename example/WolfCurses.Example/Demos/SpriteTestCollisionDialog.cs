@@ -56,6 +56,7 @@ namespace WolfCurses.Example.Demos
 
         private readonly Stopwatch _clock = new();
         private readonly FrameCounter _counter = new();
+        private readonly RendererSwitch _renderer = new();
 
         private string _current = string.Empty;
         private string _error;
@@ -81,7 +82,7 @@ namespace WolfCurses.Example.Demos
         {
             base.OnFormPostCreate();
 
-            ParentWindow.PromptText = "Arrow keys to move, ENTER to return to the menu";
+            ParentWindow.PromptText = "Arrow keys to move, TAB to switch renderer, ENTER for the menu";
             Build();
             _clock.Restart();
         }
@@ -112,6 +113,11 @@ namespace WolfCurses.Example.Demos
             // whoever has focus.
             switch (key)
             {
+                case ConsoleKey.Tab:
+                    // See the basic sprite test for why TAB and why the sample is discarded.
+                    _renderer.Toggle();
+                    _counter.Restart();
+                    return;
                 case ConsoleKey.LeftArrow:
                     _player.X -= StepSize;
                     break;
@@ -146,7 +152,7 @@ namespace WolfCurses.Example.Demos
             CheckCollision();
 
             var started = Stopwatch.GetTimestamp();
-            _current = _scene.ToAnsi(_options);
+            _current = _scene.ToAnsi(_options, _renderer.Current);
             _counter.Record(Stopwatch.GetElapsedTime(started));
         }
 
@@ -159,8 +165,8 @@ namespace WolfCurses.Example.Demos
             var sb = new StringBuilder();
             sb.AppendLine();
             sb.AppendLine("Sprite Test (Collision)  —  arrow keys move the left penguin");
-            sb.AppendLine($"{_counter.Describe()} | {(_wasTouching ? "TOUCHING" : "apart")} | " +
-                          $"{_touches} touches | {_scene.Width}x{_scene.Height} canvas");
+            sb.AppendLine($"{_counter.Describe()} | {_renderer.Describe()} | " +
+                          $"{(_wasTouching ? "TOUCHING" : "apart")} | {_touches} touches");
             sb.AppendLine(_reaction);
             sb.Append(_current);
             return sb.ToString();
@@ -245,7 +251,7 @@ namespace WolfCurses.Example.Demos
             _scene.Sprites.Add(_player);
 
             _options = DemoImages.FitOptions();
-            _current = _scene.ToAnsi(_options);
+            _current = _scene.ToAnsi(_options, _renderer.Current);
         }
     }
 }

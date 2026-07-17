@@ -76,6 +76,7 @@ namespace WolfCurses.Example.Demos
 
         private readonly Stopwatch _clock = new();
         private readonly FrameCounter _counter = new();
+        private readonly RendererSwitch _renderer = new();
         private readonly Stopwatch _lifecycleClock = new();
         private readonly List<BouncingSprite> _movers = new();
         private readonly Random _random = new();
@@ -100,10 +101,23 @@ namespace WolfCurses.Example.Demos
         {
             base.OnFormPostCreate();
 
-            ParentWindow.PromptText = "Press ENTER to return to the menu";
+            ParentWindow.PromptText = "TAB to switch renderer, ENTER to return to the menu";
             Build();
             _clock.Restart();
             _lifecycleClock.Restart();
+        }
+
+        /// <inheritdoc />
+        public override void OnKeyPressed(ConsoleKey key)
+        {
+            base.OnKeyPressed(key);
+
+            if (key != ConsoleKey.Tab)
+                return;
+
+            // See the basic sprite test for why TAB and why the sample is discarded.
+            _renderer.Toggle();
+            _counter.Restart();
         }
 
         /// <inheritdoc />
@@ -127,7 +141,7 @@ namespace WolfCurses.Example.Demos
             // Composed and rendered here rather than in OnRenderForm, which the scene graph calls thousands of times a
             // second. This is the expensive part of the frame and it happens once per move.
             var started = Stopwatch.GetTimestamp();
-            _current = _scene.ToAnsi(_options);
+            _current = _scene.ToAnsi(_options, _renderer.Current);
             _counter.Record(Stopwatch.GetElapsedTime(started));
         }
 
@@ -140,8 +154,8 @@ namespace WolfCurses.Example.Demos
             var sb = new StringBuilder();
             sb.AppendLine();
             sb.AppendLine("Sprite Test (Advanced)  —  5 animated GIFs over image_003.jpg");
-            sb.AppendLine($"{_counter.Describe()} | {_movers.Count} sprites | " +
-                          $"{_scene.Width}x{_scene.Height} canvas | {_cycles} cycles");
+            sb.AppendLine($"{_counter.Describe()} | {_renderer.Describe()} | " +
+                          $"{_movers.Count} sprites | {_cycles} cycles");
             sb.AppendLine();
             sb.Append(_current);
             return sb.ToString();
@@ -268,7 +282,7 @@ namespace WolfCurses.Example.Demos
 
             Spawn();
             _cycles = 1;
-            _current = _scene.ToAnsi(_options);
+            _current = _scene.ToAnsi(_options, _renderer.Current);
         }
     }
 }
