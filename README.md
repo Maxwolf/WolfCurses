@@ -40,9 +40,17 @@ A runnable example console application lives in this repository at [`example/Wol
 dotnet run --project example/WolfCurses.Example
 ```
 
+![The example's basic sprite test: the DVD logo bouncing over a photograph drawn as real sixel pixels, with a live fps readout](docs/demo-sprite-basic.gif)
+
+*Real frames from the example app — the DVD logo bouncing over a photograph at ~30 fps, drawn with the sixel protocol the startup probe detects on Windows Terminal 1.22+ (and half blocks anywhere it can't).*
+
 ## ANSI Graphics ##
 
 Wolf Curses can display images directly in the terminal — PNG, JPEG (baseline *and* progressive) and GIF work out of the box, with no set-up and no dependencies. Images are converted to a block of text and ANSI color escape sequences that you drop into your window's rendered text like any other string, so the scene graph draws them along with everything else.
+
+![The example's animated GIF demo: a progress bar fills while every frame is pre-rendered, then the animation plays on loop with fps and ms/frame readouts](docs/demo-animated-gif.gif)
+
+*The **Show animated GIF** demo: the library's own GIF decoder walks all 91 frames, a `ProgressBar` fills while they are pre-rendered into sixel, then playback is an array lookup — 0.00 ms/frame at the speed the file asks for.*
 
 ```csharp
 using WolfCurses.Graphics;
@@ -64,6 +72,10 @@ public override string OnRenderWindow() => _logo;
 - **Compositing.** Overlay a transparent image on top of another and see both — `background.Overlay(foreground)` (centered) or `background.Overlay(foreground, x, y)` alpha-composites them into one image, with the overlay's own transparency preserved. Use `.Resize(w, h)` to size an overlay first.
 - **Sprites.** When the thing on top *moves*, a `SpriteScene` keeps the background as pixels and recomposes it as often as you like: `scene.Sprites.Add(new Sprite(pixels, x, y))`, then `scene.ToAnsi(options)` each frame. Sprites draw in order (last is nearest), are clipped rather than refused so they can walk in from off-screen, and honour their own transparency. Set `sprite.Image` to animate one — an animated sprite needs nothing else. The scene is the size of its background, which is the knob worth knowing: resize the background once to something near what the terminal can show and a frame costs a fraction of what it costs at a photograph's native resolution.
 - **Collision.** `scene.SpritesTouching(sprite)` reports *which* sprites a given one has run into, and `a.Intersects(b)` is the bare bounding-box test behind it. The three **Sprite Test** demos cover the lot: the DVD logo bouncing, five animated GIFs flying through one another while being added and removed, and two penguins you steer into each other with the arrow keys.
+
+  ![The example's advanced sprite test: five animated GIF sprites at random sizes flying over a photograph, blending and bouncing](docs/demo-sprite-advanced.gif)
+
+  *The advanced sprite test: five animated GIF sprites at random sizes bouncing over a photograph — alpha blending, per-sprite animation clocks, and live scene mutation, composed and sixel-rendered fresh every frame at 30 fps.*
 - **Two pixels per character.** It uses the Unicode half-block (`▀`) trick — foreground color for the top pixel, background color for the bottom — to double the vertical resolution and keep pixels square.
 - **Transparency.** Transparent PNG pixels let the terminal background show through; set `AnsiImageOptions.BackgroundColor` to composite the image onto a solid color instead.
 - **Graceful color downgrade.** True color by default, with automatic fallback to the 256-color palette, grayscale, or shaded ASCII on terminals that cannot do better (honoring `NO_COLOR`). Force a mode with `AnsiImageOptions.ColorMode`.
@@ -162,7 +174,11 @@ string graph = new LineGraph { Width = 40, Height = 10 }.Render(samples);
 - **`BarChart`** — one row per `BarChartValue`, labels aligned to a common width, bars scaled to the largest value, with an optional aligned "track" and printed values.
 - **`LineGraph`** — plots a series across a `Width`×`Height` grid (top = max, bottom = min) with optional connecting segments, area fill, a left Y-axis with min/max scale labels, and a bottom X-axis — good for a rolling metric over time.
 
-The multi-line widgets join their rows with the platform newline and emit no trailing newline, so they slot cleanly into surrounding text. The example app's **Progress bars & graphs** menu item shows all of them animating together off the simulation tick.
+The multi-line widgets join their rows with the platform newline and emit no trailing newline, so they slot cleanly into surrounding text. The example app's **Progress bars & graphs** menu item shows all of them animating together off the simulation tick:
+
+![The example's progress bars and graphs demo: a progress bar, marquee, sparkline, bar chart and scrolling line graph all animating together](docs/demo-progress-graphs.gif)
+
+*`ProgressBar`, `MarqueeBar`, `Sparkline`, `BarChart` and `LineGraph` animating together — every one of them just a string returned from the form's render.*
 
 ## Dialogs & panels ##
 
