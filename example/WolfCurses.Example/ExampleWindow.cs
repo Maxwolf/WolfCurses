@@ -54,7 +54,7 @@ namespace WolfCurses.Example
             AddCommand(ShowMessageBox, ExampleCommandsEnum.MessageBoxDemo);
             AddCommand(TextInput, ExampleCommandsEnum.TextInputDemo);
             AddCommand(PasswordInput, ExampleCommandsEnum.PasswordDemo);
-            AddCommand(ShowTruePixelSlideshow, ExampleCommandsEnum.TruePixelSlideshow);
+            AddCommand(ForceSlideshowRenderType, ExampleCommandsEnum.ForceRenderType);
             AddCommand(CloseSimulation, ExampleCommandsEnum.CloseSimulation);
 
             // Flex the WolfCurses logo as an ANSI graphics splash before the menu; pressing ENTER reveals it.
@@ -94,40 +94,82 @@ namespace WolfCurses.Example
         }
 
         /// <summary>
-        ///     Runs the slideshow through a renderer of the user's choosing, so the detected default can be compared
-        ///     against each protocol forced by hand. Program.Main already asked this terminal what it supports and
-        ///     installed the answer as <see cref="ImageRenderers.Default" />, which is the first choice here; the others
-        ///     are there to see what the same pictures look like drawn a different way — including, on a terminal that
-        ///     does not speak the protocol, the escape-sequence garbage that detection exists to prevent.
+        ///     Runs the slideshow through a render type the user forces, so the one detection picked can be compared by
+        ///     eye against every other rung of the ladder. Program.Main already asked this terminal what it supports and
+        ///     installed the answer as <see cref="ImageRenderers.Default" />, which is the first choice here.
+        ///     <para>
+        ///         The rest are graded best to worst, and each is a genuinely different code path rather than the same
+        ///         picture with a knob turned: real pixels (kitty, then sixel), then two pixels per character cell with
+        ///         steadily less color to spend, ending at the ASCII fallback that emits no color escapes whatsoever.
+        ///         Forcing a type the terminal does not speak is the point of having them all here — a protocol that
+        ///         goes unanswered spills escape-sequence garbage across the screen, which is exactly what detection
+        ///         exists to prevent and worth seeing once.
+        ///     </para>
         /// </summary>
-        private void ShowTruePixelSlideshow()
+        private void ForceSlideshowRenderType()
         {
-            var detected = AnsiConsole.DetectGraphicsProtocol();
+            var detected = DescribeDefaultRenderer();
             var choices = new[]
             {
-                $"Auto - what this terminal reported ({detected})",
-                "Half blocks - works in any color terminal",
-                "Sixel - xterm w/ sixel, foot, WezTerm, mlterm, Windows Terminal 1.22+",
-                "Kitty - kitty, WezTerm, Ghostty"
+                $"Auto - what this terminal answered: {detected}",
+                "Kitty - real pixels, 24-bit color and transparency",
+                "Sixel - real pixels, quantized to a 256-color palette",
+                "Half blocks - two pixels per cell, 24-bit color",
+                "Half blocks - two pixels per cell, 256-color palette",
+                "Half blocks - two pixels per cell, grayscale",
+                "Fallback - shaded ASCII, no color escapes at all"
             };
 
             SelectList.Choose(
                 SimUnit,
-                "Draw the slideshow with which renderer?",
+                "Force the slideshow to draw with which render type?",
                 choices,
                 index =>
                 {
-                    (UserData.SelectedImageRenderer, UserData.SelectedImageRendererName) = index switch
+                    (UserData.SelectedImageRenderer, UserData.SelectedImageColorMode,
+                        UserData.SelectedImageRendererName) = index switch
                     {
-                        1 => ((IImageRenderer) new HalfBlockImageRenderer(), "Half-block slideshow (forced)"),
-                        2 => (new SixelImageRenderer(), "Sixel slideshow (forced)"),
-                        3 => (new KittyImageRenderer(), "Kitty slideshow (forced)"),
-                        _ => (ImageRenderers.Default, "Slideshow (auto-detected renderer)")
+                        1 => ((IImageRenderer) new KittyImageRenderer(), AnsiColorModeEnum.Auto,
+                            "Kitty: real pixels (forced)"),
+                        2 => (new SixelImageRenderer(), AnsiColorModeEnum.Auto,
+                            "Sixel: real pixels (forced)"),
+                        3 => (new HalfBlockImageRenderer(), AnsiColorModeEnum.TrueColor,
+                            "Half blocks: true color (forced)"),
+                        4 => (new HalfBlockImageRenderer(), AnsiColorModeEnum.Palette256,
+                            "Half blocks: 256 colors (forced)"),
+                        5 => (new HalfBlockImageRenderer(), AnsiColorModeEnum.Grayscale,
+                            "Half blocks: grayscale (forced)"),
+                        6 => (new HalfBlockImageRenderer(), AnsiColorModeEnum.None,
+                            "Fallback: shaded ASCII (forced)"),
+                        _ => (ImageRenderers.Default, AnsiColorModeEnum.Auto,
+                            $"Auto-detected render type: {detected}")
                     };
 
-                    SetForm(typeof (TruePixelSlideshowDialog));
+                    SetForm(typeof (ForcedRenderSlideshowDialog));
                 },
                 () => ShowResult("Slideshow cancelled."));
+        }
+
+        /// <summary>
+        ///     Names the renderer that Program.Main's probe installed as <see cref="ImageRenderers.Default" />, so the
+        ///     "Auto" choice reports what will actually draw.
+        ///     <para>
+        ///         Asking <see cref="AnsiConsole.DetectGraphicsProtocol" /> again here would be a different question
+        ///         with a possibly different answer: that one reads environment variables only, and on Windows Terminal
+        ///         it deliberately reports None because no version is published to key off. The probe asks the terminal
+        ///         itself and may well have found sixel. Reporting the guess while the probe's answer does the drawing
+        ///         would misattribute exactly what this screen exists to show.
+        ///     </para>
+        /// </summary>
+        private static string DescribeDefaultRenderer()
+        {
+            return ImageRenderers.Default switch
+            {
+                KittyImageRenderer => "kitty (real pixels)",
+                SixelImageRenderer => "sixel (real pixels)",
+                HalfBlockImageRenderer => "half blocks",
+                var other => other.GetType().Name
+            };
         }
 
         private void SelectFromList()

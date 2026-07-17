@@ -36,12 +36,20 @@ namespace WolfCurses.Example
         public string LastResult { get; set; }
 
         /// <summary>
-        ///     The renderer the user picked for the true-pixel slideshow, and a label for it. Held here so the choice
-        ///     made in the menu's picker survives into the form that draws the slides.
+        ///     The renderer the user forced for the slideshow. Held here so the choice made in the menu's picker
+        ///     survives into the form that draws the slides.
         /// </summary>
         public IImageRenderer SelectedImageRenderer { get; set; }
 
-        /// <summary>Human-readable name of <see cref="SelectedImageRenderer" />, shown as the slideshow's title.</summary>
+        /// <summary>
+        ///     How much color the forced renderer may use. Only <see cref="HalfBlockImageRenderer" /> reads this — it is
+        ///     what separates true color from 256-color, grayscale, and the colorless ASCII fallback. The true-pixel
+        ///     renderers carry their own color story (sixel quantizes to its own palette, kitty is always 24-bit), so
+        ///     they leave it at <see cref="AnsiColorModeEnum.Auto" /> and ignore it.
+        /// </summary>
+        public AnsiColorModeEnum SelectedImageColorMode { get; set; } = AnsiColorModeEnum.Auto;
+
+        /// <summary>Human-readable name of the forced render type, shown as the slideshow's title.</summary>
         public string SelectedImageRendererName { get; set; }
 
         /// <summary>
