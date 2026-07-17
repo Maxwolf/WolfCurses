@@ -160,6 +160,103 @@ namespace WolfCurses.Graphics.Decoding
             return Frames(data);
         }
 
+        /// <summary>
+        ///     Counts the frames a GIF carries without decoding any of them, by walking only the block framing —
+        ///     following each sub-block's length to the next block and never uncompressing a pixel. Microseconds and no
+        ///     allocation where <see cref="DecodeFrames(Stream)" /> is the whole cost of the file, which is the point of
+        ///     it: a progress bar in front of the decode needs the total before the first frame is drawn, and the frame
+        ///     count is nowhere in the header — it can only be had by reaching the end.
+        ///     <para>
+        ///         Answers exactly what <see cref="DecodeFrames(Stream)" /> will yield for a well-formed file. For a
+        ///         damaged one it does not try to: it returns the best count the framing still supports and stops,
+        ///         leaving the decode that follows to be the strict authority that throws. A count is the wrong place to
+        ///         refuse a file — refusing it here would only mean the caller never gets to the error the decode gives
+        ///         with a frame or two of context already on screen. The "not a GIF" and oversized-dimension checks do
+        ///         still run up front, the same two the decode opens with, so the paths cannot disagree on what a GIF is.
+        ///     </para>
+        /// </summary>
+        /// <param name="source">The stream to read the complete file from.</param>
+        /// <returns>The number of frames the file carries.</returns>
+        /// <exception cref="InvalidDataException">The data is not a GIF, or is smaller than a header.</exception>
+        public int CountFrames(Stream source)
+        {
+            return CountFramesBytes(DecoderGuards.ReadAll(source));
+        }
+
+        /// <summary>Counts the frames of a GIF already held in memory.</summary>
+        /// <param name="data">The complete file.</param>
+        /// <returns>The number of frames the file carries.</returns>
+        internal int CountFramesBytes(byte[] data)
+        {
+            // The same eager gate DecodeFramesBytes opens with, and for the same reason: a caller handing over
+            // something that is not a GIF should hear so from this call rather than from a count that came back zero.
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+            if (!HasSignature(data))
+                throw new InvalidDataException("Data does not begin with a GIF signature.");
+            if (data.Length < HeaderBytes)
+                throw new InvalidDataException(
+                    $"GIF is {data.Length} bytes, too short to hold even a logical screen descriptor.");
+
+            DecoderGuards.ValidateDimensions("GIF", ReadUInt16(data, SignatureBytes),
+                ReadUInt16(data, SignatureBytes + 2), MaxPixels);
+
+            var packed = data[SignatureBytes + 4];
+            var offset = HeaderBytes;
+
+            // The global colour table, if present, is the same 2 << (packed & 7) entries of three bytes the decode
+            // reads; its contents mean nothing to a count, so this steps straight over them.
+            if ((packed & 0x80) != 0 && !SkipColorTable(data, ref offset, 2 << (packed & 0x07)))
+                return 0;
+
+            var count = 0;
+            while (offset < data.Length)
+            {
+                var introducer = data[offset++];
+                switch (introducer)
+                {
+                    case ExtensionIntroducer:
+                        if (offset >= data.Length)
+                            return count; // cut off before the label
+                        offset++; // the label, whichever extension it is — all are framed the same and skipped the same
+                        SkipSubBlocks(data, ref offset);
+                        break;
+
+                    case ImageIntroducer:
+                        // A frame is a descriptor, an optional local colour table, the LZW minimum code size, and the
+                        // compressed sub-blocks — stepped over in that order without decoding a byte of the last.
+                        if (offset + ImageDescriptorBytes > data.Length)
+                            return count;
+
+                        var framePacked = data[offset + 8];
+                        offset += ImageDescriptorBytes;
+                        if ((framePacked & 0x80) != 0 && !SkipColorTable(data, ref offset, 2 << (framePacked & 0x07)))
+                            return count;
+                        if (offset >= data.Length)
+                            return count; // no room for the minimum code size
+
+                        offset++; // minimum code size
+                        SkipSubBlocks(data, ref offset);
+
+                        // Counted after its raster is stepped over, and counted even when that raster is truncated —
+                        // the decode still yields a short frame in that case rather than dropping it, so the total has
+                        // to include it to match.
+                        count++;
+                        break;
+
+                    case TrailerIntroducer:
+                        return count;
+
+                    default:
+                        // Where the decode throws on an unknown introducer, the count simply stops with what it has and
+                        // lets the decode be the one to object.
+                        return count;
+                }
+            }
+
+            return count;
+        }
+
         /// <summary>Decodes a GIF already held in memory.</summary>
         /// <param name="data">The complete file.</param>
         /// <returns>The decoded image: the file's first frame, placed on the logical screen.</returns>
@@ -515,6 +612,38 @@ namespace WolfCurses.Graphics.Decoding
             }
 
             return buffer.ToArray();
+        }
+
+        /// <summary>
+        ///     Steps over a chain of sub-blocks the way <see cref="ReadSubBlocks" /> reads one, but keeps nothing:
+        ///     length byte, skip that many, repeat until a zero length or the end. Tolerant of running off the end for
+        ///     the same reason its reading twin is — a truncated chain is how a GIF is usually damaged, and a count
+        ///     stops where the bytes do rather than throwing.
+        /// </summary>
+        private static void SkipSubBlocks(byte[] data, ref int offset)
+        {
+            while (offset < data.Length)
+            {
+                int length = data[offset++];
+                if (length == 0)
+                    return;
+
+                offset = Math.Min(offset + length, data.Length);
+            }
+        }
+
+        /// <summary>
+        ///     Steps over a colour table of the given entry count. Returns false when the table runs past the end of the
+        ///     file, so a truncated one stops the count rather than reading past what is there.
+        /// </summary>
+        private static bool SkipColorTable(byte[] data, ref int offset, int entries)
+        {
+            var bytes = entries * 3;
+            if (offset + bytes > data.Length)
+                return false;
+
+            offset += bytes;
+            return true;
         }
 
         /// <summary>Reads a colour table of the given entry count, three bytes each, red first.</summary>

@@ -384,6 +384,66 @@ namespace WolfCurses.Tests.Graphics
             Assert.Single(new GifDecoder().DecodeFramesBytes(gif.ToArray()));
         }
 
+        [Fact]
+        public void CountFrames_AgreesWithTheNumberDecodeFramesYields()
+        {
+            // The progress bar the example puts in front of the decoder needs the total before the first frame is
+            // rendered, and CountFrames is where it comes from: a walk of the block framing that never decodes a pixel.
+            // The only thing worth asserting about it is that it lands on the same number as the decode it stands in
+            // front of, over each shape the walk has to step across — a graphic control extension, a bare descriptor
+            // with none, a local decision or two, and more than one frame.
+            var multi = Begin(4, 4, Green);
+            WriteFrame(multi, 0, 0, 4, 4, Keep, 0, Opaque, Fill(16, Red));
+            WriteFrame(multi, 1, 1, 2, 2, Keep, 5, White, Fill(4, Blue));
+            WriteFrame(multi, 0, 0, 1, 1, RestoreBackground, 0, Opaque, White);
+            End(multi);
+            var multiData = multi.ToArray();
+            Assert.Equal(new GifDecoder().DecodeFramesBytes(multiData).Count(),
+                new GifDecoder().CountFramesBytes(multiData));
+            Assert.Equal(3, new GifDecoder().CountFramesBytes(multiData));
+
+            // A frame with no graphic control extension in front of it, which the walk must not depend on finding.
+            var bare = Begin(4, 4, Red);
+            bare.Write(new byte[] {0x2C, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x04, 0x00, 0x00});
+            WriteRaster(bare, Fill(16, Blue));
+            End(bare);
+            var bareData = bare.ToArray();
+            Assert.Equal(new GifDecoder().DecodeFramesBytes(bareData).Count(),
+                new GifDecoder().CountFramesBytes(bareData));
+            Assert.Equal(1, new GifDecoder().CountFramesBytes(bareData));
+        }
+
+        [Fact]
+        public void CountFrames_MatchesTheRealFilesFrameForFrame()
+        {
+            // The hand-built fixtures prove the framing is stepped over correctly; the real files prove it survives what
+            // they cannot show — an application extension (the NETSCAPE loop block), local colour tables, and ninety-one
+            // frames of it without losing its place. Same totals RealAnimation_HasEveryFrameTheFileCarries pins for the
+            // decode, arrived at the cheap way.
+            AssertCountMatchesDecode("animated.gif", 91);
+            AssertCountMatchesDecode("transparent_anim.gif", 8);
+            AssertCountMatchesDecode("cool.gif", null);
+        }
+
+        /// <summary>Asserts CountFrames lands on the same number DecodeFrames yields for a real fixture.</summary>
+        private static void AssertCountMatchesDecode(string fileName, int? expected)
+        {
+            var path = TestImages.Media(fileName);
+            Assert.SkipUnless(File.Exists(path ?? ""), $"media/{fileName} is not present.");
+
+            int decoded;
+            using (var stream = File.OpenRead(path))
+                decoded = new GifDecoder().DecodeFrames(stream).Count();
+
+            int counted;
+            using (var stream = File.OpenRead(path))
+                counted = new GifDecoder().CountFrames(stream);
+
+            Assert.Equal(decoded, counted);
+            if (expected.HasValue)
+                Assert.Equal(expected.Value, counted);
+        }
+
         /// <summary>Starts a GIF: header, 4x4-or-whatever logical screen, and the four-entry global palette.</summary>
         private static MemoryStream Begin(int screenWidth, int screenHeight, int backgroundIndex)
         {
