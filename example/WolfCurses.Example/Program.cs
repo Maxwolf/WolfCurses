@@ -61,11 +61,19 @@ namespace WolfCurses.Example
             // Prevent console session from closing.
             while (ConsoleSimulationApp.Instance != null)
             {
-                // Simulation takes any numbers of pulses to determine seconds elapsed.
-                ConsoleSimulationApp.Instance.OnTick(true);
-
-                // Check if a key is being pressed, without blocking thread.
-                if (Console.KeyAvailable)
+                // Input first, then the simulation that acts on it, then round again. Reading the keys after the tick
+                // instead would leave everything typed during it waiting a whole turn of this loop before anything
+                // looked at it, which is a delay nobody can do anything about later.
+                //
+                // WHILE, not IF, and the difference is the entire feel of anything being steered. Windows repeats a
+                // held key about thirty times a second and puts every one in the console's own buffer; taking one per
+                // turn means the buffer only empties as fast as this loop spins. It usually does not matter, because a
+                // loop with nothing to redraw spins far faster than a person types. But drawing costs what it costs,
+                // and once a turn is slower than a thirtieth of a second the buffer fills faster than it drains and the
+                // backlog is permanent: let go of the arrow key and the sprite keeps going, for as long as it takes to
+                // pay off what has piled up. Draining it here means what is left to process is only ever what has
+                // actually been pressed since the last turn, so releasing a key stops the sprite on the next one.
+                while (Console.KeyAvailable)
                 {
                     // GetModule the key that was pressed, without printing it to console.
                     var key = Console.ReadKey(true);
@@ -91,6 +99,10 @@ namespace WolfCurses.Example
                             break;
                     }
                 }
+
+                // Simulation takes any numbers of pulses to determine seconds elapsed. Everything read above is waiting
+                // in the input manager and gets handed on during this call.
+                ConsoleSimulationApp.Instance.OnTick(true);
 
                 // Do not consume all of the CPU, allow other messages to occur.
                 Thread.Sleep(1);

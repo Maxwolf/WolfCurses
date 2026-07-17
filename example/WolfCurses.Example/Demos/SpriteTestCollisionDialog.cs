@@ -14,8 +14,8 @@ using WolfCurses.Window.Form;
 namespace WolfCurses.Example.Demos
 {
     /// <summary>
-    ///     Two penguins on a photograph. The arrow keys drive one of them; walk it into the other and a message box
-    ///     wants to know whether they should kiss. The collision test.
+    ///     Two penguins on a photograph. The arrow keys drive one of them; walk it into the other and a message box asks
+    ///     whether they should kiss. The collision test.
     ///     <para>
     ///         What is actually under test is <see cref="SpriteScene.SpritesTouching" /> — knowing <i>which</i> sprite
     ///         ran into which, rather than merely that something did, since that is what a game needs in order to care.
@@ -48,31 +48,14 @@ namespace WolfCurses.Example.Demos
         /// <summary>How far an arrow key moves the penguin, in canvas pixels.</summary>
         private const int StepSize = 6;
 
-        /// <summary>What the message box asks. The question is the user's; the jokes are the machine's fault.</summary>
+        /// <summary>What the message box asks when they meet.</summary>
         private const string KissQuestion = "Sprites touched! Should they kiss? Y/N";
 
         /// <summary>How long a frame lasts.</summary>
         private static readonly TimeSpan _frameLength = TimeSpan.FromMilliseconds(33);
 
-        /// <summary>
-        ///     One of these goes above the question. Picked at random so that walking into the same penguin twice is not
-        ///     the same joke twice.
-        /// </summary>
-        private static readonly string[] _jokes =
-        {
-            "Two penguins meet in a terminal. Neither has any pixels to spare.",
-            "Their bounding boxes overlapped. In penguin society this is practically an engagement.",
-            "He waddled 360 pixels for this moment. She was a transparent PNG the whole time.",
-            "The alpha channel says they are barely there. The collision detector begs to differ.",
-            "Somewhere in the eighth column of half-blocks, two hearts are rounding to the same color.",
-            "It took 24 bits of color to render this moment and it is still mostly black and white.",
-            "They touched at the rectangle, which is the least romantic possible geometry.",
-            "One is a sprite. The other is also a sprite. Frankly the odds were always good."
-        };
-
         private readonly Stopwatch _clock = new();
         private readonly FrameCounter _counter = new();
-        private readonly Random _random = new();
 
         private string _current = string.Empty;
         private string _error;
@@ -108,9 +91,12 @@ namespace WolfCurses.Example.Demos
         {
             base.OnFormActivate();
 
-            // Back from the message box. The clock has been running the whole time it was up, so without this the first
-            // frame after would see a gap of however long the reading took.
+            // Back from the message box, and both clocks have been running the whole time it was up. Without the first
+            // line the next frame thinks it has been away for however long the reading took; without the second the fps
+            // readout divides the frames from before the box by the time spent reading it and reports something like 3,
+            // which is a measurement of the reader rather than of anything this code did.
             _clock.Restart();
+            _counter.Restart();
         }
 
         /// <inheritdoc />
@@ -209,19 +195,17 @@ namespace WolfCurses.Example.Demos
         /// <summary>Puts the question up, which pauses everything by taking the focus away.</summary>
         private void Ask()
         {
-            var joke = _jokes[_random.Next(_jokes.Length)];
-
             // ConsoleSimulationApp.Instance is how a form reaches the simulation: SimUnit is the window's, and a form is
             // handed only its parent window. The example already leans on this singleton in Program.Main.
             MessageBox.Show(
                 ConsoleSimulationApp.Instance,
-                joke + Environment.NewLine + Environment.NewLine + KissQuestion,
+                KissQuestion,
                 MessageBoxButtonsEnum.YesNo,
                 result =>
                 {
                     _reaction = result == MessageBoxResultEnum.Yes
-                        ? "They kissed. The alpha blending was tasteful. Back off and touch again to ask once more."
-                        : "Rejected, at a distance of zero pixels. Awkward. Back off and touch again to ask once more.";
+                        ? "They fell in love."
+                        : "It was never meant to be.";
 
                     // Nothing else to do: dismissing the box removes its window, this one is focused again, and
                     // OnFormActivate has already restarted the clock by the time anything moves.
