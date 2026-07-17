@@ -132,5 +132,72 @@ namespace WolfCurses.Tests.Core
         {
             Assert.Equal("What is your choice?", SceneGraph.PROMPT_TEXT_DEFAULT);
         }
+
+        [Fact]
+        public void OnTick_WithNoSubscribers_PresentsTheFrameItself()
+        {
+            // The zero-set-up path: no handler wired anywhere, and the frame still gets drawn. The sink stands in
+            // for the console, which a test host does not have.
+            var app = new TestSimulationApp();
+            string presented = null;
+            app.SceneGraph.AutoPresentSink = content => presented = content;
+
+            app.SceneGraph.OnTick(false);
+
+            Assert.NotNull(presented);
+            Assert.Contains("[NO WINDOW ATTACHED]", presented);
+        }
+
+        [Fact]
+        public void OnTick_WithNoSubscribersAndUnchangedOutput_DoesNotRepresent()
+        {
+            var app = new TestSimulationApp();
+            var presentCount = 0;
+            app.SceneGraph.AutoPresentSink = _ => presentCount++;
+
+            app.SceneGraph.OnTick(false);
+            app.SceneGraph.OnTick(false);
+            app.SceneGraph.OnTick(false);
+
+            // Same change-detection as the event path: an unchanged frame is not redrawn.
+            Assert.Equal(1, presentCount);
+        }
+
+        [Fact]
+        public void OnTick_WithASubscriber_TheBuiltInPresenterStandsDown()
+        {
+            // A handler owns presentation outright — this is also what keeps every host that wired its own
+            // ConsolePresenter (the only way, before frames drew themselves) behaving exactly as it always did.
+            var app = new TestSimulationApp();
+            var presentCount = 0;
+            app.SceneGraph.AutoPresentSink = _ => presentCount++;
+            string received = null;
+            app.SceneGraph.ScreenBufferDirtyEvent += content => received = content;
+
+            app.SceneGraph.OnTick(false);
+
+            Assert.NotNull(received);
+            Assert.Equal(0, presentCount);
+        }
+
+        [Fact]
+        public void OnTick_RemovingTheLastSubscriber_HandsPresentationBack()
+        {
+            var app = new TestSimulationApp();
+            string presented = null;
+            app.SceneGraph.AutoPresentSink = content => presented = content;
+            SceneGraph.ScreenBufferDirty handler = _ => { };
+            app.SceneGraph.ScreenBufferDirtyEvent += handler;
+            app.SceneGraph.OnTick(false);
+            Assert.Null(presented);
+
+            // Detach, then change the frame; the built-in presenter picks the very next changed frame up.
+            app.SceneGraph.ScreenBufferDirtyEvent -= handler;
+            app.WindowManager.Add(typeof(TestWindow));
+            app.SceneGraph.OnTick(false);
+
+            Assert.NotNull(presented);
+            Assert.Contains("TestWindow", presented);
+        }
     }
 }

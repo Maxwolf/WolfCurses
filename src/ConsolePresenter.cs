@@ -9,9 +9,12 @@ using WolfCurses.Graphics;
 namespace WolfCurses
 {
     /// <summary>
-    ///     Writes <see cref="Core.SceneGraph" /> frames to the system console without flicker. Subscribe
-    ///     <see cref="Present" /> to <see cref="Core.SceneGraph.ScreenBufferDirtyEvent" /> instead of clearing and
-    ///     rewriting the console yourself.
+    ///     Writes <see cref="Core.SceneGraph" /> frames to the system console without flicker.
+    ///     <see cref="Core.SceneGraph" /> creates one of these itself and presents every changed frame through it
+    ///     while nothing is subscribed to <see cref="Core.SceneGraph.ScreenBufferDirtyEvent" /> — so a console host
+    ///     gets all of the below without writing any presentation code. Construct one yourself only to configure it
+    ///     (the <c>useAnsi</c> knob) or to own presentation: subscribe <see cref="Present" /> to the event and the
+    ///     built-in one stands down.
     ///     <para>
     ///         Flicker comes from letting the terminal show an intermediate state: clearing the screen (or blanking a
     ///         row) before writing the new text makes the blank state visible for a moment, and writing the frame as

@@ -378,7 +378,7 @@ namespace WolfCurses.Graphics
         }
 
         /// <summary>Whether standard output is redirected, reported as "yes" if the question itself fails.</summary>
-        private static bool SafeIsOutputRedirected()
+        internal static bool SafeIsOutputRedirected()
         {
             try
             {

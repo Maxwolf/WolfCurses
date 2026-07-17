@@ -12,14 +12,6 @@ namespace WolfCurses.Example
     internal static class Program
     {
         /// <summary>
-        ///     Draws frames without flicker: rows are overwritten in place (never blanked first), only changed rows are
-        ///     rewritten, and each update goes out as a single write. Its constructor also enables ANSI escape handling
-        ///     and a UTF-8 output encoding so images (and any other colored output) render correctly, especially on
-        ///     Windows where virtual-terminal processing is off by default.
-        /// </summary>
-        private static readonly ConsolePresenter _presenter = new ConsolePresenter();
-
-        /// <summary>
         ///     Main entry point for the application being startup.
         /// </summary>
         private static void Main()
@@ -55,8 +47,11 @@ namespace WolfCurses.Example
             // Entry point for the entire simulation.
             ConsoleSimulationApp.Create();
 
-            // Hook event to know when screen buffer wants to redraw the entire console screen.
-            ConsoleSimulationApp.Instance.SceneGraph.ScreenBufferDirtyEvent += Simulation_ScreenBufferDirtyEvent;
+            // Nothing draws the frames here, and that is the third deliberate absence: whenever a frame changes, the
+            // scene graph presents it to this console itself — flicker-free, only changed rows rewritten, one write
+            // per update. Subscribing to SceneGraph.ScreenBufferDirtyEvent is how a host that wants to draw frames
+            // its own way (or somewhere else entirely) takes that job over; while any handler is attached, the
+            // built-in presenter stands down.
 
             // Prevent console session from closing.
             while (ConsoleSimulationApp.Instance != null)
@@ -113,13 +108,6 @@ namespace WolfCurses.Example
             Console.WriteLine("Goodbye!");
             Console.WriteLine("Press ANY KEY to close this window...");
             Console.ReadKey();
-        }
-
-        /// <summary>Write all text from objects to screen.</summary>
-        /// <param name="tuiContent">The text user interface content.</param>
-        private static void Simulation_ScreenBufferDirtyEvent(string tuiContent)
-        {
-            _presenter.Present(tuiContent);
         }
 
         /// <summary>

@@ -32,11 +32,10 @@ public class ExampleApp : SimulationApp
 ```csharp
 var app = new ExampleApp();
 
-// Presents each frame without flicker: rows are overwritten in place (never cleared first), only rows
-// that changed are rewritten, and the whole update goes out as one write. The constructor also readies
-// the console for ANSI graphics (VT processing on Windows + UTF-8 output).
-var presenter = new ConsolePresenter();
-app.SceneGraph.ScreenBufferDirtyEvent += presenter.Present;
+// That's the whole set-up. Frames draw themselves: whenever one changes, the scene graph presents it to
+// the console without flicker — rows overwritten in place (never cleared first), only changed rows
+// rewritten, the whole update as one write. To draw frames your own way instead, subscribe
+// app.SceneGraph.ScreenBufferDirtyEvent — while any handler is attached, the built-in presenter stands down.
 
 while (!app.IsClosing)
 {
@@ -71,8 +70,9 @@ Display images right in the terminal — PNG (with transparency), baseline and p
 ```csharp
 using WolfCurses.Graphics;
 
-// Once: enables VT processing + UTF-8 output so the escapes/glyphs render (Windows).
-// Already done for you if you create a ConsolePresenter, as in the usage snippet above.
+// Enables VT processing + UTF-8 output so the escapes/glyphs render (Windows). Already done for you
+// when a real terminal is attached — at start-up and again by the built-in frame presenter — so only
+// hosts writing to the console entirely on their own ever call it.
 AnsiConsole.Enable();
 
 // Decode + render ONCE and cache it — OnRenderWindow runs every tick, so never render there.
