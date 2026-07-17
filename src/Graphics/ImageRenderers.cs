@@ -33,5 +33,50 @@ namespace WolfCurses.Graphics
             set => _default = value ?? throw new ArgumentNullException(nameof(value),
                 "The default image renderer cannot be null; assign a real IImageRenderer implementation.");
         }
+
+        /// <summary>
+        ///     The best renderer for the terminal the application is actually running in, worked out from the
+        ///     environment by <see cref="AnsiConsole.DetectGraphicsProtocol()" />. Assign it once at start-up and every
+        ///     image drawn afterwards uses it:
+        ///     <code>
+        ///         ImageRenderers.Default = ImageRenderers.ForCurrentTerminal();
+        ///     </code>
+        ///     <para>
+        ///         Where nothing better is known to be available this is <see cref="HalfBlockImageRenderer" />, which
+        ///         works in any terminal that can show color at all — so this is always safe to call, including with
+        ///         output redirected or on a console that has never heard of a graphics protocol.
+        ///     </para>
+        /// </summary>
+        /// <seealso cref="AnsiConsole.ProbeGraphicsProtocol" />
+        public static IImageRenderer ForCurrentTerminal()
+        {
+            return For(AnsiConsole.DetectGraphicsProtocol());
+        }
+
+        /// <summary>
+        ///     The renderer that draws with a given protocol. Pass the result of
+        ///     <see cref="AnsiConsole.ProbeGraphicsProtocol" /> to use the answer the terminal itself gave rather than
+        ///     the environment's guess:
+        ///     <code>
+        ///         ImageRenderers.Default = ImageRenderers.For(AnsiConsole.ProbeGraphicsProtocol());
+        ///     </code>
+        /// </summary>
+        /// <param name="protocol">
+        ///     The protocol to draw with. <see cref="AnsiGraphicsProtocolEnum.None" /> — and any value that is not a
+        ///     protocol this library knows — yields <see cref="HalfBlockImageRenderer" />, so a caller can hand this
+        ///     whatever detection returned without checking it first.
+        /// </param>
+        public static IImageRenderer For(AnsiGraphicsProtocolEnum protocol)
+        {
+            switch (protocol)
+            {
+                case AnsiGraphicsProtocolEnum.Sixel:
+                    return new SixelImageRenderer();
+                case AnsiGraphicsProtocolEnum.Kitty:
+                    return new KittyImageRenderer();
+                default:
+                    return new HalfBlockImageRenderer();
+            }
+        }
     }
 }

@@ -94,18 +94,21 @@ namespace WolfCurses.Example
         }
 
         /// <summary>
-        ///     Runs the slideshow through a renderer of the user's choosing. The protocol is picked rather than detected
-        ///     on purpose: asking a terminal what it supports means reading back an escape-sequence reply, which would
-        ///     race the simulation's own input handling — so a terminal that does not understand sixel or kitty prints
-        ///     the sequence as garbage instead of degrading. Letting the user choose keeps that an informed decision.
+        ///     Runs the slideshow through a renderer of the user's choosing, so the detected default can be compared
+        ///     against each protocol forced by hand. Program.Main already asked this terminal what it supports and
+        ///     installed the answer as <see cref="ImageRenderers.Default" />, which is the first choice here; the others
+        ///     are there to see what the same pictures look like drawn a different way — including, on a terminal that
+        ///     does not speak the protocol, the escape-sequence garbage that detection exists to prevent.
         /// </summary>
         private void ShowTruePixelSlideshow()
         {
+            var detected = AnsiConsole.DetectGraphicsProtocol();
             var choices = new[]
             {
+                $"Auto - what this terminal reported ({detected})",
                 "Half blocks - works in any color terminal",
-                "Sixel - xterm, foot, WezTerm, mlterm, Windows Terminal 1.22+",
-                "Kitty - kitty, WezTerm, Ghostty, Konsole"
+                "Sixel - xterm w/ sixel, foot, WezTerm, mlterm, Windows Terminal 1.22+",
+                "Kitty - kitty, WezTerm, Ghostty"
             };
 
             SelectList.Choose(
@@ -116,9 +119,10 @@ namespace WolfCurses.Example
                 {
                     (UserData.SelectedImageRenderer, UserData.SelectedImageRendererName) = index switch
                     {
-                        1 => ((IImageRenderer) new SixelImageRenderer(), "Sixel slideshow"),
-                        2 => (new KittyImageRenderer(), "Kitty slideshow"),
-                        _ => (new HalfBlockImageRenderer(), "Half-block slideshow")
+                        1 => ((IImageRenderer) new HalfBlockImageRenderer(), "Half-block slideshow (forced)"),
+                        2 => (new SixelImageRenderer(), "Sixel slideshow (forced)"),
+                        3 => (new KittyImageRenderer(), "Kitty slideshow (forced)"),
+                        _ => (ImageRenderers.Default, "Slideshow (auto-detected renderer)")
                     };
 
                     SetForm(typeof (TruePixelSlideshowDialog));

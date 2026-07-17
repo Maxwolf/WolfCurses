@@ -84,13 +84,15 @@ By default the image is scaled to fit the console window while keeping its aspec
 
 ### Real pixels: sixel and kitty
 
-Half blocks get two pixels per character cell and work anywhere. Terminals speaking a true-pixel protocol can do roughly two hundred times better, and how pixels become output is a seam:
+Half blocks get two pixels per character cell and work anywhere. Terminals speaking a true-pixel protocol can do roughly two hundred times better, and how pixels become output is a seam — so using the best one available is a line at start-up:
 
 ```csharp
-ImageRenderers.Default = new SixelImageRenderer();   // or new KittyImageRenderer()
+ImageRenderers.Default = ImageRenderers.ForCurrentTerminal();
 ```
 
-`SixelImageRenderer` (xterm with sixel, foot, WezTerm, mlterm, contour, Windows Terminal 1.22+) reduces the picture to a per-image palette chosen by median cut. `KittyImageRenderer` (kitty, WezTerm, Ghostty, Konsole) sends full 24-bit color with a real alpha channel. Both are opt-in on purpose — detecting support means reading an escape-sequence reply, which would race the library's own input handling — so `HalfBlockImageRenderer` stays the default. Everything is pure managed code: no native binaries, and the package's only dependency is still StbImageSharp.
+`SixelImageRenderer` (xterm with sixel, foot, WezTerm, mlterm, contour, recent Konsole/VTE, iTerm2, Windows Terminal 1.22+) reduces the picture to a per-image palette chosen by median cut. `KittyImageRenderer` (kitty, WezTerm, Ghostty) sends full 24-bit color with a real alpha channel. Anything unproven — including tmux/screen — falls back to `HalfBlockImageRenderer`, because guessing wrong the safe way costs quality while guessing wrong the other way prints escape sequences as garbage.
+
+`ForCurrentTerminal()` only reads environment variables, so it cannot hang or disturb input. xterm and Windows Terminal can't be settled that way (no version is published); to ask the terminal itself, call `ImageRenderers.For(AnsiConsole.ProbeGraphicsProtocol())` **before your input loop starts**. Everything is pure managed code: no native binaries, and the package's only dependency is still StbImageSharp.
 
 ## Progress bars & graphs
 

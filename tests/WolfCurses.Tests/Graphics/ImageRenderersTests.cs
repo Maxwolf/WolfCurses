@@ -69,5 +69,30 @@ namespace WolfCurses.Tests.Graphics
 
             Assert.Throws<ArgumentNullException>(() => image.ToAnsi(new AnsiImageOptions(), null));
         }
+
+        [Theory]
+        [InlineData(AnsiGraphicsProtocolEnum.None, typeof (HalfBlockImageRenderer))]
+        [InlineData(AnsiGraphicsProtocolEnum.Sixel, typeof (SixelImageRenderer))]
+        [InlineData(AnsiGraphicsProtocolEnum.Kitty, typeof (KittyImageRenderer))]
+        public void For_MapsEachProtocolToItsRenderer(AnsiGraphicsProtocolEnum protocol, Type expected)
+        {
+            Assert.IsType(expected, ImageRenderers.For(protocol));
+        }
+
+        [Fact]
+        public void For_AnUnknownProtocol_FallsBackToCharacters()
+        {
+            // A caller should be able to hand this whatever detection returned — including a value from a newer
+            // version of the enum than this code knows about — without it throwing or drawing garbage.
+            Assert.IsType<HalfBlockImageRenderer>(ImageRenderers.For((AnsiGraphicsProtocolEnum) 999));
+        }
+
+        [Fact]
+        public void ForCurrentTerminal_AlwaysReturnsSomethingUsable()
+        {
+            // Runs in a test host with no terminal at all, which is exactly the case that must not throw: the answer
+            // there is half blocks, the renderer that needs nothing from the terminal.
+            Assert.IsType<HalfBlockImageRenderer>(ImageRenderers.ForCurrentTerminal());
+        }
     }
 }
