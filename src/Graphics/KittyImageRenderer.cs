@@ -91,24 +91,141 @@ namespace WolfCurses.Graphics
 
             options ??= new AnsiImageOptions();
 
-            var pixels = ImageFit.FitToPixels(image, options, CellPixelWidth, CellPixelHeight);
+            // Flattening happens before placement, not after, so the transparent aspect padding a placement may add
+            // stays transparent: flattening afterwards would paint the padding as an opaque background-colored bar
+            // filling out the rounded-up cell rectangle. Same order as the sixel enlargement path, and a pointwise
+            // operation, so it composes the same picture either way.
             if (options.BackgroundColor.HasValue)
-                pixels = ImageFit.Flatten(pixels, options.BackgroundColor.Value);
+                image = ImageFit.Flatten(image, options.BackgroundColor.Value);
 
-            var rows = Math.Max(1, (pixels.Height + CellPixelHeight - 1) / CellPixelHeight);
-            var payload = _replacePictureAtCursor + Encode(pixels);
+            var (pixels, columns, rows) = ResolvePlacement(image, options);
+            var payload = _replacePictureAtCursor + Encode(pixels, columns, rows);
             return AnsiGraphics.PayloadBlock(payload, rows);
+        }
+
+        /// <summary>
+        ///     Decides what pixels to transmit and the cell rectangle (<c>c=</c>/<c>r=</c>) the terminal should scale
+        ///     them into.
+        ///     <para>
+        ///         The kitty protocol scales a transmitted image into a requested columns-by-rows rectangle itself, so
+        ///         unlike sixel there is no need to resample the source up to terminal pixels on the CPU — a 360-wide
+        ///         sprite canvas can be sent as its own 360-wide pixels instead of the 1980-wide upscale the old path
+        ///         built and base64'd every frame. The library only does the parts the terminal cannot: choosing the
+        ///         rectangle, Cover's crop, and padding the source to the rectangle's aspect ratio (with both
+        ///         <c>c</c> and <c>r</c> given the terminal stretches to fill, so aspect is preserved here, cheaply,
+        ///         at source resolution).
+        ///     </para>
+        ///     <para>
+        ///         Transmitting source pixels is only a win while the source is <em>smaller</em> than the fitted pixel
+        ///         area; a large photograph shown small would be megabytes of payload for a few cells. So each path
+        ///         transmits whichever is fewer pixels: the source as-is, or the source resized down to the fitted
+        ///         area — exactly the old behavior, now with the rectangle stated explicitly so the claimed row count
+        ///         is honored by the terminal rather than inferred from an assumed cell size.
+        ///     </para>
+        /// </summary>
+        private (PixelBuffer Pixels, int Columns, int Rows) ResolvePlacement(PixelBuffer image, AnsiImageOptions options)
+        {
+            var (maxColumns, maxRows) = AnsiImageRenderer.ResolveBounds(options);
+            var areaWidth = Math.Max(1, maxColumns * CellPixelWidth);
+            var areaHeight = Math.Max(1, maxRows * CellPixelHeight);
+
+            switch (options.Fit)
+            {
+                case AnsiImageFitEnum.Stretch:
+                    // Stretch means distortion is asked for: the terminal stretching whatever arrives into the full
+                    // rectangle is the correct picture, so the source goes as-is (downsized first only when it holds
+                    // more pixels than the rectangle, where transmitting it raw would cost more than the resize).
+                    return (SmallerOf(image, areaWidth, areaHeight), maxColumns, maxRows);
+
+                case AnsiImageFitEnum.Cover:
+                {
+                    // Cover's crop must stay on the CPU (it chooses which pixels survive) but its scale-to-fill need
+                    // not: the cropped rectangle already has the area's proportions, so the terminal's stretch into
+                    // the full rectangle reproduces it without distortion.
+                    var cropped = ImageFit.CoverCrop(image, areaWidth, areaHeight, options);
+                    return (SmallerOf(cropped, areaWidth, areaHeight), maxColumns, maxRows);
+                }
+
+                default:
+                {
+                    // Contain / ScaleDown: the same scale arithmetic as ImageFit.FitToPixels, but the fitted size is
+                    // only used to pick the cell rectangle; the terminal does the actual scaling.
+                    var scale = Math.Min(areaWidth / (double) image.Width, areaHeight / (double) image.Height);
+                    if (options.Fit == AnsiImageFitEnum.ScaleDown)
+                        scale = Math.Min(scale, 1.0);
+                    if (!double.IsFinite(scale) || scale <= 0)
+                        scale = 1.0;
+
+                    var width = Math.Max(1, (int) Math.Round(image.Width * scale, MidpointRounding.AwayFromZero));
+                    var height = Math.Max(1, (int) Math.Round(image.Height * scale, MidpointRounding.AwayFromZero));
+
+                    var columns = Math.Max(1, (width + CellPixelWidth - 1) / CellPixelWidth);
+                    var rows = Math.Max(1, (height + CellPixelHeight - 1) / CellPixelHeight);
+                    var rectWidth = columns * CellPixelWidth;
+                    var rectHeight = rows * CellPixelHeight;
+
+                    // The rectangle is a whole number of cells, so it is up to one cell bigger than the fitted size in
+                    // each direction; the terminal stretches into all of it. Padding the transmitted pixels (bottom and
+                    // right, transparent) to the rectangle's aspect keeps the picture undistorted and top-left aligned,
+                    // exactly where the old pixel-exact buffer put it.
+                    var padWidth = Math.Max(image.Width,
+                        (int) Math.Round(image.Width * (rectWidth / (double) width), MidpointRounding.AwayFromZero));
+                    var padHeight = Math.Max(image.Height,
+                        (int) Math.Round(image.Height * (rectHeight / (double) height), MidpointRounding.AwayFromZero));
+
+                    if ((long) padWidth * padHeight <= (long) rectWidth * rectHeight)
+                        return (Pad(image, padWidth, padHeight), columns, rows);
+
+                    // Source is larger than the fitted area: resize down first (fewer pixels to transmit), then pad
+                    // the fitted buffer out to the exact rectangle.
+                    return (Pad(image.Resize(width, height), rectWidth, rectHeight), columns, rows);
+                }
+            }
+        }
+
+        /// <summary>
+        ///     The image itself when it already holds no more pixels than the target area, otherwise the image resized
+        ///     to that area — whichever is fewer pixels to transmit.
+        /// </summary>
+        private static PixelBuffer SmallerOf(PixelBuffer image, int areaWidth, int areaHeight)
+        {
+            return (long) image.Width * image.Height <= (long) areaWidth * areaHeight
+                ? image
+                : image.Resize(areaWidth, areaHeight);
+        }
+
+        /// <summary>
+        ///     Extends the image with transparent pixels on the right and bottom to the given size (a straight row
+        ///     copy — no resampling), or returns it unchanged when it already fills the size.
+        /// </summary>
+        private static PixelBuffer Pad(PixelBuffer image, int width, int height)
+        {
+            if (width <= image.Width && height <= image.Height)
+                return image;
+
+            width = Math.Max(width, image.Width);
+            height = Math.Max(height, image.Height);
+
+            var padded = new PixelBuffer(width, height);
+            var sourceRowBytes = image.Width * PixelBuffer.BytesPerPixel;
+            var paddedRowBytes = width * PixelBuffer.BytesPerPixel;
+            for (var y = 0; y < image.Height; y++)
+                Array.Copy(image.Data, y * sourceRowBytes, padded.Data, y * paddedRowBytes, sourceRowBytes);
+
+            return padded;
         }
 
         /// <summary>
         ///     Encodes the image as kitty graphics commands: the raw RGBA bytes, base64'd and split into chunks.
         ///     <para>
-        ///         The first command carries the picture's format and dimensions and asks for it to be shown; the rest
-        ///         carry only continuation flags. Every command but the last sets <c>m=1</c> meaning "more follows", and
-        ///         the terminal only draws once it sees <c>m=0</c>.
+        ///         The first command carries the picture's format and dimensions, the cell rectangle to scale it into
+        ///         (<c>c=</c> columns, <c>r=</c> rows — which also makes the placement's on-screen size exact on any
+        ///         terminal, whatever its real cell size), and asks for it to be shown; the rest carry only
+        ///         continuation flags. Every command but the last sets <c>m=1</c> meaning "more follows", and the
+        ///         terminal only draws once it sees <c>m=0</c>.
         ///     </para>
         /// </summary>
-        private static string Encode(PixelBuffer image)
+        private static string Encode(PixelBuffer image, int columns, int rows)
         {
             var base64 = Convert.ToBase64String(image.Data);
             var builder = new StringBuilder(base64.Length + 256);
@@ -122,8 +239,10 @@ namespace WolfCurses.Graphics
                 if (offset == 0)
                 {
                     // f=32 says the payload is 32-bit RGBA, which is exactly PixelBuffer's own layout; a=T means
-                    // transmit this data and display it immediately.
+                    // transmit this data and display it immediately; c/r ask the terminal to scale it into that many
+                    // cells, which is what lets the data be source-resolution instead of a CPU-side upscale.
                     builder.Append("a=T,f=32,s=").Append(image.Width).Append(",v=").Append(image.Height)
+                        .Append(",c=").Append(columns).Append(",r=").Append(rows)
                         .Append(",m=").Append(last ? '0' : '1');
                 }
                 else

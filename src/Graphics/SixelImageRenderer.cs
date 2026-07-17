@@ -97,6 +97,15 @@ namespace WolfCurses.Graphics
 
             options ??= new AnsiImageOptions();
 
+            // When the fit is an upscale on both axes, every output pixel is (under nearest-neighbour) a straight
+            // copy of some source pixel — so the upscaled RGBA buffer never needs to exist. Quantize the ~100K
+            // source pixels instead of the ~1.6M output pixels and stretch runs arithmetically while encoding.
+            // Downscales keep the existing resize-first pipeline (area-averaging is what a downscale needs).
+            var (cropX, cropY, cropWidth, cropHeight, targetWidth, targetHeight) =
+                ImageFit.ResolveFit(image, options, CellPixelWidth, CellPixelHeight);
+            if (targetWidth >= cropWidth && targetHeight >= cropHeight)
+                return RenderUpscaled(image, options, cropX, cropY, cropWidth, cropHeight, targetWidth, targetHeight);
+
             var pixels = ImageFit.FitToPixels(image, options, CellPixelWidth, CellPixelHeight);
             var opaque = options.BackgroundColor.HasValue
                 ? ImageFit.Flatten(pixels, options.BackgroundColor.Value)
@@ -110,6 +119,203 @@ namespace WolfCurses.Graphics
             var rows = Math.Max(1, (opaque.Height + CellPixelHeight - 1) / CellPixelHeight);
             var payload = Encode(opaque, palette, alphaThreshold);
             return AnsiGraphics.PayloadBlock(payload, rows);
+        }
+
+        /// <summary>
+        ///     The upscale path: composite, threshold and palette at SOURCE resolution, then encode the enlarged
+        ///     picture directly from a per-source-pixel palette index map using precomputed nearest-neighbour
+        ///     coordinate mappings. Pointwise operations (alpha threshold, background flatten) commute with
+        ///     nearest-neighbour enlargement, so doing them before the "scale" is exact; the only difference from the
+        ///     legacy path is the resampling filter itself (nearest-neighbour instead of box).
+        /// </summary>
+        private string RenderUpscaled(PixelBuffer image, AnsiImageOptions options, int cropX, int cropY,
+            int cropWidth, int cropHeight, int targetWidth, int targetHeight)
+        {
+            var source = cropX == 0 && cropY == 0 && cropWidth == image.Width && cropHeight == image.Height
+                ? image
+                : image.Crop(cropX, cropY, cropWidth, cropHeight);
+            var opaque = options.BackgroundColor.HasValue
+                ? ImageFit.Flatten(source, options.BackgroundColor.Value)
+                : source;
+
+            var alphaThreshold = options.BackgroundColor.HasValue ? (byte) 0 : options.AlphaThreshold;
+            var palette = ColorPalette.Build(opaque, alphaThreshold, MaxPaletteColors);
+
+            var rows = Math.Max(1, (targetHeight + CellPixelHeight - 1) / CellPixelHeight);
+            var payload = EncodeUpscaled(opaque, palette, alphaThreshold, targetWidth, targetHeight);
+            return AnsiGraphics.PayloadBlock(payload, rows);
+        }
+
+        /// <summary>
+        ///     Encodes an enlarged copy of <paramref name="source" /> without ever materializing it. Consecutive output
+        ///     columns that read the same source column form a group whose run length is known arithmetically, so a
+        ///     band is walked per source column rather than per output pixel; output rows that read the same source
+        ///     row are merged into one lookup carrying several mask bits.
+        /// </summary>
+        private string EncodeUpscaled(PixelBuffer source, ColorPalette palette, byte alphaThreshold, int outWidth,
+            int outHeight)
+        {
+            var w = source.Width;
+            var h = source.Height;
+
+            // Palette index per source pixel, -1 meaning "below the alpha threshold, never drawn". One dictionary
+            // lookup per SOURCE pixel is the whole point: the legacy path did one per OUTPUT pixel.
+            var srcIndex = new short[w * h];
+            var data = source.Data;
+            for (int p = 0, o = 0; p < srcIndex.Length; p++, o += 4)
+            {
+                srcIndex[p] = data[o + 3] < alphaThreshold
+                    ? (short) -1
+                    : (short) palette.IndexOf(ColorPalette.Pack(data[o], data[o + 1], data[o + 2]));
+            }
+
+            // Center-based nearest-neighbour mapping, exact identity when the sizes match.
+            var srcRow = new int[outHeight];
+            for (var dy = 0; dy < outHeight; dy++)
+            {
+                var sy = (int) ((2L * dy + 1) * h / (2L * outHeight));
+                srcRow[dy] = sy >= h ? h - 1 : sy;
+            }
+
+            // Group output columns by shared source column: each group's mask is constant across its width, so the
+            // group's length multiplies into the run instead of being discovered by scanning output pixels.
+            var groupSrc = new int[outWidth];
+            var groupLen = new int[outWidth];
+            var groupStart = new int[outWidth];
+            var groups = 0;
+            var prevSx = -1;
+            for (var dx = 0; dx < outWidth; dx++)
+            {
+                var sx = (int) ((2L * dx + 1) * w / (2L * outWidth));
+                if (sx >= w)
+                    sx = w - 1;
+                if (sx != prevSx)
+                {
+                    groupSrc[groups] = sx;
+                    groupStart[groups] = dx;
+                    groupLen[groups] = 0;
+                    groups++;
+                    prevSx = sx;
+                }
+
+                groupLen[groups - 1]++;
+            }
+
+            var builder = new StringBuilder(outWidth * outHeight / 3 + 2048);
+            builder.Append(Escape).Append("P0;1;0q");
+            builder.Append("\"1;1;").Append(outWidth).Append(';').Append(outHeight);
+
+            for (var i = 0; i < palette.Colors.Length; i++)
+            {
+                var color = palette.Colors[i];
+                builder.Append('#').Append(i).Append(";2;")
+                    .Append(ToPercent(color.R)).Append(';')
+                    .Append(ToPercent(color.G)).Append(';')
+                    .Append(ToPercent(color.B));
+            }
+
+            EncodeUpscaledBands(srcIndex, srcRow, groupSrc, groupLen, groupStart, groups, w, outHeight,
+                palette.Colors.Length, builder);
+
+            builder.Append(Escape).Append('\\');
+            return builder.ToString();
+        }
+
+        /// <summary>Emits every six-output-row band of the enlarged picture from the source index map.</summary>
+        private static void EncodeUpscaledBands(short[] srcIndex, int[] srcRow, int[] groupSrc, int[] groupLen,
+            int[] groupStart, int groups, int sourceWidth, int outHeight, int colorCount, StringBuilder builder)
+        {
+            var masks = new byte[colorCount][];
+            var firstGroup = new int[colorCount];
+            var lastGroup = new int[colorCount];
+
+            // Distinct source rows inside the current band, with the output-row bits each covers: a 3x vertical
+            // upscale makes three output rows read one source row, which becomes one lookup carrying three bits.
+            var rowOffsets = new int[BandHeight];
+            var rowBits = new byte[BandHeight];
+
+            for (var top = 0; top < outHeight; top += BandHeight)
+            {
+                Array.Clear(masks, 0, masks.Length);
+                var bandRows = Math.Min(BandHeight, outHeight - top);
+
+                var distinct = 0;
+                var prevSy = -1;
+                for (var r = 0; r < bandRows; r++)
+                {
+                    var sy = srcRow[top + r];
+                    if (sy != prevSy)
+                    {
+                        rowOffsets[distinct] = sy * sourceWidth;
+                        rowBits[distinct] = 0;
+                        distinct++;
+                        prevSy = sy;
+                    }
+
+                    rowBits[distinct - 1] |= (byte) (1 << r);
+                }
+
+                for (var g = 0; g < groups; g++)
+                {
+                    var sx = groupSrc[g];
+                    for (var d = 0; d < distinct; d++)
+                    {
+                        var index = srcIndex[rowOffsets[d] + sx];
+                        if (index < 0)
+                            continue; // Below the alpha threshold: belongs to no color's mask, stays transparent.
+
+                        var mask = masks[index];
+                        if (mask == null)
+                        {
+                            mask = masks[index] = new byte[groups];
+                            firstGroup[index] = g;
+                        }
+
+                        mask[g] |= rowBits[d];
+                        lastGroup[index] = g;
+                    }
+                }
+
+                var first = true;
+                for (var index = 0; index < masks.Length; index++)
+                {
+                    var mask = masks[index];
+                    if (mask == null)
+                        continue; // This color does not appear in this band at all.
+
+                    if (!first)
+                        builder.Append('$');
+
+                    builder.Append('#').Append(index);
+
+                    // Everything left of the color's first appearance is one arithmetic run of empty masks; groups
+                    // after its last appearance are trailing zeros and (as in the legacy encoder) simply dropped.
+                    var lead = groupStart[firstGroup[index]];
+                    if (lead > 0)
+                        AppendRun(0, lead, builder);
+
+                    var runMask = mask[firstGroup[index]];
+                    var runLen = groupLen[firstGroup[index]];
+                    for (var g = firstGroup[index] + 1; g <= lastGroup[index]; g++)
+                    {
+                        if (mask[g] == runMask)
+                        {
+                            runLen += groupLen[g];
+                            continue;
+                        }
+
+                        AppendRun(runMask, runLen, builder);
+                        runMask = mask[g];
+                        runLen = groupLen[g];
+                    }
+
+                    AppendRun(runMask, runLen, builder);
+                    first = false;
+                }
+
+                if (top + BandHeight < outHeight)
+                    builder.Append('-'); // Graphics newline: down to the next band. Never after the last one.
+            }
         }
 
         /// <summary>

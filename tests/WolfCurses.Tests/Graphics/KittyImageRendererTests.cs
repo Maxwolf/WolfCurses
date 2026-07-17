@@ -69,8 +69,9 @@ namespace WolfCurses.Tests.Graphics
             var single = Assert.Single(commands);
 
             // a=T transmit-and-display, f=32 for 32-bit RGBA (PixelBuffer's own layout), s/v the pixel dimensions,
+            // c/r the cell rectangle the terminal scales the picture into (what lets the data be source resolution),
             // and m=0 meaning nothing more follows so the terminal can draw immediately.
-            Assert.Equal("a=T,f=32,s=2,v=2,m=0", single.Parameters);
+            Assert.Equal("a=T,f=32,s=2,v=2,c=2,r=2,m=0", single.Parameters);
         }
 
         [Fact]
@@ -113,7 +114,7 @@ namespace WolfCurses.Tests.Graphics
             Assert.Equal(2, commands.Length);
 
             // Only the first command describes the picture; the rest carry nothing but the continuation flag.
-            Assert.Equal("a=T,f=32,s=32,v=32,m=1", commands[0].Parameters);
+            Assert.Equal("a=T,f=32,s=32,v=32,c=32,r=32,m=1", commands[0].Parameters);
             Assert.Equal("m=0", commands[1].Parameters);
 
             Assert.Equal(4096, commands[0].Data.Length);
@@ -176,6 +177,106 @@ namespace WolfCurses.Tests.Graphics
             Assert.True(lines[0].Length > 1, "The first line must carry the payload.");
             Assert.Equal(AnsiGraphics.RowPlaceholder, lines[1]);
             Assert.Equal(AnsiGraphics.RowPlaceholder, lines[2]);
+        }
+
+        [Fact]
+        public void Render_SmallSource_TransmitsSourcePixelsAndLetsTheTerminalEnlarge()
+        {
+            // A 12x12 picture fitting (Contain) into a 24x24-pixel area: the old renderer would upscale to 24x24 on
+            // the CPU and transmit four times the data; now the source's own bytes go out untouched and c/r ask the
+            // terminal to do the enlarging. This is the whole kitty speedup, so the transmitted data being *exactly*
+            // the source buffer is the thing to pin.
+            var image = new PixelBuffer(12, 12);
+            for (var y = 0; y < 12; y++)
+            for (var x = 0; x < 12; x++)
+                image.SetPixel(x, y, new Rgba32((byte) (x * 20), (byte) (y * 20), 200, 255));
+
+            var rendered = new KittyImageRenderer(4, 12).Render(image, new AnsiImageOptions
+            {
+                MaxColumns = 6,
+                MaxRows = 2
+            });
+
+            var single = Assert.Single(ImageCommands(Payload(rendered)));
+            Assert.Equal("a=T,f=32,s=12,v=12,c=6,r=2,m=0", single.Parameters);
+            Assert.Equal(image.Data, Convert.FromBase64String(single.Data));
+        }
+
+        [Fact]
+        public void Render_CellRectangleWiderThanTheFit_PadsTheSourceInsteadOfDistorting()
+        {
+            // A 10x10 picture fits (Contain) at 30x30 pixels, but 30 pixels is one and a half 20-pixel rows, so the
+            // claimed rectangle rounds up to 3x2 cells = 30x40 pixels — and with both c and r given the terminal
+            // stretches to fill the whole rectangle. Aspect survives because the source is padded (transparent, bottom
+            // edge) to the rectangle's own proportions first: 10x13 transmitted, of which the last three rows are
+            // nothing. The picture lands top-left in its rectangle, exactly where the old pixel-exact buffer put it.
+            var image = Solid(10, 10, new Rgba32(0, 255, 0, 255));
+            var rendered = new KittyImageRenderer(10, 20).Render(image, new AnsiImageOptions
+            {
+                MaxColumns = 3,
+                MaxRows = 3
+            });
+
+            var single = Assert.Single(ImageCommands(Payload(rendered)));
+            Assert.StartsWith("a=T,f=32,s=10,v=13,c=3,r=2,", single.Parameters, StringComparison.Ordinal);
+
+            // The claimed row count and the r= key must agree — that is the marker contract holding by construction.
+            Assert.Equal(2, rendered.Split(Environment.NewLine).Length);
+
+            var data = Convert.FromBase64String(single.Data);
+            Assert.Equal(10 * 13 * 4, data.Length);
+
+            // Ten rows of the picture, then three rows of transparent padding: every padding byte is zero.
+            for (var i = 0; i < 10 * 10 * 4; i++)
+                Assert.Equal(image.Data[i], data[i]);
+            for (var i = 10 * 10 * 4; i < data.Length; i++)
+                Assert.Equal(0, data[i]);
+        }
+
+        [Fact]
+        public void Render_BackgroundColor_DoesNotPaintTheAspectPadding()
+        {
+            // Flattening runs before placement so the picture's own transparency composites onto the background, but
+            // the aspect padding added afterwards stays transparent — flattening in the other order would fill the
+            // rounded-up cell rectangle with an opaque background-colored bar the old renderer never drew.
+            var image = Solid(10, 10, new Rgba32(0, 0, 255, 0)); // fully transparent picture
+            var rendered = new KittyImageRenderer(10, 20).Render(image, new AnsiImageOptions
+            {
+                MaxColumns = 3,
+                MaxRows = 3,
+                BackgroundColor = new Rgb24(255, 0, 0)
+            });
+
+            var single = Assert.Single(ImageCommands(Payload(rendered)));
+            var data = Convert.FromBase64String(single.Data);
+            Assert.Equal(10 * 13 * 4, data.Length);
+
+            // The picture's rows flattened to opaque background; the three padding rows stayed transparent.
+            for (var i = 0; i < 10 * 10 * 4; i += 4)
+                Assert.Equal(new byte[] {255, 0, 0, 255}, data[i..(i + 4)]);
+            for (var i = 10 * 10 * 4; i < data.Length; i++)
+                Assert.Equal(0, data[i]);
+        }
+
+        [Fact]
+        public void Render_LargeSourceShownSmall_IsResizedDownBeforeTransmission()
+        {
+            // The opposite gate: a 200x200 photograph into a 20x20-pixel area would be 160 KB of payload sent raw for
+            // a couple of cells. Transmitting whichever is fewer pixels means this path still resizes on the CPU
+            // first, exactly as before.
+            var image = Solid(200, 200, new Rgba32(255, 0, 0, 255));
+            var rendered = new KittyImageRenderer(10, 20).Render(image, new AnsiImageOptions
+            {
+                MaxColumns = 2,
+                MaxRows = 1
+            });
+
+            var commands = ImageCommands(Payload(rendered));
+            Assert.StartsWith("a=T,f=32,s=20,v=20,c=2,r=1,", commands[0].Parameters, StringComparison.Ordinal);
+
+            var data = Convert.FromBase64String(string.Concat(commands.Select(c => c.Data)));
+            Assert.Equal(20 * 20 * 4, data.Length);
+            Assert.Equal(new byte[] {255, 0, 0, 255}, data.Take(4).ToArray());
         }
 
         [Fact]
