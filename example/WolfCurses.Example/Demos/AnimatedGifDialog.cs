@@ -75,6 +75,20 @@ namespace WolfCurses.Example.Demos
         /// </summary>
         private readonly FrameCounter _counter = new();
 
+        /// <summary>
+        ///     TAB switches renderer here as it does in the sprite tests, but it costs something quite different, and
+        ///     the difference is the point.
+        ///     <para>
+        ///         A sprite test changes renderer between one frame and the next, because it draws every frame anyway.
+        ///         This one drew all ninety-one of them before it started, so switching means drawing them all again —
+        ///         about a third of a second into half blocks, and <b>seven seconds</b> into sixel. The wait is the
+        ///         entire cost of true pixels here, paid once at the door, and afterwards playback is an array lookup
+        ///         either way. Watch the "cached in" figure rather than the fps: fps will read about 32 whichever is
+        ///         chosen, which is exactly the finding.
+        ///     </para>
+        /// </summary>
+        private readonly RendererSwitch _renderer = new();
+
         private TimeSpan[] _delays = Array.Empty<TimeSpan>();
         private string _error;
         private int _index;
@@ -93,11 +107,35 @@ namespace WolfCurses.Example.Demos
         {
             base.OnFormPostCreate();
 
-            ParentWindow.PromptText = "Press ENTER to return to the menu";
+            ParentWindow.PromptText = "TAB to switch renderer, ENTER to return to the menu";
             Load();
 
             // Only once the frames are ready, or the first of them would be charged the whole decode.
             _clock.Restart();
+        }
+
+        /// <inheritdoc />
+        public override void OnKeyPressed(ConsoleKey key)
+        {
+            base.OnKeyPressed(key);
+
+            if (key != ConsoleKey.Tab)
+                return;
+
+            // Every frame has to be built again, because every frame is a string that the other renderer wrote. There
+            // is nothing to reuse: the pixels were thrown away as each one was rendered, deliberately, since keeping
+            // them would cost a hundred megabytes. So this re-decodes the file too, and the screen simply stops for as
+            // long as that takes — which on sixel is about seven seconds, and is the honest price of the switch.
+            _renderer.Toggle();
+            Load();
+
+            // The frame it was showing, if the new strip still reaches that far. It does — same file, same count — but
+            // a failed reload leaves nothing behind and an index into it would be the only thing that crashed.
+            if (_index >= _slides.Length)
+                _index = 0;
+
+            _clock.Restart();
+            _counter.Restart();
         }
 
         /// <inheritdoc />
@@ -131,8 +169,8 @@ namespace WolfCurses.Example.Demos
             var sb = new StringBuilder();
             sb.AppendLine();
             sb.AppendLine("Animated GIF  —  media/animated.gif on loop");
-            sb.AppendLine($"{_counter.Describe()} | frame {_index + 1}/{_slides.Length} | " +
-                          $"{_delays[_index].TotalMilliseconds:F0}ms each | " +
+            sb.AppendLine($"{_counter.Describe()} | {_renderer.Describe()} | " +
+                          $"frame {_index + 1}/{_slides.Length} | " +
                           $"cached in {_loadTime.TotalMilliseconds:F0}ms");
             sb.AppendLine();
             sb.Append(_slides[_index]);
@@ -170,7 +208,7 @@ namespace WolfCurses.Example.Demos
                 using var stream = File.OpenRead(DemoImages.AnimatedGifPath);
                 foreach (var frame in new GifDecoder().DecodeFrames(stream))
                 {
-                    slides.Add(AnsiImage.FromPixels(frame.Image).ToAnsi(options));
+                    slides.Add(AnsiImage.FromPixels(frame.Image).ToAnsi(options, _renderer.Current));
                     delays.Add(frame.Delay < _fastFrameThreshold ? _fastFrameDelay : frame.Delay);
                 }
             }

@@ -24,6 +24,31 @@ namespace WolfCurses.Example.Demos
         /// </summary>
         private const string SlideshowPrefix = "image_";
 
+        /// <summary>
+        ///     The half blocks that <see cref="RendererSwitch" /> offers as the alternative to whatever the terminal
+        ///     answered the startup probe with. <b>Not a default</b>: every moving demo opens on
+        ///     <see cref="ImageRenderers.Default" />, because a demo that quietly substituted a cheaper renderer would
+        ///     be showing you something other than what this terminal does. TAB is what reaches this.
+        ///     <para>
+        ///         Kept here, and shared, because it is one object rather than four and because the reason to reach for
+        ///         it belongs in one place. Measured on the basic sprite test's scene into a 200x50 terminal:
+        ///         <b>half blocks 3.7ms a frame, kitty 30.2ms, sixel 92.4ms</b>. A sixel or kitty cell is ten by twenty
+        ///         <i>real</i> pixels, so filling that terminal means quantizing and encoding 1.6 million of them thirty
+        ///         times a second, where half blocks emit two per cell. Sixel is still 40ms at 80x24, so no window is
+        ///         small enough to rescue it.
+        ///     </para>
+        ///     <para>
+        ///         The useful way to hold this is that it is about <i>when the bill arrives</i>, not about animation:
+        ///         pay per frame and sixel is impossible, pay once and it is free ever after. The sprite tests compose a
+        ///         new picture every frame and cannot know it in advance, so TAB there swaps the cost of every future
+        ///         frame and the fps readout moves at once. <see cref="AnimatedGifDialog" /> knows all its frames before
+        ///         it starts, renders them up front and plays back an array lookup — so TAB there changes nothing about
+        ///         playback (0.00ms a frame, about 32 fps, either way) and everything about the wait at the door: a
+        ///         third of a second against about seven seconds. Same switch, entirely different bill.
+        ///     </para>
+        /// </summary>
+        public static IImageRenderer AnimationRenderer { get; } = new HalfBlockImageRenderer();
+
         /// <summary>Folder next to the executable that holds the copied media images.</summary>
         public static string Folder => Path.Combine(AppContext.BaseDirectory, "images");
 

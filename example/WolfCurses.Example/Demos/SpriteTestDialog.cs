@@ -48,6 +48,7 @@ namespace WolfCurses.Example.Demos
 
         private readonly Stopwatch _clock = new();
         private readonly FrameCounter _counter = new();
+        private readonly RendererSwitch _renderer = new();
 
         private int _bounces;
         private string _current = string.Empty;
@@ -70,9 +71,26 @@ namespace WolfCurses.Example.Demos
         {
             base.OnFormPostCreate();
 
-            ParentWindow.PromptText = "Press ENTER to return to the menu";
+            ParentWindow.PromptText = "TAB to switch renderer, ENTER to return to the menu";
             Build();
             _clock.Restart();
+        }
+
+        /// <inheritdoc />
+        public override void OnKeyPressed(ConsoleKey key)
+        {
+            base.OnKeyPressed(key);
+
+            if (key != ConsoleKey.Tab)
+                return;
+
+            // TAB rather than a letter because a letter is text: it would land in the input buffer and sit in the prompt
+            // as well as being heard here, whereas tab has nothing printable to contribute and is dropped by the buffer.
+            _renderer.Toggle();
+
+            // The sample in progress is thrown away rather than allowed to finish, because half of it was measured on
+            // the other renderer and averaging the two would hide exactly the difference this switch exists to show.
+            _counter.Restart();
         }
 
         /// <inheritdoc />
@@ -91,7 +109,7 @@ namespace WolfCurses.Example.Demos
             // Composed and rendered here rather than in OnRenderForm, which the scene graph calls on every one of those
             // thousands of ticks. This is the expensive part of the frame and it happens once per move.
             var started = Stopwatch.GetTimestamp();
-            _current = _scene.ToAnsi(_options);
+            _current = _scene.ToAnsi(_options, _renderer.Current);
             _counter.Record(Stopwatch.GetElapsedTime(started));
         }
 
@@ -104,7 +122,8 @@ namespace WolfCurses.Example.Demos
             var sb = new StringBuilder();
             sb.AppendLine();
             sb.AppendLine("Sprite Test (Basic)  —  DVD logo over image_001.jpg");
-            sb.AppendLine($"{_counter.Describe()} | {_scene.Width}x{_scene.Height} canvas | {_bounces} bounces");
+            sb.AppendLine($"{_counter.Describe()} | {_renderer.Describe()} | " +
+                          $"{_scene.Width}x{_scene.Height} | {_bounces} bounces");
             sb.AppendLine();
             sb.Append(_current);
             return sb.ToString();
@@ -173,7 +192,7 @@ namespace WolfCurses.Example.Demos
             _scene.Sprites.Add(_sprite);
 
             _options = DemoImages.FitOptions();
-            _current = _scene.ToAnsi(_options);
+            _current = _scene.ToAnsi(_options, _renderer.Current);
         }
     }
 }
