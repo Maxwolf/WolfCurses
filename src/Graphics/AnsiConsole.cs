@@ -25,6 +25,11 @@ namespace WolfCurses.Graphics
         private const char Escape = (char) 27;
 
         /// <summary>
+        ///     What <see cref="DetectColorMode" /> worked out, kept because it cannot change; null until first asked.
+        /// </summary>
+        private static AnsiColorModeEnum? _colorMode;
+
+        /// <summary>
         ///     Prepares the current process's console for ANSI graphics: switches standard output to UTF-8 (so the
         ///     <c>▀</c>/<c>▄</c> half-block glyphs render) and, on Windows, enables the
         ///     <c>ENABLE_VIRTUAL_TERMINAL_PROCESSING</c> console mode (so escape sequences are interpreted rather than
@@ -57,9 +62,36 @@ namespace WolfCurses.Graphics
         ///     Best-effort guess at how much color the destination terminal supports, honoring the common
         ///     <c>NO_COLOR</c>, <c>COLORTERM</c> and <c>TERM</c> environment conventions. Used to resolve
         ///     <see cref="AnsiColorModeEnum.Auto" />.
+        ///     <para>
+        ///         Worked out once and remembered. <see cref="AnsiColorModeEnum.Auto" /> is the default, so this is on
+        ///         the path of every render, and a render can happen many times a second — where the answer is read from
+        ///         environment variables that were fixed when the process started and cannot sensibly change under it.
+        ///         Re-deciding it per frame was reading five environment variables and lower-casing two strings to reach
+        ///         the same conclusion as last time, forever. Call <see cref="ResetColorModeCache" /> if you genuinely
+        ///         change the environment underneath it.
+        ///     </para>
+        ///     <para>
+        ///         Two threads arriving at once may both work it out, which costs a little and settles the same way:
+        ///         the answer depends on nothing but the environment, so there is no lock worth taking to prevent it.
+        ///     </para>
         /// </summary>
         /// <returns>A concrete (never <see cref="AnsiColorModeEnum.Auto" />) color mode.</returns>
         public static AnsiColorModeEnum DetectColorMode()
+        {
+            return _colorMode ??= DetectColorModeCore();
+        }
+
+        /// <summary>
+        ///     Forgets the remembered answer from <see cref="DetectColorMode" />, so the next call works it out again.
+        ///     For a host that changes <c>NO_COLOR</c> or its terminal underneath a running process, and for tests.
+        /// </summary>
+        public static void ResetColorModeCache()
+        {
+            _colorMode = null;
+        }
+
+        /// <summary>Works out the color mode from the environment, with nothing remembered.</summary>
+        private static AnsiColorModeEnum DetectColorModeCore()
         {
             // The NO_COLOR convention: any non-empty value means "do not emit color".
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NO_COLOR")))
