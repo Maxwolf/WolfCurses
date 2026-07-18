@@ -35,6 +35,18 @@ namespace WolfCurses.Tests.TestDoubles
             AddCommand(action, command);
         }
 
+        /// <summary>
+        ///     Clears and re-adds every command, the way a store window refreshes its menu — used to pin what happens
+        ///     to the arrow-key highlight across a rebuild.
+        /// </summary>
+        public void ClearAndRebuildMenu()
+        {
+            ClearCommands();
+            AddTestCommand(TestCommandsEnum.First);
+            AddTestCommand(TestCommandsEnum.Second);
+            AddTestCommand(TestCommandsEnum.Third);
+        }
+
         public override void OnWindowPostCreate()
         {
             base.OnWindowPostCreate();

@@ -57,6 +57,19 @@ namespace WolfCurses.Window
         bool MaskInput => false;
 
         /// <summary>
+        ///     The running simulation this window belongs to, or null for an implementation that never learned it.
+        ///     <para>
+        ///         This is the third of the small enablers that let forms and library-provided controls do real work
+        ///         (after form discovery scanning the library assembly, and <c>Window</c> exposing its protected
+        ///         <c>SimUnit</c> to command handlers): a form holds only its parent window, and some of what a form
+        ///         legitimately needs lives on the simulation — the input manager, say, so a form that treats SPACE as
+        ///         a toggle key can clear the space the input buffer just swallowed. Implemented as a default interface
+        ///         member so existing windows need not change; <c>Window</c> supplies the real value.
+        ///     </para>
+        /// </summary>
+        SimulationApp SimUnit => null;
+
+        /// <summary>
         ///     Fired when the host reports a key press, before and apart from anything the input buffer does with it.
         ///     <para>
         ///         This is the only way to hear a key that is not text. The input buffer holds a line the user is typing,
