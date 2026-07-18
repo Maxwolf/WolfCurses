@@ -72,11 +72,13 @@ namespace WolfCurses.Core
         }
 
         /// <summary>
-        ///     Holds the last known representation of the game simulation and current Windows text user interface, only pushes
-        ///     update
-        ///     when a change occurs.
+        ///     The frame currently on screen: the exact text last rendered — spinner, window body and prompt included —
+        ///     updated the moment it changes (the same moment <see cref="ScreenBufferDirtyEvent" /> fires). Public so a
+        ///     host driving the simulation programmatically (a test, a bot, a screenshot tool) can read what is showing
+        ///     without subscribing to the event and caching the argument itself. Empty before the first frame and after
+        ///     <see cref="Clear" />.
         /// </summary>
-        private string ScreenBuffer { get; set; }
+        public string ScreenBuffer { get; private set; }
 
         /// <summary>
         ///     Where auto-presented frames go instead of the console. Test seam: the real path needs an attached
@@ -84,6 +86,16 @@ namespace WolfCurses.Core
         ///     go to the built-in <see cref="ConsolePresenter" />.
         /// </summary>
         internal Action<string> AutoPresentSink { get; set; }
+
+        /// <summary>
+        ///     Whether the built-in <see cref="ConsolePresenter" /> draws changed frames to the console. True by
+        ///     default — what lets a console host draw itself with no presentation code. Set false to run with a
+        ///     console attached but nothing drawn to it: a bot or driver that reads <see cref="ScreenBuffer" /> (or
+        ///     handles the event) and shows its own interface, or nothing. The intention-revealing way to get what
+        ///     attaching an empty <see cref="ScreenBufferDirtyEvent" /> handler used to accomplish only as a side
+        ///     effect. Ignored while a handler is attached, since a subscriber already owns presentation.
+        /// </summary>
+        public bool AutoPresent { get; set; } = true;
 
         /// <summary>
         ///     Fired when the simulation is closing and needs to clear out any data structures that it created so the program can
@@ -130,7 +142,8 @@ namespace WolfCurses.Core
                 return;
             }
 
-            AutoPresent(ScreenBuffer);
+            if (AutoPresent)
+                PresentToConsole(ScreenBuffer);
         }
 
         /// <summary>
@@ -139,7 +152,7 @@ namespace WolfCurses.Core
         ///     where the frames stay available in <see cref="ScreenBuffer" /> and the event for whoever wants them.
         /// </summary>
         /// <param name="frame">The complete frame to draw.</param>
-        private void AutoPresent(string frame)
+        private void PresentToConsole(string frame)
         {
             // The test seam, when installed, stands in for the console entirely.
             var sink = AutoPresentSink;

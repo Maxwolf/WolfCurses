@@ -76,6 +76,14 @@ namespace WolfCurses.Core
         public string InputBuffer { get; private set; }
 
         /// <summary>
+        ///     True when nothing is waiting to be dispatched — no queued commands, no queued key presses. The signal
+        ///     <see cref="SimulationApp.PumpInput" /> settles on. Text sitting un-submitted in
+        ///     <see cref="InputBuffer" /> does not count: a half-typed line is not pending work, it is a user (or
+        ///     driver) that has not pressed ENTER yet.
+        /// </summary>
+        public bool IsIdle => (_commandQueue?.Count ?? 0) == 0 && (_keyQueue?.Count ?? 0) == 0;
+
+        /// <summary>
         ///     Whether this manager reads the console's own key buffer on every system tick (the default). Set false
         ///     when the host wants to own key reading — custom keybindings, keys that mean something to the host
         ///     before the simulation sees them, or input arriving from somewhere that is not a console — and feed

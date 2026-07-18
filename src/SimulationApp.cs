@@ -160,6 +160,17 @@ namespace WolfCurses
         public virtual IEnumerable<Assembly> AdditionalFormAssemblies => Array.Empty<Assembly>();
 
         /// <summary>
+        ///     The deduped, null-free assembly set form discovery scanned: the WolfCurses library, this app's concrete
+        ///     subclass assembly, the process entry assembly, and <see cref="AdditionalFormAssemblies" />. Published so
+        ///     an application running attribute discovery of its own — a plugin registry, an event catalog — can walk
+        ///     the same set with <c>AttributeExtensions.GetTypesWith</c> instead of reaching for
+        ///     <c>Assembly.GetEntryAssembly()</c> and faking the entry assembly by reflection when hosted (a test
+        ///     runner, an embedding). Empty after <see cref="Destroy" />.
+        /// </summary>
+        public IReadOnlyCollection<Assembly> DiscoveryAssemblies =>
+            WindowManager?.FormDiscoveryAssemblies ?? Array.Empty<Assembly>();
+
+        /// <summary>
         ///     Called when the simulation is ticked by underlying operating system, game engine, or potato. Each of these system
         ///     ticks is called at unpredictable rates, however if not a system tick that means the simulation has processed enough
         ///     of them to fire off event for fixed interval that is set in the core simulation by constant in milliseconds.
@@ -240,6 +251,49 @@ namespace WolfCurses
                 // simulation, taking the spinning pixel with it.
                 TickPhase = _spinningPixel?.Step() ?? string.Empty;
             }
+        }
+
+        /// <summary>
+        ///     Ticks the simulation until the input it was given has fully landed on screen, bounded. This is the
+        ///     deterministic "press the key, then look" helper for hosts that drive the simulation programmatically —
+        ///     tests, bots, screenshot tools — and it exists because one tick is not always enough: modules tick in
+        ///     input → scene → window order, so a command that swaps or closes a window is dispatched on one tick, the
+        ///     window stack settles at that tick's end, and only the <em>next</em> tick renders the settled state.
+        ///     Callers were left writing two blind ticks and hoping; this loops instead until nothing is pending —
+        ///     input queues drained, no window awaiting removal — and then ticks once more so the settled state is
+        ///     what <see cref="Core.SceneGraph.ScreenBuffer" /> holds. Settling is judged on state, never on frame
+        ///     equality, because the spinner changes the frame every tick.
+        /// </summary>
+        /// <param name="maxTicks">
+        ///     Upper bound on simulation ticks, so input that keeps generating input (a command whose handler enqueues
+        ///     more) cannot loop forever. The default comfortably covers any single command's dispatch-settle-render.
+        /// </param>
+        /// <returns>
+        ///     TRUE when everything settled and the settled state has been rendered; FALSE when the bound was hit (or
+        ///     the simulation closed) first.
+        /// </returns>
+        public bool PumpInput(int maxTicks = 8)
+        {
+            if (maxTicks < 1)
+                throw new ArgumentOutOfRangeException(nameof(maxTicks), maxTicks,
+                    "Pumping input requires at least one tick.");
+
+            for (var i = 0; i < maxTicks; i++)
+            {
+                // Judged before the tick: when nothing was pending going in, this tick's render shows the settled
+                // state and the pump is done. When something was pending, this tick works it off and the next pass
+                // re-judges.
+                var settled = (InputManager?.IsIdle ?? true) && WindowManager?.HasPendingRemovals != true;
+
+                OnTick(false);
+
+                if (IsClosing)
+                    return false;
+                if (settled)
+                    return true;
+            }
+
+            return false;
         }
 
         /// <summary>

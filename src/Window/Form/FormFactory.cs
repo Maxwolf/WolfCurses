@@ -53,8 +53,21 @@ namespace WolfCurses.Window.Form
             if (additionalAssemblies != null)
                 assembliesToScan.AddRange(additionalAssemblies);
 
+            // Collapse nulls and duplicates once, here, so the published DiscoveryAssemblies is exactly the set the
+            // scan below walks — an app doing its own attribute discovery over the same set (the reason the property
+            // exists) must not scan an assembly this factory skipped, or twice.
+            var scanned = new List<Assembly>();
+            var seenAssemblies = new HashSet<Assembly>();
+            foreach (var assembly in assembliesToScan)
+            {
+                if (assembly != null && seenAssemblies.Add(assembly))
+                    scanned.Add(assembly);
+            }
+
+            DiscoveryAssemblies = scanned;
+
             // Collect all of the states with the custom attribute decorated on them.
-            var foundStates = AttributeExtensions.GetTypesWith<ParentWindowAttribute>(assembliesToScan, false);
+            var foundStates = AttributeExtensions.GetTypesWith<ParentWindowAttribute>(scanned, false);
             foreach (var stateType in foundStates)
             {
                 // GetModule the attribute itself from the state we are working on, which gives us the game Windows enum.
@@ -70,6 +83,16 @@ namespace WolfCurses.Window.Form
         ///     Reference dictionary for all the reflected state types.
         /// </summary>
         private Dictionary<Type, Type> LoadedForms { get; set; }
+
+        /// <summary>
+        ///     The deduped, null-free set of assemblies this factory scanned for <c>[ParentWindow]</c> forms: the
+        ///     library itself, the concrete <see cref="SimulationApp" /> subclass's assembly, the process entry
+        ///     assembly, and anything from <see cref="SimulationApp.AdditionalFormAssemblies" />. Published (via
+        ///     <see cref="SimulationApp.DiscoveryAssemblies" />) so an application running its own attribute
+        ///     discovery — a plugin system, an event registry — can walk the same set instead of reaching for
+        ///     <c>Assembly.GetEntryAssembly()</c> and faking it when hosted.
+        /// </summary>
+        public IReadOnlyCollection<Assembly> DiscoveryAssemblies { get; }
 
         /// <summary>Creates and adds the specified type of state to currently active game Windows.</summary>
         /// <param name="stateType">Role object that is the actual type of state that needs created.</param>
