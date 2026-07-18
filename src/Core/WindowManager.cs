@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using WolfCurses.Window;
 using WolfCurses.Window.Form;
 
@@ -64,6 +65,22 @@ namespace WolfCurses.Core
                 }
             }
         }
+
+        /// <summary>
+        ///     The assembly set the form factory scanned for <c>[ParentWindow]</c> forms, surfaced for
+        ///     <see cref="SimulationApp.DiscoveryAssemblies" />. Empty after <see cref="Destroy" />.
+        /// </summary>
+        internal IReadOnlyCollection<Assembly> FormDiscoveryAssemblies =>
+            _formFactory?.DiscoveryAssemblies ?? Array.Empty<Assembly>();
+
+        /// <summary>
+        ///     True while the focused window is flagged for removal and has not yet been torn down — the window stack
+        ///     will change shape on the next tick. The other signal <see cref="SimulationApp.PumpInput" /> settles on:
+        ///     a frame rendered in this state shows a window that is already gone in all but name. Mirrors the
+        ///     condition <see cref="OnTick" /> acts on, which is the focused window only — a buried window flagged for
+        ///     removal waits until it surfaces, and is deliberately not reported here.
+        /// </summary>
+        public bool HasPendingRemovals => FocusedWindow?.ShouldRemoveMode == true;
 
         /// <summary>
         ///     Retrieves the total number of windows that the manager is currently handling.

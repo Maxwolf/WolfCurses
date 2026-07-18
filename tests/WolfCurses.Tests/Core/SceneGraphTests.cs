@@ -181,6 +181,80 @@ namespace WolfCurses.Tests.Core
         }
 
         [Fact]
+        public void ScreenBuffer_IsReadableAndMatchesWhatTheEventDelivered()
+        {
+            // The read-the-frame mode: a driver should not need to subscribe and cache the event argument just to
+            // know what is showing.
+            var app = new TestSimulationApp();
+            string delivered = null;
+            app.SceneGraph.ScreenBufferDirtyEvent += content => delivered = content;
+
+            app.SceneGraph.OnTick(false);
+
+            Assert.Equal(delivered, app.SceneGraph.ScreenBuffer);
+        }
+
+        [Fact]
+        public void ScreenBuffer_EmptyBeforeTheFirstFrameAndAfterClear()
+        {
+            var app = new TestSimulationApp();
+            Assert.Equal(string.Empty, app.SceneGraph.ScreenBuffer);
+
+            app.SceneGraph.OnTick(false);
+            Assert.NotEqual(string.Empty, app.SceneGraph.ScreenBuffer);
+
+            app.SceneGraph.Clear();
+            Assert.Equal(string.Empty, app.SceneGraph.ScreenBuffer);
+        }
+
+        [Fact]
+        public void AutoPresentOff_FramesStillLandInScreenBufferButNothingIsDrawn()
+        {
+            // Intent #3 made first-class: run with a console attached, draw nothing, read the frame. Before the
+            // flag existed this took subscribing an empty handler purely for its stand-down side effect.
+            var app = new TestSimulationApp();
+            var presentCount = 0;
+            app.SceneGraph.AutoPresentSink = _ => presentCount++;
+            app.SceneGraph.AutoPresent = false;
+
+            app.SceneGraph.OnTick(false);
+
+            Assert.Equal(0, presentCount);
+            Assert.Contains("[NO WINDOW ATTACHED]", app.SceneGraph.ScreenBuffer);
+        }
+
+        [Fact]
+        public void AutoPresentOff_TheEventStillFiresForSubscribers()
+        {
+            // The flag gates only the built-in console draw; frames keep flowing to whoever asked for them.
+            var app = new TestSimulationApp();
+            app.SceneGraph.AutoPresent = false;
+            var fireCount = 0;
+            app.SceneGraph.ScreenBufferDirtyEvent += _ => fireCount++;
+
+            app.SceneGraph.OnTick(false);
+
+            Assert.Equal(1, fireCount);
+        }
+
+        [Fact]
+        public void AutoPresentTurnedBackOn_TheNextChangedFrameDrawsAgain()
+        {
+            var app = new TestSimulationApp();
+            var presentCount = 0;
+            app.SceneGraph.AutoPresentSink = _ => presentCount++;
+            app.SceneGraph.AutoPresent = false;
+            app.SceneGraph.OnTick(false);
+            Assert.Equal(0, presentCount);
+
+            app.SceneGraph.AutoPresent = true;
+            app.WindowManager.Add(typeof(TestWindow));
+            app.SceneGraph.OnTick(false);
+
+            Assert.Equal(1, presentCount);
+        }
+
+        [Fact]
         public void OnTick_RemovingTheLastSubscriber_HandsPresentationBack()
         {
             var app = new TestSimulationApp();
