@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Text;
 using WolfCurses.Core;
 using WolfCurses.Utility;
+using WolfCurses.Window.Control;
 using WolfCurses.Window.Form;
 using WolfCurses.Window.Menu;
 
@@ -66,6 +67,13 @@ namespace WolfCurses.Window
         private readonly StringBuilder _menuPrompt;
 
         /// <summary>
+        ///     The arrow-key highlight over the menu choices. Deliberately hidden until the first arrow key arrives
+        ///     (see <see cref="ListNavigator.HasSelection" />), so a window whose user only ever types numbers renders
+        ///     byte-for-byte what it rendered before the highlight existed.
+        /// </summary>
+        private readonly ListNavigator _menuNavigator = new();
+
+        /// <summary>
         ///     Initializes a new instance of the <see cref="Window{TCommands,TData}" /> class.
         /// </summary>
         /// <param name="simUnit">Core simulation which is controlling the form factory.</param>
@@ -107,6 +115,12 @@ namespace WolfCurses.Window
         ///     <see cref="WolfCurses.Controls.FileDialog" />), the shared randomizer, and so on.
         /// </summary>
         protected SimulationApp SimUnit => _simUnit;
+
+        /// <summary>
+        ///     The same simulation, answered through <see cref="IWindow" /> so forms can reach it via their parent
+        ///     window (see <see cref="IWindow.SimUnit" /> for why they need to).
+        /// </summary>
+        SimulationApp IWindow.SimUnit => _simUnit;
 
         /// <summary>
         ///     Current game Windows state that is being ticked when this Windows is ticked by the underlying simulation.
@@ -342,9 +356,18 @@ namespace WolfCurses.Window
             }
             else
             {
-                // Skip if current state is null.
                 if (Form == null)
+                {
+                    // ENTER with nothing typed used to travel this whole pipeline just to be dropped here. Now it is
+                    // the other half of arrow-key navigation: with the menu showing and a highlight summoned, an
+                    // empty submit runs the highlighted choice. The choice's own action is invoked directly rather
+                    // than round-tripped through the typed-command mappings, which dedupe alias enum values — the
+                    // highlight points at a row on screen, so the row is what must run. Typed text always wins over
+                    // the highlight, because a non-empty buffer never reaches this branch.
+                    if (AcceptsInput && _menuCommands?.Count > 0 && _menuNavigator.HasSelection)
+                        _menuCommands[_menuNavigator.Index].Action?.Invoke();
                     return;
+                }
 
                 // Skip if current state doesn't want our input.
                 if (!Form.AllowInput)
@@ -356,16 +379,25 @@ namespace WolfCurses.Window
         }
 
         /// <summary>
-        ///     Fired when the host reports a key press and this window is the focused one. Hands it to the current form,
-        ///     which is where anything being steered rather than typed at is going to live. Unlike the input buffer, this
-        ///     is not gated on the window accepting input: a key press is not text and does not enter the buffer, so the
-        ///     rules protecting the buffer have nothing to say about it — a form that wants to be driven by arrow keys
-        ///     while refusing typed commands is an ordinary thing to want and this is what allows it.
+        ///     Fired when the host reports a key press and this window is the focused one. A form on top hears the key
+        ///     instead — a form is where anything being steered rather than typed at lives — exactly as before. With no
+        ///     form and the menu showing, the arrow keys drive the menu highlight; every other key still goes nowhere,
+        ///     so a subclass override loses nothing. Unlike the input buffer, none of this is gated on the window
+        ///     accepting input: a key press is not text and does not enter the buffer, so the rules protecting the
+        ///     buffer have nothing to say about it — a form that wants to be driven by arrow keys while refusing typed
+        ///     commands is an ordinary thing to want and this is what allows it.
         /// </summary>
         /// <param name="key">The key that was pressed.</param>
         public virtual void OnKeyPressed(ConsoleKey key)
         {
-            Form?.OnKeyPressed(key);
+            if (Form != null)
+            {
+                Form.OnKeyPressed(key);
+                return;
+            }
+
+            if (_menuCommands?.Count > 0)
+                _menuNavigator.HandleKey(key);
         }
 
         /// <summary>
@@ -508,6 +540,9 @@ namespace WolfCurses.Window
 
             // Keep the input mappings current so commands work before the window has ever rendered.
             RefreshCommandMappings();
+
+            // And the highlight's world the same size as the menu, so an arrow key can never select past the end.
+            _menuNavigator.Resize(_menuCommands.Count);
         }
 
         /// <summary>
@@ -532,17 +567,23 @@ namespace WolfCurses.Window
         }
 
         /// <summary>
-        ///     Prints out the number and description for every registered menu choice into the prompt buffer.
+        ///     Prints out the number and description for every registered menu choice into the prompt buffer. Until an
+        ///     arrow key has summoned the highlight, every row carries the same two-space indent it always did — the
+        ///     decoration only exists once the user has asked to steer.
         /// </summary>
         private void RenderMenuCommands()
         {
-            foreach (var menuChoice in _menuCommands)
+            for (var choiceIndex = 0; choiceIndex < _menuCommands.Count; choiceIndex++)
             {
                 // Name of input and then description of what it does, the input is all we really care about.
+                var menuChoice = _menuCommands[choiceIndex];
                 var currentChoiceKey = MenuChoiceKey(menuChoice.Command);
-                _menuPrompt.Append(ShowCommandNamesInMenu
-                    ? $"  {currentChoiceKey}. {menuChoice.Command} - {menuChoice.Description}{Environment.NewLine}"
-                    : $"  {currentChoiceKey}. {menuChoice.Description}{Environment.NewLine}");
+                var row = ShowCommandNamesInMenu
+                    ? $"{currentChoiceKey}. {menuChoice.Command} - {menuChoice.Description}"
+                    : $"{currentChoiceKey}. {menuChoice.Description}";
+
+                var highlighted = _menuNavigator.HasSelection && _menuNavigator.Index == choiceIndex;
+                _menuPrompt.Append(ListNavigator.DecorateRow(row, highlighted)).Append(Environment.NewLine);
             }
         }
 
@@ -579,6 +620,10 @@ namespace WolfCurses.Window
             _menuCommands.Clear();
             _menuMappings.Clear();
             _menuActions.Clear();
+
+            // An empty menu has nothing to highlight; rebuilding (the store pattern) starts hidden again, which also
+            // means a stale highlight can never point at whatever happens to occupy its old row number.
+            _menuNavigator.Resize(0);
         }
 
         /// <summary>Fired when this game Windows is removed from the list of available and ticked modes in the simulation.</summary>

@@ -38,6 +38,13 @@ namespace WolfCurses.Window.Form
         /// </summary>
         protected IWindow ParentWindow { get; }
 
+        /// <summary>
+        ///     The running simulation, reached through the parent window — the same enabler <c>Window</c> gives its
+        ///     command handlers, extended to forms (see <see cref="IWindow.SimUnit" />). Null when the parent window
+        ///     is a custom <see cref="IWindow" /> implementation that never supplied one, so treat it as optional.
+        /// </summary>
+        protected SimulationApp SimUnit => ParentWindow?.SimUnit;
+
         /// <summary>Compares the current object with another object of the same type.</summary>
         /// <returns>
         ///     A value that indicates the relative order of the objects being compared. The return value has the following

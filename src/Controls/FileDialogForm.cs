@@ -5,20 +5,34 @@ using System;
 using System.Globalization;
 using System.Text;
 using WolfCurses.Window;
+using WolfCurses.Window.Control;
 using WolfCurses.Window.Form;
 
 namespace WolfCurses.Controls
 {
     /// <summary>
-    ///     Draws the file/folder browser and turns the user's typed input into navigation. A page of entries is shown
-    ///     numbered 1..n; the user types a number to open an entry (navigate into a drive/folder, or choose a file),
-    ///     or a letter command to move up, list drives, page, select the current folder, or cancel.
+    ///     Draws the file/folder browser and turns input into navigation. Two input styles are both always live: the
+    ///     arrow keys move a highlight over the entries ncurses-style and ENTER opens the highlighted one (descending
+    ///     into a drive or folder, or choosing a file), while typed input keeps its original meanings — a number
+    ///     opens an entry by its on-screen label, and letter commands move up, list drives, page, select the current
+    ///     folder, or cancel.
+    ///     <para>
+    ///         The highlight index is global over the whole entry list and the displayed page is derived from it, so
+    ///         walking off the bottom of a page turns the page. Whenever the directory changes — by any style — the
+    ///         cursor resets to the first entry of the new listing, because a highlight carried across a directory
+    ///         change would point at whatever coincidentally occupies its old position.
+    ///     </para>
     /// </summary>
     [ParentWindow(typeof (FileDialogWindow))]
     public sealed class FileDialogForm : Form<FileDialogData>
     {
         /// <summary>How many entries are shown per page.</summary>
         private const int PageSize = 12;
+
+        /// <summary>
+        ///     The arrow-key highlight over the entries, visible from the first frame like every modal control's.
+        /// </summary>
+        private readonly ListNavigator _navigator = new() {PageSize = PageSize};
 
         /// <summary>Initializes a new instance of the <see cref="FileDialogForm" /> class.</summary>
         /// <param name="window">The parent window.</param>
@@ -29,10 +43,44 @@ namespace WolfCurses.Controls
 
         private FileDialogData Data => UserData;
 
+        /// <summary>Keeps the highlight sized to the entry list and visible from the start.</summary>
+        private void SyncHighlight(FileDialogData data)
+        {
+            _navigator.Resize(data.Entries.Count);
+            if (!_navigator.HasSelection && data.Entries.Count > 0)
+                _navigator.Select(0);
+        }
+
+        /// <summary>
+        ///     Parks the cursor on the first entry of a freshly revealed listing. The data object already reset its
+        ///     page; the highlight must follow, or ENTER would open whatever sits where the cursor used to be.
+        /// </summary>
+        private void ResetHighlight(FileDialogData data)
+        {
+            _navigator.Resize(data.Entries.Count);
+            if (data.Entries.Count > 0)
+                _navigator.Select(0);
+        }
+
+        /// <inheritdoc />
+        public override void OnKeyPressed(ConsoleKey key)
+        {
+            var data = Data;
+            if (data == null || !data.Initialized)
+                return;
+
+            SyncHighlight(data);
+            if (_navigator.HandleKey(key) && _navigator.HasSelection)
+            {
+                // The page follows the highlight, so walking off the bottom of a page turns it.
+                data.PageIndex = _navigator.Index / PageSize;
+            }
+        }
+
         /// <inheritdoc />
         public override string OnRenderForm()
         {
-            ParentWindow.PromptText = "Type a number or a letter command:";
+            ParentWindow.PromptText = "ENTER opens the highlighted, or type a number / letter command:";
 
             var data = Data;
             var sb = new StringBuilder();
@@ -43,6 +91,8 @@ namespace WolfCurses.Controls
                 sb.Append("Opening browser...");
                 return sb.ToString();
             }
+
+            SyncHighlight(data);
 
             sb.AppendLine(data.Mode == FileDialogModeEnum.SelectFolder ? "Select Folder" : "Open File");
             if (data.CurrentDirectory == null)
@@ -68,7 +118,12 @@ namespace WolfCurses.Controls
             else
             {
                 for (var i = 0; i < PageSize && start + i < data.Entries.Count; i++)
-                    sb.AppendLine($"  {i + 1,2}. {Describe(data.Entries[start + i])}");
+                {
+                    var index = start + i;
+                    var row = $"{i + 1,2}. {Describe(data.Entries[index])}";
+                    sb.AppendLine(ListNavigator.DecorateRow(row,
+                        _navigator.HasSelection && _navigator.Index == index));
+                }
             }
 
             sb.AppendLine();
@@ -96,7 +151,14 @@ namespace WolfCurses.Controls
 
             input = (input ?? string.Empty).Trim();
             if (input.Length == 0)
+            {
+                // ENTER with nothing typed opens the highlighted entry — the browsing gesture every curses file
+                // browser teaches: Down, Down, ENTER, deeper.
+                SyncHighlight(data);
+                if (_navigator.HasSelection)
+                    OpenEntry(data, _navigator.Index);
                 return;
+            }
 
             if (int.TryParse(input, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number))
             {
@@ -108,15 +170,17 @@ namespace WolfCurses.Controls
             {
                 case "U":
                     data.GoUp();
+                    ResetHighlight(data);
                     break;
                 case "D":
                     data.LoadDrives();
+                    ResetHighlight(data);
                     break;
                 case "N":
-                    data.PageIndex = ClampPage(data.PageIndex + 1, TotalPages(data));
+                    TurnToPage(data, data.PageIndex + 1);
                     break;
                 case "P":
-                    data.PageIndex = ClampPage(data.PageIndex - 1, TotalPages(data));
+                    TurnToPage(data, data.PageIndex - 1);
                     break;
                 case "S":
                     if (data.Mode == FileDialogModeEnum.SelectFolder && data.CurrentDirectory != null)
@@ -137,7 +201,16 @@ namespace WolfCurses.Controls
                 return;
 
             var page = ClampPage(data.PageIndex, TotalPages(data));
-            var index = page * PageSize + (number - 1);
+            OpenEntry(data, page * PageSize + (number - 1));
+        }
+
+        /// <summary>
+        ///     Opens the entry at a global index — into a drive or folder, up a level, or out of the dialog with a
+        ///     chosen file. Shared by the typed numbers and the highlight's ENTER, so both styles cannot drift apart.
+        ///     After any branch that changed the listing the cursor is parked back on the first entry.
+        /// </summary>
+        private void OpenEntry(FileDialogData data, int index)
+        {
             if (index < 0 || index >= data.Entries.Count)
                 return;
 
@@ -149,15 +222,27 @@ namespace WolfCurses.Controls
                         data.LoadDirectory(entry.FullPath);
                     else
                         data.LoadDrives();
+                    ResetHighlight(data);
                     break;
                 case FileDialogEntryKindEnum.Drive:
                 case FileDialogEntryKindEnum.Directory:
                     data.LoadDirectory(entry.FullPath);
+                    ResetHighlight(data);
                     break;
                 case FileDialogEntryKindEnum.File:
                     Confirm(data, entry.FullPath);
                     break;
             }
+        }
+
+        /// <summary>
+        ///     Turns to the given page (clamped) and parks the highlight on its first row, so the cursor is always on
+        ///     a row that is actually on screen.
+        /// </summary>
+        private void TurnToPage(FileDialogData data, int page)
+        {
+            data.PageIndex = ClampPage(page, TotalPages(data));
+            _navigator.Select(data.PageIndex * PageSize);
         }
 
         /// <summary>Reports the chosen path to the caller and closes the dialog.</summary>

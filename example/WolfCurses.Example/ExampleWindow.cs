@@ -38,7 +38,7 @@ namespace WolfCurses.Example
             headerText.Append(
                 $"{Environment.NewLine}Example Console Application{Environment.NewLine}{Environment.NewLine}");
             headerText.AppendLine("Example UserData: " + UserData.ExampleUserData);
-            headerText.Append("You may:");
+            headerText.Append("You may (arrow keys + ENTER, or type a number):");
             MenuHeader = headerText.ToString();
 
             AddCommand(TextPrompt, ExampleCommandsEnum.TextPrompt);
