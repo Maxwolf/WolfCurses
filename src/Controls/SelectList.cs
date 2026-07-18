@@ -15,9 +15,10 @@ namespace WolfCurses.Controls
     ///     screen and closes itself once the user chooses or cancels.
     /// </summary>
     /// <remarks>
-    ///     The picker is a window, so the application must list <c>typeof(SelectListWindow)</c> in its
-    ///     <see cref="SimulationApp.AllowedWindows" />; its form ships in the library and is discovered automatically.
-    ///     From inside a window the simulation is available as <c>SimUnit</c>.
+    ///     The picker is a window shipped in the library, so the default
+    ///     <see cref="SimulationApp.AllowedWindows" /> discovers it (and its form) automatically; an app that
+    ///     overrides <c>AllowedWindows</c> must include <c>typeof(SelectListWindow)</c> in its list. From inside a
+    ///     window the simulation is available as <c>SimUnit</c>.
     /// </remarks>
     public static class SelectList
     {
@@ -123,8 +124,8 @@ namespace WolfCurses.Controls
 
             if (!IsAllowed(simulation))
                 throw new InvalidOperationException(
-                    "To use SelectList, add typeof(WolfCurses.Controls.SelectListWindow) to your " +
-                    "SimulationApp.AllowedWindows.");
+                    "To use SelectList, include typeof(WolfCurses.Controls.SelectListWindow) in your " +
+                    "SimulationApp.AllowedWindows override.");
 
             simulation.WindowManager.Add(typeof (SelectListWindow));
 

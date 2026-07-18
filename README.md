@@ -142,7 +142,7 @@ FileDialog.SelectFolder(SimUnit, startDirectory: "C:\\",
 
 The dialog pushes itself on top of the current screen and lets the user navigate drives and folders — type a number to open an entry, `U` to go up, `D` to list drives, `N`/`P` to page through a long folder, and `C` to cancel (plus `S` to confirm the current folder when picking a folder). When the user chooses, your callback runs with the full path and the dialog closes itself. An empty extension filter shows every file.
 
-Because the dialog is a window, list `typeof(FileDialogWindow)` in your app's `AllowedWindows`; its form ships inside the library and is discovered automatically.
+The dialog's window and form ship inside the library and are discovered automatically — nothing to register. An app that overrides `AllowedWindows` to curate its window list must include `typeof(FileDialogWindow)`.
 
 ## Progress bars & graphs ##
 
@@ -211,7 +211,7 @@ TextInputDialog.Prompt(SimUnit, "What is your name?",
 - **`MessageBox`** — `Show` for a simple acknowledgement, `Confirm` for a yes/no question, or the buttons overload for yes/no/cancel; the callback receives the `MessageBoxResultEnum`.
 - **`TextInputDialog`** — `Prompt` for a line of text, optionally pre-filled with a default, validated (a returned message rejects and keeps the dialog open), and/or masked so typed characters echo as asterisks. Submitting a blank line cancels.
 
-Each dialog is a window, so list its window type (`typeof(SelectListWindow)`, `typeof(MessageBoxWindow)`, `typeof(TextInputWindow)`) in your app's `AllowedWindows`; the forms ship in the library and are discovered automatically. The example app demonstrates all four.
+Each dialog is a window shipped in the library, so it is discovered automatically — nothing to register. An app that overrides `AllowedWindows` must include the window types it uses (`typeof(SelectListWindow)`, `typeof(MessageBoxWindow)`, `typeof(TextInputWindow)`). The example app demonstrates all four.
 
 ## Purpose ##
 

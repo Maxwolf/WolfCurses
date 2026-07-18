@@ -10,14 +10,11 @@ dotnet add package WolfCurses
 
 ## Usage
 
-Subclass `SimulationApp`, list the window types your app can show, and pump ticks from your main loop:
+Subclass `SimulationApp` and pump ticks from your main loop. Window types are discovered automatically — every concrete `IWindow` in your app's assembly (and the built-in controls in the library) is available with no registration; override `AllowedWindows` only to curate the list explicitly:
 
 ```csharp
 public class ExampleApp : SimulationApp
 {
-    public override IEnumerable<Type> AllowedWindows =>
-        new[] { typeof(MainMenuWindow) };
-
     protected override void OnFirstTick()
     {
         Restart();
@@ -111,7 +108,7 @@ FileDialog.OpenFile(SimUnit, "C:\\", new[] { ".jpg", ".png" }, onFileSelected: p
 FileDialog.SelectFolder(SimUnit, "C:\\", onFolderSelected: path => { /* ... */ });
 ```
 
-List `typeof(FileDialogWindow)` in your app's `AllowedWindows`; the dialog's form ships in the library and is discovered automatically.
+The dialog's window and form ship in the library and are discovered automatically; if your app overrides `AllowedWindows`, include `typeof(FileDialogWindow)` in the list.
 
 ## Dialogs & panels
 
@@ -129,7 +126,7 @@ TextInputDialog.Prompt(SimUnit, "Name?", name => { /* ... */ }, defaultValue: "T
     validator: v => v.Length < 2 ? "Too short" : null); // add masked: true for passwords
 ```
 
-`Box` (a pure widget) borders any text with an optional title, measuring width past ANSI color escapes. `SelectList`, `MessageBox`, and `TextInputDialog` are windows — list `typeof(SelectListWindow)` / `typeof(MessageBoxWindow)` / `typeof(TextInputWindow)` in your `AllowedWindows`.
+`Box` (a pure widget) borders any text with an optional title, measuring width past ANSI color escapes. `SelectList`, `MessageBox`, and `TextInputDialog` are windows shipped in the library, so they are discovered automatically — an app that overrides `AllowedWindows` must include `typeof(SelectListWindow)` / `typeof(MessageBoxWindow)` / `typeof(TextInputWindow)` in its list.
 
 ## Links
 

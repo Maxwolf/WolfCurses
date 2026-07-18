@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.Reflection;
 using WolfCurses.Core;
 using WolfCurses.Graphics;
+using WolfCurses.Utility;
+using WolfCurses.Window;
 using WolfCurses.Window.Control;
 
 namespace WolfCurses
@@ -46,6 +48,14 @@ namespace WolfCurses
         ///     Spinning character pixel.
         /// </summary>
         private SpinningPixel _spinningPixel;
+
+        /// <summary>
+        ///     Cached result of the default window discovery scan, filled the first time <see cref="AllowedWindows" />
+        ///     is read (during base construction, by the window factory) so later reads — the built-in controls
+        ///     re-check the list on every Show — do not repeat the reflection walk. Null forever when the app
+        ///     overrides <see cref="AllowedWindows" />.
+        /// </summary>
+        private IReadOnlyCollection<Type> _discoveredWindows;
 
         /// <summary>
         ///     True only while <see cref="OnFirstTick" /> is executing. Used to detect a <see cref="Restart" /> call
@@ -147,9 +157,18 @@ namespace WolfCurses
         public SceneGraph SceneGraph { get; private set; }
 
         /// <summary>
-        ///     Determines what windows the simulation will be capable of using and creating using the window managers factory.
+        ///     Determines what windows the simulation will be capable of using and creating using the window managers
+        ///     factory. By default this is discovered automatically, the same way <c>[ParentWindow]</c> forms are:
+        ///     every concrete, non-generic <see cref="IWindow" /> implementation with a public single-parameter
+        ///     (<see cref="SimulationApp" />) constructor found in <see cref="DiscoveryAssemblies" /> — which always
+        ///     includes the WolfCurses library itself, so the built-in controls (file dialog, message box, select
+        ///     list, text input) are available with no opt-in. Override to curate the list explicitly; an override
+        ///     fully replaces discovery, which is the way to exclude a window a scanned assembly ships. Read while
+        ///     the base constructor builds the window manager, so an override must return data that does not depend
+        ///     on subclass fields initialized later.
         /// </summary>
-        public abstract IEnumerable<Type> AllowedWindows { get; }
+        public virtual IEnumerable<Type> AllowedWindows =>
+            _discoveredWindows ??= WindowDiscovery.DiscoverWindows(DiscoveryAssemblyResolver.Resolve(this));
 
         /// <summary>
         ///     Extra assemblies to scan for <c>[ParentWindow]</c> forms beyond the SimulationApp subclass's own assembly

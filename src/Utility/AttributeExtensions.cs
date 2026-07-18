@@ -45,33 +45,39 @@ namespace WolfCurses.Utility
         {
             // Collection of types we have found.
             var foundTypes = new List<Type>();
-            if (assembly == null)
-                return foundTypes;
-
-            // A partially-loadable assembly throws ReflectionTypeLoadException when enumerated — common once opt-in
-            // plugin/module assemblies (see SimulationApp.AdditionalFormAssemblies) are scanned, since one may
-            // reference a dependency that cannot be resolved at runtime. Rather than aborting all discovery (which
-            // used to be impossible when only the well-formed entry assembly was scanned), keep the types that DID
-            // load and skip the ones that failed.
-            IEnumerable<TypeInfo> definedTypes;
-            try
-            {
-                definedTypes = assembly.DefinedTypes.ToList();
-            }
-            catch (ReflectionTypeLoadException ex)
-            {
-                definedTypes = ex.Types.Where(t => t != null).Select(t => t.GetTypeInfo()).ToList();
-            }
 
             // Loop through every defined type in the assembly, adding each matching type exactly once no matter
             // how many attribute instances are stacked on it.
-            foreach (var typeInfo in definedTypes)
+            foreach (var typeInfo in GetLoadableDefinedTypes(assembly))
             {
                 if (typeInfo.IsDefined(typeof(TAttribute), inherit))
                     foundTypes.Add(typeInfo.UnderlyingSystemType);
             }
 
             return foundTypes;
+        }
+
+        /// <summary>
+        ///     Enumerates an assembly's defined types, tolerating the assembly being only partially loadable.
+        ///     A partially-loadable assembly throws ReflectionTypeLoadException when enumerated — common once opt-in
+        ///     plugin/module assemblies (see <see cref="SimulationApp.AdditionalFormAssemblies" />) are scanned, since
+        ///     one may reference a dependency that cannot be resolved at runtime. Rather than aborting all discovery,
+        ///     keep the types that DID load and skip the ones that failed. A null assembly yields an empty sequence so
+        ///     callers can pass <see cref="Assembly.GetEntryAssembly" /> without a null guard.
+        /// </summary>
+        internal static IEnumerable<TypeInfo> GetLoadableDefinedTypes(Assembly assembly)
+        {
+            if (assembly == null)
+                return Enumerable.Empty<TypeInfo>();
+
+            try
+            {
+                return assembly.DefinedTypes.ToList();
+            }
+            catch (ReflectionTypeLoadException ex)
+            {
+                return ex.Types.Where(t => t != null).Select(t => t.GetTypeInfo()).ToList();
+            }
         }
 
         /// <summary>

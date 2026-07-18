@@ -7,8 +7,9 @@ namespace WolfCurses.Controls
 {
     /// <summary>
     ///     The window that hosts a <see cref="MessageBox" />. On creation it attaches <see cref="MessageBoxForm" />.
-    ///     Push it with <see cref="MessageBox" />'s static methods rather than adding it directly, and list
-    ///     <c>typeof(MessageBoxWindow)</c> in your <see cref="SimulationApp.AllowedWindows" />.
+    ///     Push it with <see cref="MessageBox" />'s static methods rather than adding it directly. The default
+    ///     <see cref="SimulationApp.AllowedWindows" /> discovers it automatically; an app that overrides
+    ///     <c>AllowedWindows</c> must include it in the list.
     /// </summary>
     public sealed class MessageBoxWindow : Window<MessageBoxCommandsEnum, MessageBoxData>
     {
