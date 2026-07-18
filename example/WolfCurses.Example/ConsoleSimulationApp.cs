@@ -2,9 +2,7 @@
 // Timestamp 01/07/2016@8:28 PM
 
 using System;
-using System.Collections.Generic;
 using System.Text;
-using WolfCurses.Controls;
 
 namespace WolfCurses.Example
 {
@@ -25,27 +23,9 @@ namespace WolfCurses.Example
         /// </summary>
         public static ConsoleSimulationApp Instance { get; private set; }
 
-        /// <summary>
-        ///     Determines what windows the simulation will be capable of using and creating using the window managers factory.
-        /// </summary>
-        public override IEnumerable<Type> AllowedWindows
-        {
-            get
-            {
-                var windowList = new List<Type>
-                {
-                    typeof (ExampleWindow),
-
-                    // Opt in to the built-in controls so their static entry points can push them.
-                    typeof (FileDialogWindow),
-                    typeof (SelectListWindow),
-                    typeof (MessageBoxWindow),
-                    typeof (TextInputWindow)
-                };
-
-                return windowList;
-            }
-        }
+        // AllowedWindows is deliberately NOT overridden: the base class discovers ExampleWindow from this assembly
+        // and the built-in control windows (file dialog, select list, message box, text input) from the library
+        // automatically. Override it only to curate the list — e.g. to exclude a discovered window.
 
         /// <summary>
         ///     Creates new instance of simulation. Complains if instance already exists.

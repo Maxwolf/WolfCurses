@@ -8,8 +8,9 @@ namespace WolfCurses.Controls
     /// <summary>
     ///     The window that hosts a <see cref="TextInputDialog" />. On creation it attaches <see cref="TextInputForm" />
     ///     and, when the dialog is masked, tells the renderer to echo the input buffer as asterisks. Push it with
-    ///     <see cref="TextInputDialog.Prompt" /> rather than adding it directly, and list
-    ///     <c>typeof(TextInputWindow)</c> in your <see cref="SimulationApp.AllowedWindows" />.
+    ///     <see cref="TextInputDialog.Prompt" /> rather than adding it directly. The default
+    ///     <see cref="SimulationApp.AllowedWindows" /> discovers it automatically; an app that overrides
+    ///     <c>AllowedWindows</c> must include it in the list.
     /// </summary>
     public sealed class TextInputWindow : Window<TextInputCommandsEnum, TextInputData>
     {

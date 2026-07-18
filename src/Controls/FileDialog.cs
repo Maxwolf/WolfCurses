@@ -13,10 +13,10 @@ namespace WolfCurses.Controls
     ///     folders, and invokes your callback with the chosen path (or your cancel callback) before closing itself.
     /// </summary>
     /// <remarks>
-    ///     The dialog is a window, so the application must list <c>typeof(FileDialogWindow)</c> in its
-    ///     <see cref="SimulationApp.AllowedWindows" />. Its form ships inside the WolfCurses library and is discovered
-    ///     automatically. From inside a <see cref="WolfCurses.Window.Window{TCommands,TData}" /> the simulation is
-    ///     available as <c>SimUnit</c>.
+    ///     The dialog is a window shipped in the library, so the default <see cref="SimulationApp.AllowedWindows" />
+    ///     discovers it (and its form) automatically; an application that overrides <c>AllowedWindows</c> must
+    ///     include <c>typeof(FileDialogWindow)</c> in its list. From inside a
+    ///     <see cref="WolfCurses.Window.Window{TCommands,TData}" /> the simulation is available as <c>SimUnit</c>.
     /// </remarks>
     /// <example>
     ///     <code>
@@ -65,8 +65,8 @@ namespace WolfCurses.Controls
             // The dialog is a window, and the window factory can only create window types the app opted into.
             if (!IsAllowed(simulation))
                 throw new InvalidOperationException(
-                    "To use FileDialog, add typeof(WolfCurses.Controls.FileDialogWindow) to your " +
-                    "SimulationApp.AllowedWindows.");
+                    "To use FileDialog, include typeof(WolfCurses.Controls.FileDialogWindow) in your " +
+                    "SimulationApp.AllowedWindows override.");
 
             simulation.WindowManager.Add(typeof (FileDialogWindow));
 

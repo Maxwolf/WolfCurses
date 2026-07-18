@@ -13,9 +13,10 @@ namespace WolfCurses.Controls
     ///     user answers.
     /// </summary>
     /// <remarks>
-    ///     The message box is a window, so list <c>typeof(MessageBoxWindow)</c> in your
-    ///     <see cref="SimulationApp.AllowedWindows" />; its form ships in the library and is discovered automatically.
-    ///     From inside a window the simulation is available as <c>SimUnit</c>.
+    ///     The message box is a window shipped in the library, so the default
+    ///     <see cref="SimulationApp.AllowedWindows" /> discovers it (and its form) automatically; an app that
+    ///     overrides <c>AllowedWindows</c> must include <c>typeof(MessageBoxWindow)</c> in its list. From inside a
+    ///     window the simulation is available as <c>SimUnit</c>.
     /// </remarks>
     public static class MessageBox
     {
@@ -52,8 +53,8 @@ namespace WolfCurses.Controls
 
             if (!IsAllowed(simulation))
                 throw new InvalidOperationException(
-                    "To use MessageBox, add typeof(WolfCurses.Controls.MessageBoxWindow) to your " +
-                    "SimulationApp.AllowedWindows.");
+                    "To use MessageBox, include typeof(WolfCurses.Controls.MessageBoxWindow) in your " +
+                    "SimulationApp.AllowedWindows override.");
 
             simulation.WindowManager.Add(typeof (MessageBoxWindow));
 

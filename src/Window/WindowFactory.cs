@@ -31,11 +31,28 @@ namespace WolfCurses.Window
             // Create dictionaries for holding statistics about times run and for reference loading.
             Windows = new Dictionary<string, Type>();
 
-            // Loop through every possible game Windows type defined in enumeration.
+            // Loop through every game Windows type the simulation allows (discovered by reflection unless the app
+            // overrode AllowedWindows with a curated list).
             foreach (var window in simUnit.AllowedWindows)
             {
+                // Keyed by full name so identically named windows in different namespaces coexist — a must now that
+                // the default AllowedWindows scans whole assemblies the app does not control the contents of.
+                if (Windows.TryGetValue(window.FullName, out var existing))
+                {
+                    // The same type appearing twice is collapsed rather than refused (mirroring how stacked
+                    // [ParentWindow] attributes register once); two DISTINCT types sharing a full name across
+                    // assemblies cannot both be registered, so surface both spellings and the way out.
+                    if (existing == window)
+                        continue;
+
+                    throw new ArgumentException(
+                        $"Window factory cannot register two distinct window types sharing the full name {window.FullName}: " +
+                        $"{existing.AssemblyQualifiedName} and {window.AssemblyQualifiedName}. " +
+                        "Override SimulationApp.AllowedWindows to curate which one the simulation should use.");
+                }
+
                 // Add the game Windows to reference list for lookup and instancing later during runtime.
-                Windows.Add(window.Name, window);
+                Windows.Add(window.FullName, window);
             }
         }
 
@@ -54,7 +71,7 @@ namespace WolfCurses.Window
         public IWindow CreateWindow(Type window)
         {
             // Grab the game Windows type reference from inputted Windows type enum.
-            var modeType = Windows[window.Name];
+            var modeType = Windows[window.FullName];
 
             // Abstract classes cannot be instantiated; surface the mistake instead of handing back null.
             if (modeType.GetTypeInfo().IsAbstract)

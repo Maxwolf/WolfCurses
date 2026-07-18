@@ -7,11 +7,17 @@ namespace WolfCurses.Tests.Windows
     public class FactoryTests
     {
         [Fact]
-        public void SimulationApp_DuplicateShortWindowTypeNames_ThrowsArgumentException()
+        public void SimulationApp_DuplicateShortWindowTypeNames_Coexist()
         {
-            // Documents current behavior: WindowFactory keys windows by Type.Name, so identically named windows
-            // in different namespaces collide while the app is still constructing.
-            Assert.Throws<ArgumentException>(() => new DuplicateNameSimulationApp());
+            // WindowFactory keys windows by full name (it once keyed by Type.Name, which made identically named
+            // windows in different namespaces collide during app construction), so an explicit list naming both
+            // CloneWindows constructs fine and each type is individually creatable.
+            var app = new DuplicateNameSimulationApp();
+
+            app.WindowManager.Add(typeof(TestDoubles.CloneNamespaceA.CloneWindow));
+            Assert.IsType<TestDoubles.CloneNamespaceA.CloneWindow>(app.WindowManager.FocusedWindow);
+
+            app.Destroy();
         }
 
         [Fact]

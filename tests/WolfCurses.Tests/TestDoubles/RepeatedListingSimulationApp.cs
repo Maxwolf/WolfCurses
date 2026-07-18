@@ -4,16 +4,16 @@ using System.Collections.Generic;
 namespace WolfCurses.Tests.TestDoubles
 {
     /// <summary>
-    ///     Lists two windows sharing a short name in different namespaces. WindowFactory keys its lookup by full
-    ///     name, so both register and construction succeeds — it once keyed by Type.Name, which made this app throw
-    ///     while still constructing.
+    ///     Lists the same window type twice. WindowFactory collapses the repeat instead of refusing it (mirroring how
+    ///     stacked [ParentWindow] attributes register once), so a hand-curated AllowedWindows override that
+    ///     accidentally repeats an entry still constructs.
     /// </summary>
-    public sealed class DuplicateNameSimulationApp : SimulationApp
+    public sealed class RepeatedListingSimulationApp : SimulationApp
     {
         public override IEnumerable<Type> AllowedWindows => new[]
         {
-            typeof(CloneNamespaceA.CloneWindow),
-            typeof(CloneNamespaceB.CloneWindow)
+            typeof(TestWindow),
+            typeof(TestWindow)
         };
 
         protected override void OnFirstTick()

@@ -12,9 +12,10 @@ namespace WolfCurses.Controls
     ///     line).
     /// </summary>
     /// <remarks>
-    ///     The prompt is a window, so list <c>typeof(TextInputWindow)</c> in your
-    ///     <see cref="SimulationApp.AllowedWindows" />; its form ships in the library and is discovered automatically.
-    ///     From inside a window the simulation is available as <c>SimUnit</c>. Because the input line is trimmed,
+    ///     The prompt is a window shipped in the library, so the default
+    ///     <see cref="SimulationApp.AllowedWindows" /> discovers it (and its form) automatically; an app that
+    ///     overrides <c>AllowedWindows</c> must include <c>typeof(TextInputWindow)</c> in its list. From inside a
+    ///     window the simulation is available as <c>SimUnit</c>. Because the input line is trimmed,
     ///     leading/trailing whitespace is not preserved and a value cannot be empty (an empty submission cancels).
     /// </remarks>
     public static class TextInputDialog
@@ -38,8 +39,8 @@ namespace WolfCurses.Controls
 
             if (!IsAllowed(simulation))
                 throw new InvalidOperationException(
-                    "To use TextInputDialog, add typeof(WolfCurses.Controls.TextInputWindow) to your " +
-                    "SimulationApp.AllowedWindows.");
+                    "To use TextInputDialog, include typeof(WolfCurses.Controls.TextInputWindow) in your " +
+                    "SimulationApp.AllowedWindows override.");
 
             simulation.WindowManager.Add(typeof (TextInputWindow));
 
