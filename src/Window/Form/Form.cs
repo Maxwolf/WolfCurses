@@ -147,11 +147,35 @@ namespace WolfCurses.Window.Form
         /// <summary>
         ///     Fired when the host reports a key press and this form is the focused window's current one. Does nothing
         ///     unless overridden, which is what nearly every form wants: a key that is not text is only interesting to
-        ///     something being steered rather than typed at. See <see cref="IWindow.OnKeyPressed" />.
+        ///     something being steered rather than typed at. See <see cref="IWindow.OnKeyPressed(ConsoleKey)" />.
+        ///     <para>
+        ///         ENTER and BACKSPACE never arrive here: <see cref="WolfCurses.Core.InputManager.SendConsoleKey" />
+        ///         consumes both as buffer control before any key press is reported, so a
+        ///         <c>case ConsoleKey.Enter:</c> in an override is dead code that compiles and silently never runs.
+        ///         ENTER reaches this form as <see cref="OnInputBufferReturned" /> (the submitted buffer, possibly
+        ///         empty), and BACKSPACE only ever edits the buffer.
+        ///     </para>
         /// </summary>
         /// <param name="key">The key that was pressed.</param>
         public virtual void OnKeyPressed(ConsoleKey key)
         {
+        }
+
+        /// <summary>
+        ///     Fired when the host reports a key press with the whole <see cref="ConsoleKeyInfo" /> attached. Override
+        ///     this one instead of <see cref="OnKeyPressed(ConsoleKey)" /> when the bare key is not enough —
+        ///     <see cref="ConsoleKeyInfo.KeyChar" /> is the reliable discriminator for shifted punctuation (',' and
+        ///     '&lt;' both report <see cref="ConsoleKey.OemComma" />), and <see cref="ConsoleKeyInfo.Modifiers" />
+        ///     carries shift/alt/control. The base implementation forwards to the <see cref="ConsoleKey" /> overload,
+        ///     so overriding either one is enough and existing forms behave exactly as before.
+        ///     <para>
+        ///         The same ENTER/BACKSPACE routing note as the other overload applies: neither ever arrives here.
+        ///     </para>
+        /// </summary>
+        /// <param name="keyInfo">The key press exactly as the host saw it.</param>
+        public virtual void OnKeyPressed(ConsoleKeyInfo keyInfo)
+        {
+            OnKeyPressed(keyInfo.Key);
         }
 
         /// <summary>

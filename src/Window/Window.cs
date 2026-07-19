@@ -74,6 +74,15 @@ namespace WolfCurses.Window
         private readonly ListNavigator _menuNavigator = new();
 
         /// <summary>
+        ///     The full <see cref="ConsoleKeyInfo" /> of the key press currently being dispatched, set for the duration
+        ///     of <see cref="OnKeyPressed(ConsoleKeyInfo)" /> forwarding through <see cref="OnKeyPressed(ConsoleKey)" />.
+        ///     The stash exists so the legacy overload can stay the single routing point — every subclass override of it
+        ///     keeps firing in exactly the situations it always did — while the form underneath still receives the whole
+        ///     key info rather than a reconstruction with the character and modifiers missing.
+        /// </summary>
+        private ConsoleKeyInfo? _dispatchingKeyInfo;
+
+        /// <summary>
         ///     Initializes a new instance of the <see cref="Window{TCommands,TData}" /> class.
         /// </summary>
         /// <param name="simUnit">Core simulation which is controlling the form factory.</param>
@@ -386,18 +395,56 @@ namespace WolfCurses.Window
         ///     accepting input: a key press is not text and does not enter the buffer, so the rules protecting the
         ///     buffer have nothing to say about it — a form that wants to be driven by arrow keys while refusing typed
         ///     commands is an ordinary thing to want and this is what allows it.
+        ///     <para>
+        ///         ENTER and BACKSPACE never arrive here: <see cref="WolfCurses.Core.InputManager.SendConsoleKey" />
+        ///         consumes both as buffer control before any key press is reported, so a
+        ///         <c>case ConsoleKey.Enter:</c> in an override is dead code that compiles and silently never runs.
+        ///         ENTER reaches a form as <see cref="IForm.OnInputBufferReturned" /> instead, and BACKSPACE only
+        ///         ever edits the buffer.
+        ///     </para>
         /// </summary>
         /// <param name="key">The key that was pressed.</param>
         public virtual void OnKeyPressed(ConsoleKey key)
         {
             if (Form != null)
             {
-                Form.OnKeyPressed(key);
+                // Hand the form the whole key info when one is riding the dispatch (the simulation always sends one);
+                // a direct call to this overload has nothing better than a reconstruction with no character attached.
+                Form.OnKeyPressed(_dispatchingKeyInfo ?? new ConsoleKeyInfo('\0', key, false, false, false));
                 return;
             }
 
             if (_menuCommands?.Count > 0)
                 _menuNavigator.HandleKey(key);
+        }
+
+        /// <summary>
+        ///     Fired when the host reports a key press with the whole <see cref="ConsoleKeyInfo" /> attached — this is
+        ///     the overload the simulation dispatches. The base implementation forwards through
+        ///     <see cref="OnKeyPressed(ConsoleKey)" />, which stays the single routing point so a subclass override of
+        ///     either overload keeps firing exactly when it always did; the full info is stashed for the trip so the
+        ///     form underneath still receives the real character and modifiers (the only way to tell '&lt;' from ','
+        ///     when both report <see cref="ConsoleKey.OemComma" />). Menu navigation reads only
+        ///     <see cref="ConsoleKeyInfo.Key" /> — arrows have no character and want no modifiers.
+        ///     <para>
+        ///         The same ENTER/BACKSPACE routing note as the other overload applies: neither ever arrives here.
+        ///     </para>
+        /// </summary>
+        /// <param name="keyInfo">The key press exactly as the host saw it.</param>
+        public virtual void OnKeyPressed(ConsoleKeyInfo keyInfo)
+        {
+            // Save-and-restore rather than set-and-clear, so a handler that synchronously provokes another dispatch
+            // cannot wipe the info out from under the outer one.
+            var previous = _dispatchingKeyInfo;
+            _dispatchingKeyInfo = keyInfo;
+            try
+            {
+                OnKeyPressed(keyInfo.Key);
+            }
+            finally
+            {
+                _dispatchingKeyInfo = previous;
+            }
         }
 
         /// <summary>

@@ -79,14 +79,36 @@ namespace WolfCurses.Window
         ///         and every key is also reported here for whoever cares.
         ///     </para>
         ///     <para>
-        ///         The host decides what counts as a key press, since the library reads no input of its own. Enter and
-        ///         Backspace are conventionally the host's to handle as buffer control rather than pass along. Implemented
-        ///         as a default interface member so existing windows need not change.
+        ///         ENTER and BACKSPACE never arrive here: the standard routing
+        ///         (<see cref="WolfCurses.Core.InputManager.SendConsoleKey" />) consumes both as buffer control before
+        ///         a key press is ever reported, so a <c>case ConsoleKey.Enter:</c> in an override is dead code that
+        ///         compiles and silently never runs. ENTER reaches a form as
+        ///         <see cref="Form.IForm.OnInputBufferReturned" /> (the submitted buffer, possibly empty), and
+        ///         BACKSPACE only ever edits the buffer. Implemented as a default interface member so existing windows
+        ///         need not change.
         ///     </para>
         /// </summary>
         /// <param name="key">The key that was pressed.</param>
         void OnKeyPressed(ConsoleKey key)
         {
+        }
+
+        /// <summary>
+        ///     Fired when the host reports a key press, carrying the whole <see cref="ConsoleKeyInfo" /> rather than
+        ///     the bare key — this is the overload the simulation dispatches. The default implementation forwards to
+        ///     <see cref="OnKeyPressed(ConsoleKey)" />, so an implementation that only knows the older member behaves
+        ///     exactly as before.
+        ///     <para>
+        ///         The full info exists because <see cref="ConsoleKey" /> alone cannot tell shifted punctuation apart:
+        ///         ',' and '&lt;' both report <see cref="ConsoleKey.OemComma" />, and only
+        ///         <see cref="ConsoleKeyInfo.KeyChar" /> (or the shift modifier) knows which was pressed. The same
+        ///         ENTER/BACKSPACE routing note as the other overload applies: neither ever arrives here.
+        ///     </para>
+        /// </summary>
+        /// <param name="keyInfo">The key press exactly as the host saw it.</param>
+        void OnKeyPressed(ConsoleKeyInfo keyInfo)
+        {
+            OnKeyPressed(keyInfo.Key);
         }
 
         /// <summary>Creates and adds the specified type of state to currently active game Windows.</summary>

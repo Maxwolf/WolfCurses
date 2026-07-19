@@ -48,8 +48,14 @@ namespace WolfCurses.Core
         ///         for a state-based simulation where asking twice means nothing, and quite wrong here: holding an arrow
         ///         key is a stream of identical presses and every one of them is meant to move something.
         ///     </para>
+        ///     <para>
+        ///         The whole <see cref="ConsoleKeyInfo" /> is queued, not just the <see cref="ConsoleKey" />, because
+        ///         the key alone cannot tell shifted punctuation apart: ',' and '&lt;' are both
+        ///         <see cref="ConsoleKey.OemComma" />, and only <see cref="ConsoleKeyInfo.KeyChar" /> (or the shift
+        ///         modifier) knows which one was actually pressed.
+        ///     </para>
         /// </summary>
-        private Queue<ConsoleKey> _keyQueue;
+        private Queue<ConsoleKeyInfo> _keyQueue;
 
         /// <summary>
         ///     Set when reading the console failed despite input not reporting as redirected — an unusual host whose
@@ -65,7 +71,7 @@ namespace WolfCurses.Core
         {
             _simUnit = simUnit;
             _commandQueue = new Queue<string>();
-            _keyQueue = new Queue<ConsoleKey>();
+            _keyQueue = new Queue<ConsoleKeyInfo>();
             InputBuffer = string.Empty;
             ReadsConsoleInput = true;
         }
@@ -225,6 +231,13 @@ namespace WolfCurses.Core
         ///         (<see cref="ReadsConsoleInput" /> set false, or input from somewhere else entirely) gets identical
         ///         behavior by handing them here.
         ///     </para>
+        ///     <para>
+        ///         Note the ENTER and BACKSPACE cases are consumed <i>here</i>, as buffer control: neither is ever
+        ///         reported as a key press, so a <c>case ConsoleKey.Enter:</c> inside an <c>OnKeyPressed</c> override
+        ///         is dead code that compiles and silently never runs. ENTER reaches a form as
+        ///         <see cref="WolfCurses.Window.Form.IForm.OnInputBufferReturned" /> (via the command queue), and
+        ///         BACKSPACE only ever edits the buffer.
+        ///     </para>
         /// </summary>
         /// <param name="keyInfo">The key exactly as the console reported it.</param>
         public void SendConsoleKey(ConsoleKeyInfo keyInfo)
@@ -239,7 +252,7 @@ namespace WolfCurses.Core
                     break;
                 default:
                     AddCharToInputBuffer(keyInfo.KeyChar);
-                    SendKeyPress(keyInfo.Key);
+                    SendKeyPress(keyInfo);
                     break;
             }
         }
@@ -351,11 +364,29 @@ namespace WolfCurses.Core
         ///         hands on: a form is free to answer a key by putting a window up, and doing that from the middle of the
         ///         host's read loop would be editing the window stack from outside the simulation's own turn.
         ///     </para>
+        ///     <para>
+        ///         The whole <see cref="ConsoleKeyInfo" /> travels to the window, so a form that overrides
+        ///         <c>OnKeyPressed(ConsoleKeyInfo)</c> can read <see cref="ConsoleKeyInfo.KeyChar" /> and
+        ///         <see cref="ConsoleKeyInfo.Modifiers" /> — the only way to tell '&lt;' from ',' when both report
+        ///         <see cref="ConsoleKey.OemComma" />.
+        ///     </para>
+        /// </summary>
+        /// <param name="keyInfo">The key press exactly as the host saw it.</param>
+        public void SendKeyPress(ConsoleKeyInfo keyInfo)
+        {
+            _keyQueue.Enqueue(keyInfo);
+        }
+
+        /// <summary>
+        ///     Reports a bare key press with no character or modifiers attached — the pre-<see cref="ConsoleKeyInfo" />
+        ///     surface, kept so hosts and tests that only know the key keep working unchanged. The window receives a
+        ///     <see cref="ConsoleKeyInfo" /> whose <see cref="ConsoleKeyInfo.KeyChar" /> is <c>'\0'</c>; a host that has
+        ///     the real key info should send that instead, or forms cannot distinguish shifted keys.
         /// </summary>
         /// <param name="key">The key the host saw pressed.</param>
         public void SendKeyPress(ConsoleKey key)
         {
-            _keyQueue.Enqueue(key);
+            SendKeyPress(new ConsoleKeyInfo('\0', key, false, false, false));
         }
 
         /// <summary>
