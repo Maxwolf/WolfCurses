@@ -47,13 +47,31 @@ namespace WolfCurses.Window.Form
 
         /// <summary>
         ///     Fired when the host reports a key press and this form is the focused window's current one. See
-        ///     <see cref="IWindow.OnKeyPressed" /> for why a key press is a separate thing from the input buffer: an
-        ///     arrow key has no character, so it cannot be typed and would otherwise go unheard. Implemented as a default
-        ///     interface member so existing forms need not change.
+        ///     <see cref="IWindow.OnKeyPressed(ConsoleKey)" /> for why a key press is a separate thing from the input
+        ///     buffer: an arrow key has no character, so it cannot be typed and would otherwise go unheard. Implemented
+        ///     as a default interface member so existing forms need not change.
+        ///     <para>
+        ///         ENTER and BACKSPACE never arrive here: the standard routing consumes both as buffer control before
+        ///         any key press is reported. ENTER reaches this form as <see cref="OnInputBufferReturned" /> instead,
+        ///         and BACKSPACE only ever edits the buffer.
+        ///     </para>
         /// </summary>
         /// <param name="key">The key that was pressed.</param>
         void OnKeyPressed(ConsoleKey key)
         {
+        }
+
+        /// <summary>
+        ///     Fired when the host reports a key press with the whole <see cref="ConsoleKeyInfo" /> attached — the
+        ///     overload the parent window dispatches. The default implementation forwards to
+        ///     <see cref="OnKeyPressed(ConsoleKey)" />, so a form that only knows the older member behaves exactly as
+        ///     before; a form that needs to tell shifted keys apart implements this one and reads
+        ///     <see cref="ConsoleKeyInfo.KeyChar" /> or <see cref="ConsoleKeyInfo.Modifiers" />.
+        /// </summary>
+        /// <param name="keyInfo">The key press exactly as the host saw it.</param>
+        void OnKeyPressed(ConsoleKeyInfo keyInfo)
+        {
+            OnKeyPressed(keyInfo.Key);
         }
 
         /// <summary>
