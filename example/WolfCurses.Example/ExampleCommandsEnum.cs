@@ -110,8 +110,14 @@ namespace WolfCurses.Example
         [Description("Image error handling (broken files, checkerboard).")] ImageErrorDemo = 19,
 
         /// <summary>
+        ///     Draws every pride flag the library ships a color ramp for, one at a time, out of nothing but a bar
+        ///     chart: equal values, no labels, no separator, and a stepped ramp spread across the rows.
+        /// </summary>
+        [Description("Pride flags (bar chart + color ramps).")] PrideFlags = 20,
+
+        /// <summary>
         ///     Closes the console application.
         /// </summary>
-        [Description("End")] CloseSimulation = 20
+        [Description("End")] CloseSimulation = 21
     }
 }

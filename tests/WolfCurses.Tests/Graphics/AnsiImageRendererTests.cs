@@ -153,9 +153,10 @@ namespace WolfCurses.Tests.Graphics
             var result = AnsiImageRenderer.Render(image, Opts(3, 3, AnsiColorModeEnum.None));
             var lines = result.Split(Environment.NewLine);
 
-            // Ordinal on purpose: the default culture-sensitive search treats ESC as a zero-weight character and
-            // "finds" it at position 0 of any string at all, so this assertion would pass no matter what.
-            Assert.DoesNotContain(ESC.ToString(), result, StringComparison.Ordinal);
+            // The char overload on purpose: it is ordinal by design. As a *string* needle the default
+            // culture-sensitive search treats ESC as a zero-weight character and "finds" it at position 0 of any
+            // string at all, so this assertion would pass no matter what.
+            Assert.DoesNotContain(ESC, result);
             Assert.Equal(3, lines.Length);
             Assert.All(lines, line => Assert.Equal(3, line.Length));
 
@@ -331,10 +332,12 @@ namespace WolfCurses.Tests.Graphics
             var left = AnsiImageRenderer.Render(image, Opt(AnsiHorizontalAlignmentEnum.Left));
             var right = AnsiImageRenderer.Render(image, Opt(AnsiHorizontalAlignmentEnum.Right));
 
-            Assert.Contains(Fg(255, 0, 0), left);
-            Assert.DoesNotContain(Fg(0, 0, 255), left);
-            Assert.Contains(Fg(0, 0, 255), right);
-            Assert.DoesNotContain(Fg(255, 0, 0), right);
+            // Ordinal for the same reason as line 158: Fg() builds an ESC-prefixed needle, and a culture-sensitive
+            // search drops the ESC and matches on the "[38;2;..." text alone.
+            Assert.Contains(Fg(255, 0, 0), left, StringComparison.Ordinal);
+            Assert.DoesNotContain(Fg(0, 0, 255), left, StringComparison.Ordinal);
+            Assert.Contains(Fg(0, 0, 255), right, StringComparison.Ordinal);
+            Assert.DoesNotContain(Fg(255, 0, 0), right, StringComparison.Ordinal);
         }
 
         [Fact]

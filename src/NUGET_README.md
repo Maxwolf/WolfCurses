@@ -97,6 +97,20 @@ new LineGraph { Width = 40, Height = 10 }.Render(samples);             // 2-D pl
 
 `ProgressBar` (determinate), `Sparkline`, `BarChart`, and `LineGraph` are pure string producers with robust clamping and edge-case handling (empty/flat/negative/non-finite input); `MarqueeBar`/`SpinningPixel` cover the indeterminate cases. The example app's **Progress bars & graphs** screen animates them all off the simulation tick.
 
+They also colour. Each field of a widget takes a `TextStyle` (a `ConsoleColor` your theme still gets an opinion about, or an exact `Rgb24`, plus a background and bold), and the data widgets take a `ColorRamp` — read across the drawn extent (`Spread`) or against the datum's own value (`Level`):
+
+```csharp
+using WolfCurses.Graphics;
+
+// A traffic-light gauge: the whole filled run takes one colour, picked by how full it is.
+new ProgressBar { Width = 24, FillRamp = ColorRamp.Traffic, RampMode = ColorRampModeEnum.Level }.Render(0.9);
+
+// A rainbow flag: equal values, no labels, no separator — Spread over a stepped ramp is stripes.
+new BarChart { Width = 30, ShowValues = false, Separator = "", Ramp = ColorRamp.PrideRainbow }.Render(rows);
+```
+
+Colour is entirely opt-in and costs nothing when it is off: with the style properties left at their defaults every widget emits **byte-for-byte** what it emitted before colour existed — no escape, not even a reset. `NO_COLOR` (or any terminal that reports no colour support) suppresses every escape even from explicitly-set styles, and each widget carries its own `ColorMode` if you would rather pin one than have the environment asked.
+
 ## File & folder browser
 
 A ready-made picker so you don't build directory navigation yourself. From inside a window the simulation is available as `SimUnit`:
