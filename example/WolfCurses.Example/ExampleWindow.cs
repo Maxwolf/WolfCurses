@@ -54,7 +54,7 @@ namespace WolfCurses.Example
             AddCommand(ShowMessageBox, ExampleCommandsEnum.MessageBoxDemo);
             AddCommand(TextInput, ExampleCommandsEnum.TextInputDemo);
             AddCommand(PasswordInput, ExampleCommandsEnum.PasswordDemo);
-            AddCommand(ForceSlideshowRenderType, ExampleCommandsEnum.ForceRenderType);
+            AddCommand(ForceRenderType, ExampleCommandsEnum.ForceRenderType);
             AddCommand(ShowAnimatedGif, ExampleCommandsEnum.ShowAnimatedGif);
             AddCommand(ShowSpriteTest, ExampleCommandsEnum.SpriteTestBasic);
             AddCommand(ShowAdvancedSpriteTest, ExampleCommandsEnum.SpriteTestAdvanced);
@@ -155,20 +155,21 @@ namespace WolfCurses.Example
         }
 
         /// <summary>
-        ///     Runs the slideshow through a render type the user forces, so the one detection picked can be compared by
-        ///     eye against every other rung of the ladder. The library already asked this terminal what it supports —
+        ///     A manual render-method test bench: force any rendering method the library can produce and draw the test
+        ///     images with it, so the one detection picked can be compared by eye against every other rung of the
+        ///     ladder — right down to the text-only ones. The library already asked this terminal what it supports —
         ///     creating the simulation probes once at start-up — and installed the answer as
         ///     <see cref="ImageRenderers.Default" />, which is the first choice here.
         ///     <para>
         ///         The rest are graded best to worst, and each is a genuinely different code path rather than the same
         ///         picture with a knob turned: real pixels (kitty, then sixel), then two pixels per character cell with
-        ///         steadily less color to spend, ending at the ASCII fallback that emits no color escapes whatsoever.
-        ///         Forcing a type the terminal does not speak is the point of having them all here — a protocol that
-        ///         goes unanswered spills escape-sequence garbage across the screen, which is exactly what detection
-        ///         exists to prevent and worth seeing once.
+        ///         steadily less color to spend, ending at the text-only shaded ASCII that emits no color escapes
+        ///         whatsoever. Forcing a type the terminal does not speak is the point of having them all here — a
+        ///         protocol that goes unanswered spills escape-sequence garbage across the screen, which is exactly
+        ///         what detection exists to prevent and worth seeing once.
         ///     </para>
         /// </summary>
-        private void ForceSlideshowRenderType()
+        private void ForceRenderType()
         {
             var detected = DescribeDefaultRenderer();
             var choices = new[]
@@ -179,12 +180,12 @@ namespace WolfCurses.Example
                 "Half blocks - two pixels per cell, 24-bit color",
                 "Half blocks - two pixels per cell, 256-color palette",
                 "Half blocks - two pixels per cell, grayscale",
-                "Fallback - shaded ASCII, no color escapes at all"
+                "Text only - shaded ASCII, no color escapes at all"
             };
 
             SelectList.Choose(
                 SimUnit,
-                "Force the slideshow to draw with which render type?",
+                "Force render type - draw the images with which rendering method?",
                 choices,
                 index =>
                 {
@@ -202,14 +203,14 @@ namespace WolfCurses.Example
                         5 => (new HalfBlockImageRenderer(), AnsiColorModeEnum.Grayscale,
                             "Half blocks: grayscale (forced)"),
                         6 => (new HalfBlockImageRenderer(), AnsiColorModeEnum.None,
-                            "Fallback: shaded ASCII (forced)"),
+                            "Text only: shaded ASCII (forced)"),
                         _ => (ImageRenderers.Default, AnsiColorModeEnum.Auto,
                             $"Auto-detected render type: {detected}")
                     };
 
                     SetForm(typeof (ForcedRenderSlideshowDialog));
                 },
-                () => ShowResult("Slideshow cancelled."));
+                () => ShowResult("Render type test cancelled."));
         }
 
         /// <summary>
