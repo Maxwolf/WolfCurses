@@ -3,6 +3,7 @@
 
 using System;
 using System.Text;
+using WolfCurses.Graphics;
 
 namespace WolfCurses.Window.Control
 {
@@ -32,6 +33,27 @@ namespace WolfCurses.Window.Control
             _currdir = DirectionEnum.Right;
             _counter = 1;
         }
+
+        /// <summary>
+        ///     How much color the bar is allowed to use. <see cref="AnsiColorModeEnum.Auto" /> asks the environment,
+        ///     which is what a running application wants; a concrete mode is how a test pins one answer without
+        ///     touching process-wide state such as <c>NO_COLOR</c>. <see cref="AnsiColorModeEnum.None" /> emits no
+        ///     escape sequences whatsoever, even for styles that were explicitly set.
+        /// </summary>
+        public AnsiColorModeEnum ColorMode { get; set; } = AnsiColorModeEnum.Auto;
+
+        /// <summary>
+        ///     How the moving <c>***</c> pointer looks. Empty by default, which is why an uncolored marquee still
+        ///     emits exactly the twenty-seven characters plus a newline it always did.
+        /// </summary>
+        public TextStyle PointerStyle { get; set; } = TextStyle.None;
+
+        /// <summary>
+        ///     How everything that is not the pointer looks — the two <c>|</c> end caps and the empty track between
+        ///     them. Styled as the (up to) two runs either side of the pointer rather than as one background wash, so
+        ///     the pointer's own style is never something the track has to be re-opened around.
+        /// </summary>
+        public TextStyle TrackStyle { get; set; } = TextStyle.None;
 
         /// <summary>
         ///     sets the attribute blankPointer with a empty string the same length that the pointer
@@ -65,6 +87,15 @@ namespace WolfCurses.Window.Control
 
         /// <summary>
         ///     prints the progress bar according to pointers and current Direction
+        ///     <para>
+        ///         Color is applied to the <em>returned</em> string only, never to the stored bar. That is not a
+        ///         stylistic choice: this class animates by mutating one plain string in place — it blanks the old
+        ///         pointer with <c>Replace</c> and stamps the new one with <c>Remove</c>/<c>Insert</c> at absolute
+        ///         indices — so one escape sequence living inside that string would shift every index past it by its
+        ///         own length, and the stamping would start overwriting whatever happened to land at those offsets.
+        ///         The stored bar stays plain forever; <see cref="Decorate" /> locates the pointer in it and paints a
+        ///         copy.
+        ///     </para>
         /// </summary>
         /// <returns>
         ///     The <see cref="string" />.
@@ -86,7 +117,64 @@ namespace WolfCurses.Window.Control
                     _currdir = DirectionEnum.Right;
             }
 
-            return _bar + Environment.NewLine;
+            // The newline is appended after decoration, so any style opened for the bar is closed before the line
+            // break and never bleeds onto whatever the owner renders next.
+            return Decorate(_bar) + Environment.NewLine;
+        }
+
+        /// <summary>
+        ///     Paints a copy of the plain bar: the pointer in <see cref="PointerStyle" />, everything either side of
+        ///     it in <see cref="TrackStyle" />.
+        ///     <para>
+        ///         Returns the very string it was handed when neither style asks for anything or the resolved mode is
+        ///         <see cref="AnsiColorModeEnum.None" />, which is the whole of the byte-identical default path — an
+        ///         untouched marquee never reaches a <see cref="StringBuilder" /> at all.
+        ///     </para>
+        /// </summary>
+        /// <param name="bar">The plain bar text, exactly as stored.</param>
+        /// <returns>The bar, colored if there is any color to apply.</returns>
+        private string Decorate(string bar)
+        {
+            if (PointerStyle.IsEmpty && TrackStyle.IsEmpty)
+                return bar;
+
+            var pointerOpen = PointerStyle.OpenSequence(ColorMode);
+            var trackOpen = TrackStyle.OpenSequence(ColorMode);
+            if (pointerOpen.Length == 0 && trackOpen.Length == 0)
+                return bar;
+
+            // The pointer is located in the plain bar, which is the only place it can be found reliably.
+            var at = bar.IndexOf(_pointer, StringComparison.Ordinal);
+            if (at < 0)
+                return AppendRun(new StringBuilder(bar.Length + 16), trackOpen, bar, 0, bar.Length).ToString();
+
+            var sb = new StringBuilder(bar.Length + 48);
+            AppendRun(sb, trackOpen, bar, 0, at);
+            AppendRun(sb, pointerOpen, bar, at, _pointer.Length);
+            AppendRun(sb, trackOpen, bar, at + _pointer.Length, bar.Length - at - _pointer.Length);
+            return sb.ToString();
+        }
+
+        /// <summary>
+        ///     Appends one slice of the bar, wrapped in an open/reset pair only when there is both something to open
+        ///     and something to wrap. A zero-length slice — the track ahead of a pointer parked at the left edge —
+        ///     contributes nothing rather than an empty pair of escapes.
+        /// </summary>
+        /// <param name="sb">The builder to append to.</param>
+        /// <param name="open">The style's opening sequence, or an empty string for no style.</param>
+        /// <param name="bar">The plain bar text.</param>
+        /// <param name="start">Index of the first character of the slice.</param>
+        /// <param name="count">How many characters the slice holds.</param>
+        /// <returns>The same builder, for chaining.</returns>
+        private static StringBuilder AppendRun(StringBuilder sb, string open, string bar, int start, int count)
+        {
+            if (count <= 0)
+                return sb;
+
+            if (open.Length == 0)
+                return sb.Append(bar, start, count);
+
+            return sb.Append(open).Append(bar, start, count).Append(TextStyle.ResetSequence);
         }
 
         /// <summary>

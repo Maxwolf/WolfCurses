@@ -25,8 +25,13 @@ namespace WolfCurses.Tests.Graphics
         {
             var update = ConsolePresenter.BuildAnsiUpdate(new[] {PayloadRow, "text"}, null, 80, 25);
 
-            Assert.Contains($"{Esc}[1;1H{FakePayload}", update);
-            Assert.DoesNotContain(AnsiGraphics.RowPlaceholder, update);
+            // StringComparison.Ordinal on every string needle here, on purpose: the default culture-sensitive search
+            // uses ICU collation, which treats ESC as a zero-weight "ignorable" character and drops it from the
+            // needle — so "ESC[1;1H..." would really be searching for the literal text "[1;1H...". The marker checks
+            // use the char overload (AnsiGraphics.Marker, the same code point as RowPlaceholder), which is ordinal by
+            // design and cannot be got wrong later.
+            Assert.Contains($"{Esc}[1;1H{FakePayload}", update, StringComparison.Ordinal);
+            Assert.DoesNotContain(AnsiGraphics.Marker, update);
         }
 
         [Fact]
@@ -37,9 +42,9 @@ namespace WolfCurses.Tests.Graphics
             // row of the picture instead of a leftover tail.
             var update = ConsolePresenter.BuildAnsiUpdate(new[] {PayloadRow}, null, 80, 25);
 
-            var afterPayload = update.Substring(update.IndexOf(FakePayload, System.StringComparison.Ordinal) +
+            var afterPayload = update.Substring(update.IndexOf(FakePayload, StringComparison.Ordinal) +
                                                 FakePayload.Length);
-            Assert.DoesNotContain(_eraseToLineEnd, afterPayload);
+            Assert.DoesNotContain(_eraseToLineEnd, afterPayload, StringComparison.Ordinal);
         }
 
         [Fact]
@@ -117,7 +122,7 @@ namespace WolfCurses.Tests.Graphics
             Assert.Contains($"{Esc}[1;1Hcaption 2", update, StringComparison.Ordinal);
             Assert.DoesNotContain($"{Esc}[2;1H", update, StringComparison.Ordinal);
             Assert.DoesNotContain($"{Esc}[3;1H", update, StringComparison.Ordinal);
-            Assert.DoesNotContain(FakePayload, update);
+            Assert.DoesNotContain(FakePayload, update, StringComparison.Ordinal);
         }
 
         [Fact]
@@ -137,7 +142,7 @@ namespace WolfCurses.Tests.Graphics
             var frame = new[] {PayloadRow, AnsiGraphics.RowPlaceholder};
             var update = ConsolePresenter.BuildAnsiUpdate(frame, null, 80, 25);
 
-            Assert.Contains(FakePayload, update);
+            Assert.Contains(FakePayload, update, StringComparison.Ordinal);
         }
 
         [Fact]
@@ -221,13 +226,13 @@ namespace WolfCurses.Tests.Graphics
 
             var written = captured.ToString();
 
-            Assert.DoesNotContain(AnsiGraphics.RowPlaceholder, written);
-            Assert.Contains($"{Esc}P0;1;0q", written, System.StringComparison.Ordinal);
-            Assert.Contains($"{Esc}[1;1Hheader", written, System.StringComparison.Ordinal);
+            Assert.DoesNotContain(AnsiGraphics.Marker, written);
+            Assert.Contains($"{Esc}P0;1;0q", written, StringComparison.Ordinal);
+            Assert.Contains($"{Esc}[1;1Hheader", written, StringComparison.Ordinal);
 
             // The picture starts on row 2 and covers row 3, so the prompt belongs on row 4 — the placeholder row
             // keeping the count honest is what puts it there.
-            Assert.Contains($"{Esc}[4;1Hprompt >", written, System.StringComparison.Ordinal);
+            Assert.Contains($"{Esc}[4;1Hprompt >", written, StringComparison.Ordinal);
 
             // Row 3 is inside the picture. It gets blanked on the way in, so the picture replaces what was there, but
             // nothing may address it once the sixel is down — that would cut a row out of the picture.

@@ -312,58 +312,101 @@ namespace WolfCurses
                     continue;
                 }
 
-                if (i + 1 >= line.Length)
-                    break;
+                i = SkipEscape(line, i);
+            }
 
-                var kind = line[i + 1];
-                if (kind == '[')
+            return length;
+        }
+
+        /// <summary>
+        ///     Removes every escape sequence from a line, keeping only the characters that occupy a visible cell.
+        ///     Walks the exact same grammar <see cref="VisibleLength" /> measures — they share
+        ///     <see cref="SkipEscape" /> so the two can never disagree — which is the point: the stripped string's
+        ///     length equals its visible width. Used by <see cref="PresentLegacy" />, which runs on a console that
+        ///     cannot interpret escapes at all, where an unstripped sequence would both print as literal garbage and
+        ///     be miscounted as visible columns in that method's width arithmetic.
+        /// </summary>
+        internal static string StripEscapes(string line)
+        {
+            var sb = new StringBuilder(line.Length);
+            var i = 0;
+            while (i < line.Length)
+            {
+                if (line[i] != Escape)
                 {
-                    // CSI: parameter/intermediate bytes (0x20-0x3F) up to a final byte in 0x40-0x7E.
-                    i += 2;
-                    while (i < line.Length && (line[i] < '@' || line[i] > '~'))
+                    sb.Append(line[i]);
+                    i++;
+                    continue;
+                }
+
+                i = SkipEscape(line, i);
+            }
+
+            return sb.ToString();
+        }
+
+        /// <summary>
+        ///     Given a line and the index of an <see cref="Escape" /> character within it, returns the index of the
+        ///     first character after the escape sequence that starts there — so both <see cref="VisibleLength" /> and
+        ///     <see cref="StripEscapes" /> skip escapes identically. A bare trailing <see cref="Escape" /> with nothing
+        ///     following it consumes to the end of the line.
+        /// </summary>
+        /// <param name="line">The line being scanned.</param>
+        /// <param name="i">The index of the <see cref="Escape" /> character.</param>
+        /// <returns>The index just past the escape sequence.</returns>
+        private static int SkipEscape(string line, int i)
+        {
+            if (i + 1 >= line.Length)
+                return line.Length;
+
+            var kind = line[i + 1];
+            if (kind == '[')
+            {
+                // CSI: parameter/intermediate bytes (0x20-0x3F) up to a final byte in 0x40-0x7E.
+                i += 2;
+                while (i < line.Length && (line[i] < '@' || line[i] > '~'))
+                    i++;
+                if (i < line.Length)
+                    i++;
+            }
+            else if (kind == ']' || kind == 'P' || kind == '^' || kind == '_' || kind == 'X')
+            {
+                // OSC/DCS/PM/APC/SOS string (e.g. an OSC 8 hyperlink): runs until BEL or the ST terminator
+                // "ESC \"; any other escape means the string was left unterminated and a new sequence begins.
+                i += 2;
+                while (i < line.Length)
+                {
+                    if (line[i] == (char) 7)
+                    {
+                        i++;
+                        break;
+                    }
+
+                    if (line[i] == Escape)
+                    {
+                        if (i + 1 < line.Length && line[i + 1] == '\\')
+                            i += 2;
+                        break;
+                    }
+
+                    i++;
+                }
+            }
+            else
+            {
+                // A short ESC sequence: optional intermediate bytes (0x20-0x2F, e.g. the "(" of a charset
+                // designation like "ESC ( B") followed by one final byte.
+                i += 2;
+                if (kind >= ' ' && kind <= '/')
+                {
+                    while (i < line.Length && line[i] >= ' ' && line[i] <= '/')
                         i++;
                     if (i < line.Length)
                         i++;
                 }
-                else if (kind == ']' || kind == 'P' || kind == '^' || kind == '_' || kind == 'X')
-                {
-                    // OSC/DCS/PM/APC/SOS string (e.g. an OSC 8 hyperlink): runs until BEL or the ST terminator
-                    // "ESC \"; any other escape means the string was left unterminated and a new sequence begins.
-                    i += 2;
-                    while (i < line.Length)
-                    {
-                        if (line[i] == (char) 7)
-                        {
-                            i++;
-                            break;
-                        }
-
-                        if (line[i] == Escape)
-                        {
-                            if (i + 1 < line.Length && line[i + 1] == '\\')
-                                i += 2;
-                            break;
-                        }
-
-                        i++;
-                    }
-                }
-                else
-                {
-                    // A short ESC sequence: optional intermediate bytes (0x20-0x2F, e.g. the "(" of a charset
-                    // designation like "ESC ( B") followed by one final byte.
-                    i += 2;
-                    if (kind >= ' ' && kind <= '/')
-                    {
-                        while (i < line.Length && line[i] >= ' ' && line[i] <= '/')
-                            i++;
-                        if (i < line.Length)
-                            i++;
-                    }
-                }
             }
 
-            return length;
+            return i;
         }
 
         /// <summary>
@@ -394,12 +437,24 @@ namespace WolfCurses
 
                     Console.SetCursorPosition(0, windowTop + row);
 
-                    // A console that cannot interpret escape sequences cannot show a sixel or kitty picture either, so
-                    // there is nothing on these rows to protect — blank them rather than printing the marker
-                    // characters, which would otherwise show up as garbage glyphs.
                     var line = lines[row];
                     if (AnsiGraphics.IsRowPlaceholder(line) || AnsiGraphics.IsPayloadRow(line))
+                    {
+                        // A console that cannot interpret escape sequences cannot show a sixel or kitty picture
+                        // either, so there is nothing on these rows to protect — blank them rather than printing the
+                        // marker characters, which would otherwise show up as garbage glyphs.
                         line = string.Empty;
+                    }
+                    else if (line.IndexOf(Escape) >= 0)
+                    {
+                        // Any escape at all reaches this fallback only because the color decision is taken from the
+                        // environment (see AnsiConsole.DetectColorMode) while this path runs precisely because
+                        // virtual-terminal processing could NOT be enabled — a styled widget left at ColorMode.Auto
+                        // still resolves to color and emits SGR. Such a console would print those bytes as literal
+                        // garbage and, worse, count them as visible columns in the width arithmetic below. Strip them
+                        // so the row is the plain text this path promises, after which line.Length is its true width.
+                        line = StripEscapes(line);
+                    }
 
                     Console.Write(line.Length >= maxLength ? line.Substring(0, maxLength) : line.PadRight(maxLength));
                 }
