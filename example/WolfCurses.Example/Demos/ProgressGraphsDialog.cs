@@ -15,8 +15,9 @@ namespace WolfCurses.Example.Demos
 {
     /// <summary>
     ///     A live dashboard that shows the standard progress and graph controls working together: a determinate
-    ///     <see cref="ProgressBar" />, an indeterminate <see cref="MarqueeBar" />, an inline <see cref="Sparkline" />,
-    ///     a <see cref="BarChart" /> of the most recent readings, and a scrolling <see cref="LineGraph" />. A synthetic
+    ///     <see cref="ProgressBar" />, an indeterminate <see cref="MarqueeBar" /> with a <see cref="SpinningPixel" />
+    ///     spinner beside it, an inline <see cref="Sparkline" />, a <see cref="BarChart" /> of the most recent
+    ///     readings, and a scrolling <see cref="LineGraph" />. A synthetic
     ///     signal advances one step per simulation tick so everything animates; state is only mutated on the simulation
     ///     tick (not the many fast system ticks) so <see cref="OnRenderForm" /> stays a pure read of the current frame.
     ///     Pressing ENTER returns to the menu.
@@ -82,6 +83,10 @@ namespace WolfCurses.Example.Demos
             TrackStyle = ConsoleColor.DarkGray
         };
 
+        // The spinner half of the indeterminate pair, sharing the marquee's magenta so the two read as one "working"
+        // motif. ColorMode stays at its Auto default like every other widget here, so NO_COLOR still empties it.
+        private readonly SpinningPixel _spinner = new SpinningPixel {GlyphStyle = ConsoleColor.Magenta};
+
         private readonly List<double> _samples = new List<double>();
 
         // The sparkline colors each glyph by that sample's own value, which is the reading that matches what a
@@ -94,6 +99,7 @@ namespace WolfCurses.Example.Demos
         private LineGraph _lineGraph;
         private string _marqueeFrame = string.Empty;
         private int _phase;
+        private string _spinnerFrame = string.Empty;
 
         /// <summary>Initializes a new instance of the <see cref="ProgressGraphsDialog" /> class.</summary>
         /// <param name="window">The parent window.</param>
@@ -144,8 +150,9 @@ namespace WolfCurses.Example.Demos
                 _samples.Add(Wave(_phase));
 
             _marqueeFrame = _marquee.Step();
+            _spinnerFrame = _spinner.Step();
 
-            ParentWindow.PromptText = "Press ENTER to return to the menu";
+            ParentWindow.PromptText = "Press ENTER or ESC to return to the menu";
         }
 
         /// <inheritdoc />
@@ -164,6 +171,7 @@ namespace WolfCurses.Example.Demos
 
             _downloadPercent = (_downloadPercent + 6) % 101;
             _marqueeFrame = _marquee.Step();
+            _spinnerFrame = _spinner.Step();
         }
 
         /// <inheritdoc />
@@ -183,9 +191,11 @@ namespace WolfCurses.Example.Demos
                 Math.Max(20, SafeWindowWidth() - 2)));
             sb.AppendLine();
 
-            // Determinate progress bar and the indeterminate marquee side by side conceptually.
+            // Determinate progress bar and the indeterminate marquee side by side conceptually, with the spinner
+            // leading the "Working" label as the other indeterminate widget.
             sb.AppendLine(_download.Render(_downloadPercent, 100));
-            sb.Append(_labelStyle.Apply("Working")).Append("  ")
+            sb.Append(_spinnerFrame).Append(' ')
+                .Append(_labelStyle.Apply("Working")).Append("  ")
                 .Append(_marqueeFrame); // MarqueeBar.Step already ends the line.
 
             // Inline sparkline of the whole visible history.

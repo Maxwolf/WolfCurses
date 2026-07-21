@@ -144,7 +144,7 @@ namespace WolfCurses.Example.Demos
 
             Build();
 
-            ParentWindow.PromptText = "LEFT/RIGHT arrow keys change the flag, ENTER returns to the menu";
+            ParentWindow.PromptText = "LEFT/RIGHT arrow keys change the flag, ENTER or ESC returns to the menu";
         }
 
         /// <inheritdoc />

@@ -101,7 +101,7 @@ namespace WolfCurses.Example.Demos
         {
             base.OnFormPostCreate();
 
-            ParentWindow.PromptText = "TAB to switch renderer, ENTER to return to the menu";
+            ParentWindow.PromptText = "TAB to switch renderer, ENTER or ESC to return to the menu";
             Build();
             _clock.Restart();
             _lifecycleClock.Restart();

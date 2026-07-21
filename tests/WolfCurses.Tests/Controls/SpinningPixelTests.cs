@@ -4,7 +4,9 @@ using Xunit;
 namespace WolfCurses.Tests.Controls
 {
     /// <summary>
-    ///     SpinningPixel is internal sealed; reachable via InternalsVisibleTo. It drives SimulationApp.TickPhase.
+    ///     SpinningPixel is a public sealed widget (it also drives SimulationApp.TickPhase internally). With its
+    ///     GlyphStyle left at the default None it returns the bare cycling glyph, which is what these pin; the
+    ///     coloring path is covered by <see cref="SpinningPixelColorTests" />.
     /// </summary>
     public class SpinningPixelTests
     {
