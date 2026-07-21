@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Reflection;
 using System.Text;
 using WolfCurses.Core;
+using WolfCurses.Graphics;
 using WolfCurses.Utility;
 using WolfCurses.Window.Control;
 using WolfCurses.Window.Form;
@@ -614,24 +615,50 @@ namespace WolfCurses.Window
         }
 
         /// <summary>
-        ///     Prints out the number and description for every registered menu choice into the prompt buffer. Until an
-        ///     arrow key has summoned the highlight, every row carries the same two-space indent it always did — the
-        ///     decoration only exists once the user has asked to steer.
+        ///     Prints the number and description for every registered menu choice into the prompt buffer. A menu that
+        ///     fits the terminal is drawn one item per line exactly as it always was — the same two-space indent, or
+        ///     the <see cref="ListNavigator" /> cursor once an arrow key has summoned it. A menu too tall for the
+        ///     console is reflowed into columns by <see cref="MenuLayout" /> instead, so the input prompt beneath it
+        ///     stays on screen rather than being pushed off the bottom and clipped.
         /// </summary>
         private void RenderMenuCommands()
         {
+            var rows = new List<string>(_menuCommands.Count);
             for (var choiceIndex = 0; choiceIndex < _menuCommands.Count; choiceIndex++)
             {
                 // Name of input and then description of what it does, the input is all we really care about.
                 var menuChoice = _menuCommands[choiceIndex];
                 var currentChoiceKey = MenuChoiceKey(menuChoice.Command);
-                var row = ShowCommandNamesInMenu
+                rows.Add(ShowCommandNamesInMenu
                     ? $"{currentChoiceKey}. {menuChoice.Command} - {menuChoice.Description}"
-                    : $"{currentChoiceKey}. {menuChoice.Description}";
-
-                var highlighted = _menuNavigator.HasSelection && _menuNavigator.Index == choiceIndex;
-                _menuPrompt.Append(ListNavigator.DecorateRow(row, highlighted)).Append(Environment.NewLine);
+                    : $"{currentChoiceKey}. {menuChoice.Description}");
             }
+
+            var highlightIndex = _menuNavigator.HasSelection ? _menuNavigator.Index : -1;
+
+            // Rows the menu cannot use: the activity spinner above it and the input prompt below it, plus the blank
+            // line a header brings and a little slack for the pre-render text the window does not control. Reflow
+            // begins only once the list would outgrow what is left, so a menu that fits is composed exactly as before.
+            var reserved = 5 + LineCount(MenuHeader) + LineCount(MenuFooter);
+            var availableRows = Math.Max(1, AnsiConsole.SafeWindowHeight() - reserved);
+
+            _menuPrompt.Append(MenuLayout.Compose(rows, highlightIndex, availableRows, AnsiConsole.SafeWindowWidth()));
+        }
+
+        /// <summary>The number of newline-separated lines a header or footer occupies, zero for null or empty.</summary>
+        /// <param name="text">The header or footer text.</param>
+        /// <returns>The line count.</returns>
+        private static int LineCount(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return 0;
+
+            var lines = 1;
+            foreach (var character in text)
+                if (character == '\n')
+                    lines++;
+
+            return lines;
         }
 
         /// <summary>
