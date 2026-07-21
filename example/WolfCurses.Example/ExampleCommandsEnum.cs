@@ -77,10 +77,11 @@ namespace WolfCurses.Example
         [Description("Password input (masked).")] PasswordDemo = 13,
 
         /// <summary>
-        ///     Slideshow drawn with a render type the user forces, anywhere from a terminal's real pixels down to the
-        ///     colorless ASCII fallback, so every rung of the ladder can be seen on the same pictures.
+        ///     A render-method test bench: force any rendering method the library can produce — a terminal's real
+        ///     pixels, colored half blocks, or the text-only shaded ASCII — and see it drawn on the same pictures, so
+        ///     every rung of the ladder can be compared by eye.
         /// </summary>
-        [Description("Force slideshow render type (pixels down to ASCII).")] ForceRenderType = 14,
+        [Description("Force render type (pixels down to ASCII).")] ForceRenderType = 14,
 
         /// <summary>
         ///     Plays the animated GIF from the media folder on a loop, at the speed the file asks for.
