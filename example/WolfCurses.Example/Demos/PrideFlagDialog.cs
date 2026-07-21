@@ -27,10 +27,13 @@ namespace WolfCurses.Example.Demos
     ///         proof rather than a special case built beside it.
     ///     </para>
     ///     <para>
-    ///         Several rows are drawn per stripe (as many as the console has room for, up to four) because one row per
-    ///         stripe reads as a chart with a color problem — a flag needs the bands to have some height before the eye
-    ///         stops counting them and starts seeing a flag. The row count is always an exact multiple of the stop
-    ///         count so no stripe ends up a row thicker than its neighbours.
+    ///         Several rows are drawn per stripe (up to four) because one row per stripe reads as a chart with a color
+    ///         problem — a flag needs the bands to have some height before the eye stops counting them and starts
+    ///         seeing a flag. How many is chosen so every flag comes out roughly the same overall height
+    ///         (<see cref="TargetFlagHeight" />) whether it carries three stripes or eleven, rather than letting the
+    ///         few-stripe flags fill the screen while the many-stripe ones stay short — which is what made the
+    ///         eleven-stripe Progress flag look wider than the rest. The row count is always an exact multiple of the
+    ///         stop count so no stripe ends up a row thicker than its neighbours.
     ///     </para>
     ///     <para>
     ///         On a terminal that reports no color at all — <c>NO_COLOR</c>, a pipe, an old console — the widgets emit
@@ -44,6 +47,15 @@ namespace WolfCurses.Example.Demos
     {
         /// <summary>Most rows any one stripe is drawn with, however tall the console is.</summary>
         private const int MaximumRowsPerStripe = 4;
+
+        /// <summary>
+        ///     The overall height every flag aims for, so a three-stripe flag and the eleven-stripe Progress flag come
+        ///     out the same size instead of the few-stripe flags filling the screen while Progress stays short and
+        ///     wide. Capped rather than taken from the whole console height on purpose: letting each flag grow into all
+        ///     the vertical room there is is exactly what made them different sizes from one another. A flag with more
+        ///     stripes than this still shows in full — one row per stripe is the floor.
+        /// </summary>
+        private const int TargetFlagHeight = 14;
 
         /// <summary>
         ///     The flags, in the order the arrow keys walk them. Notes credit the designer and the year, which for
@@ -219,11 +231,15 @@ namespace WolfCurses.Example.Demos
             var flag = _flags[_index];
             var stripes = flag.Ramp.Stops.Count;
 
-            // The Progress flag is eleven stripes tall, so the height budget has to be shared out rather than fixed:
-            // a console with room for two rows each still shows the whole flag, where a hard-coded three would run
-            // the bottom off the screen.
-            var available = Math.Max(stripes, SafeWindowHeight() - 12);
-            var rowsPerStripe = Math.Clamp(available / stripes, 1, MaximumRowsPerStripe);
+            // Aim every flag at the same overall height so they all read as one size regardless of how many stripes
+            // each carries — the way real flags are one rectangle whether they hold three bands or eleven. The budget
+            // is a capped *total* rather than a per-stripe share of all the room there is: dividing the whole console
+            // among the stripes let a three-stripe flag fill the screen while the eleven-stripe Progress flag could
+            // only reach a row or two per stripe, so Progress alone came out short and wide beside the rest. Capped so
+            // a tall console does not simply make every flag bigger, and floored at one row per stripe (the outer
+            // Max, for a flag with more stripes than the target) so the whole flag is always drawn.
+            var budget = Math.Max(stripes, Math.Min(SafeWindowHeight() - 12, TargetFlagHeight));
+            var rowsPerStripe = Math.Clamp(budget / stripes, 1, MaximumRowsPerStripe);
 
             _chart.Width = Math.Clamp(SafeWindowWidth() - 10, 20, 72);
             _chart.Ramp = flag.Ramp;
