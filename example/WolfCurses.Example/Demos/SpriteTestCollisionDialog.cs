@@ -82,7 +82,7 @@ namespace WolfCurses.Example.Demos
         {
             base.OnFormPostCreate();
 
-            ParentWindow.PromptText = "Arrow keys to move, TAB to switch renderer, ENTER for the menu";
+            ParentWindow.PromptText = "Arrow keys to move, TAB to switch renderer, ENTER/ESC for the menu";
             Build();
             _clock.Restart();
         }

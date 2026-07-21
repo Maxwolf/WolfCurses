@@ -41,7 +41,7 @@ namespace WolfCurses.Example.Demos
 
             // The image fills the screen, so put the "return" instruction on the prompt line rather than leaving the
             // menu's "What is your choice?" at the bottom.
-            ParentWindow.PromptText = "Press ENTER to return to the menu";
+            ParentWindow.PromptText = "Press ENTER or ESC to return to the menu";
         }
 
         /// <inheritdoc />

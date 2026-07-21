@@ -79,6 +79,31 @@ namespace WolfCurses.Example
                 PromptText = "What is your choice?";
         }
 
+        /// <summary>
+        ///     ESC backs out of whichever example is showing and returns to the main menu. Every demo in this app is a
+        ///     form attached to this one window, so intercepting the key here — before <see cref="Window{TCommands,TData}" />
+        ///     forwards it down to the form — backs all of them out in a single place, no per-demo handling.
+        ///     <para>
+        ///         Only when a form is up: with the menu itself showing there is nothing to back out of (you are
+        ///         already at the top), so ESC is handed to the base, which ignores it. Every other key is passed
+        ///         straight through, so the arrow-driven demos (the sprite tests) still steer exactly as before.
+        ///         The library's own modal controls — <see cref="SelectList" />, <see cref="MessageBox" />,
+        ///         <see cref="TextInputDialog" />, <see cref="FileDialog" /> — are separate windows this override never
+        ///         sees; they are dismissed by their own on-screen cancel affordance ([C]ancel, or a blank line).
+        ///     </para>
+        /// </summary>
+        /// <param name="key">The key that was pressed.</param>
+        public override void OnKeyPressed(ConsoleKey key)
+        {
+            if (key == ConsoleKey.Escape && CurrentForm != null)
+            {
+                ClearForm();
+                return;
+            }
+
+            base.OnKeyPressed(key);
+        }
+
         private void CloseSimulation()
         {
             Program.Destroy();

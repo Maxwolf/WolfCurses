@@ -159,7 +159,7 @@ namespace WolfCurses.Example.Demos
         {
             base.OnFormPostCreate();
 
-            ParentWindow.PromptText = "TAB to switch renderer, ENTER to return to the menu";
+            ParentWindow.PromptText = "TAB to switch renderer, ENTER or ESC to return to the menu";
 
             // Only sets the load going; the frames are rendered a slice per tick from here. The playback clock is not
             // started here but in FinishLoad, so the wait at the door is never charged to the first frame's timing.
