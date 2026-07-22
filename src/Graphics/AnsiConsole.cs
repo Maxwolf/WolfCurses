@@ -30,6 +30,16 @@ namespace WolfCurses.Graphics
         private static AnsiColorModeEnum? _colorMode;
 
         /// <summary>
+        ///     An override that forces <see cref="DetectColorMode" /> — and therefore every widget, text style and
+        ///     image left at <see cref="AnsiColorModeEnum.Auto" /> — to a chosen color mode, or <c>null</c> (the
+        ///     default) to fall back to environment detection. A programmatic counterpart to the <c>NO_COLOR</c> /
+        ///     <c>FORCE_COLOR</c> conventions: an app wanting a global grayscale, 256-color or colorless mode sets this
+        ///     once and everything on <c>Auto</c> follows. <see cref="AnsiColorModeEnum.Auto" /> is treated the same as
+        ///     <c>null</c> (no override), so <see cref="DetectColorMode" /> keeps its promise never to return Auto.
+        /// </summary>
+        public static AnsiColorModeEnum? ForcedColorMode { get; set; }
+
+        /// <summary>
         ///     Prepares the current process's console for ANSI graphics: switches standard output to UTF-8 (so the
         ///     <c>▀</c>/<c>▄</c> half-block glyphs render) and, on Windows, enables the
         ///     <c>ENABLE_VIRTUAL_TERMINAL_PROCESSING</c> console mode (so escape sequences are interpreted rather than
@@ -76,8 +86,14 @@ namespace WolfCurses.Graphics
         ///     </para>
         /// </summary>
         /// <returns>A concrete (never <see cref="AnsiColorModeEnum.Auto" />) color mode.</returns>
+        /// <remarks><see cref="ForcedColorMode" />, when set to a concrete mode, wins over both the cache and the environment.</remarks>
         public static AnsiColorModeEnum DetectColorMode()
         {
+            // A forced concrete mode wins over both the cache and the environment; Auto/null mean "no override".
+            var forced = ForcedColorMode;
+            if (forced.HasValue && forced.Value != AnsiColorModeEnum.Auto)
+                return forced.Value;
+
             return _colorMode ??= DetectColorModeCore();
         }
 
