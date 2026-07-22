@@ -51,6 +51,16 @@ namespace WolfCurses.Example.Demos
         /// </summary>
         public static IImageRenderer AnimationRenderer { get; } = new HalfBlockImageRenderer();
 
+        /// <summary>Backing field for <see cref="AutoDetectedRenderer" />; see <see cref="CaptureAutoDetectedRenderer" />.</summary>
+        private static IImageRenderer _autoDetectedRenderer;
+
+        /// <summary>
+        ///     The renderer the start-up probe installed as <see cref="ImageRenderers.Default" />, captured once so the
+        ///     <b>Force render type</b> menu's <c>Auto</c> choice can restore it after the user has forced something
+        ///     else. Falls back to whatever <see cref="ImageRenderers.Default" /> currently is until it is captured.
+        /// </summary>
+        public static IImageRenderer AutoDetectedRenderer => _autoDetectedRenderer ?? ImageRenderers.Default;
+
         /// <summary>Folder next to the executable that holds the copied media images.</summary>
         public static string Folder => Path.Combine(AppContext.BaseDirectory, "images");
 
@@ -86,7 +96,22 @@ namespace WolfCurses.Example.Demos
                 .ToArray();
         }
 
-        /// <summary>Options that fit an image inside the console, leaving room for the surrounding demo chrome.</summary>
+        /// <summary>
+        ///     Remembers the current <see cref="ImageRenderers.Default" /> as the auto-detected baseline. Idempotent —
+        ///     only the first call sticks — so it must run while the default is still the probe's untouched answer,
+        ///     before <b>Force render type</b> has overridden it (the example captures it at window creation).
+        /// </summary>
+        public static void CaptureAutoDetectedRenderer()
+        {
+            _autoDetectedRenderer ??= ImageRenderers.Default;
+        }
+
+        /// <summary>
+        ///     Options that fit an image inside the console, leaving room for the surrounding demo chrome. Color mode is
+        ///     left at <see cref="AnsiColorModeEnum.Auto" />, which resolves through
+        ///     <see cref="AnsiConsole.DetectColorMode" /> — so the <b>Force render type</b> menu's global
+        ///     <see cref="AnsiConsole.ForcedColorMode" /> override reaches every image without this needing to know it.
+        /// </summary>
         public static AnsiImageOptions FitOptions()
         {
             return new AnsiImageOptions

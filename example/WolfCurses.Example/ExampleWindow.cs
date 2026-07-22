@@ -34,12 +34,10 @@ namespace WolfCurses.Example
         {
             base.OnWindowPostCreate();
 
-            var headerText = new StringBuilder();
-            headerText.Append(
-                $"{Environment.NewLine}Example Console Application{Environment.NewLine}{Environment.NewLine}");
-            headerText.AppendLine("Example UserData: " + UserData.ExampleUserData);
-            headerText.Append("You may (arrow keys + ENTER, or type a number):");
-            MenuHeader = headerText.ToString();
+            // Remember the probe's answer before anything can override it, then build the header — whose top line names
+            // the render type the "Force render type" item last set (renderer plus color mode, for every demo at once).
+            DemoImages.CaptureAutoDetectedRenderer();
+            RefreshMenuHeader();
 
             AddCommand(TextPrompt, ExampleCommandsEnum.TextPrompt);
             AddCommand(YesNoPrompt, ExampleCommandsEnum.YesNoPrompt);
@@ -155,23 +153,36 @@ namespace WolfCurses.Example
         }
 
         /// <summary>
-        ///     A manual render-method test bench: force any rendering method the library can produce and draw the test
-        ///     images with it, so the one detection picked can be compared by eye against every other rung of the
-        ///     ladder — right down to the text-only ones. The library already asked this terminal what it supports —
-        ///     creating the simulation probes once at start-up — and installed the answer as
-        ///     <see cref="ImageRenderers.Default" />, which is the first choice here.
+        ///     Overrides the render method every image demo draws with, then snaps back to the menu — the whole point
+        ///     being to change it from the auto-detected default to anything the library can produce and then open any
+        ///     demo (slideshow, GIF, sprites, compositing, the logo) to see the result. The library already asked this
+        ///     terminal what it supports at start-up and installed the answer as <see cref="ImageRenderers.Default" />,
+        ///     which the <c>Auto</c> choice restores.
         ///     <para>
-        ///         The rest are graded best to worst, and each is a genuinely different code path rather than the same
-        ///         picture with a knob turned: real pixels (kitty, then sixel), then two pixels per character cell with
-        ///         steadily less color to spend, ending at the text-only shaded ASCII that emits no color escapes
+        ///         The choices are graded best to worst, and each is a genuinely different code path rather than the
+        ///         same picture with a knob turned: real pixels (kitty, then sixel), then two pixels per character cell
+        ///         with steadily less color to spend, ending at the text-only shaded ASCII that emits no color escapes
         ///         whatsoever. Forcing a type the terminal does not speak is the point of having them all here — a
         ///         protocol that goes unanswered spills escape-sequence garbage across the screen, which is exactly
         ///         what detection exists to prevent and worth seeing once.
         ///     </para>
+        ///     <para>
+        ///         It reaches every demo — images, colored widgets and styled prose alike — through two globals and
+        ///         nothing else: the picked renderer becomes <see cref="ImageRenderers.Default" /> (which every image
+        ///         draws through, directly or via <see cref="RendererSwitch" />), and the color mode becomes
+        ///         <see cref="AnsiConsole.ForcedColorMode" />, which everything left at
+        ///         <see cref="AnsiColorModeEnum.Auto" /> resolves through <see cref="AnsiConsole.DetectColorMode" /> —
+        ///         so the pride flags and the graph dashboard grey out with the images. The real-pixel renderers
+        ///         (kitty, sixel) carry their own color, so those choices force no color mode.
+        ///     </para>
         /// </summary>
         private void ForceRenderType()
         {
-            var detected = DescribeDefaultRenderer();
+            // Remember the probe's untouched answer so the "Auto" choice can restore it (idempotent; also captured at
+            // window creation).
+            DemoImages.CaptureAutoDetectedRenderer();
+
+            var detected = DescribeRenderer(DemoImages.AutoDetectedRenderer);
             var choices = new[]
             {
                 $"Auto - what this terminal answered: {detected}",
@@ -185,53 +196,90 @@ namespace WolfCurses.Example
 
             SelectList.Choose(
                 SimUnit,
-                "Force render type - draw the images with which rendering method?",
+                "Force render type - which method should every demo draw with?",
                 choices,
                 index =>
                 {
-                    (UserData.SelectedImageRenderer, UserData.SelectedImageColorMode,
-                        UserData.SelectedImageRendererName) = index switch
+                    // The whole effect of the choice, and it reaches widgets and prose as much as images: the picked
+                    // renderer becomes the global default, and the color mode becomes AnsiConsole.ForcedColorMode,
+                    // which every Auto consumer resolves through. A real-pixel choice (kitty/sixel) forces no color
+                    // mode — they carry their own — so widgets stay on the detected one; "Auto" clears both.
+                    (ImageRenderers.Default, AnsiConsole.ForcedColorMode) = index switch
                     {
-                        1 => ((IImageRenderer) new KittyImageRenderer(), AnsiColorModeEnum.Auto,
-                            "Kitty: real pixels (forced)"),
-                        2 => (new SixelImageRenderer(), AnsiColorModeEnum.Auto,
-                            "Sixel: real pixels (forced)"),
-                        3 => (new HalfBlockImageRenderer(), AnsiColorModeEnum.TrueColor,
-                            "Half blocks: true color (forced)"),
-                        4 => (new HalfBlockImageRenderer(), AnsiColorModeEnum.Palette256,
-                            "Half blocks: 256 colors (forced)"),
-                        5 => (new HalfBlockImageRenderer(), AnsiColorModeEnum.Grayscale,
-                            "Half blocks: grayscale (forced)"),
-                        6 => (new HalfBlockImageRenderer(), AnsiColorModeEnum.None,
-                            "Text only: shaded ASCII (forced)"),
-                        _ => (ImageRenderers.Default, AnsiColorModeEnum.Auto,
-                            $"Auto-detected render type: {detected}")
+                        1 => ((IImageRenderer) new KittyImageRenderer(), (AnsiColorModeEnum?) null),
+                        2 => (new SixelImageRenderer(), null),
+                        3 => (new HalfBlockImageRenderer(), AnsiColorModeEnum.TrueColor),
+                        4 => (new HalfBlockImageRenderer(), AnsiColorModeEnum.Palette256),
+                        5 => (new HalfBlockImageRenderer(), AnsiColorModeEnum.Grayscale),
+                        6 => (new HalfBlockImageRenderer(), AnsiColorModeEnum.None),
+                        _ => (DemoImages.AutoDetectedRenderer, null)
                     };
 
-                    SetForm(typeof (ForcedRenderSlideshowDialog));
+                    // Reflect it on the menu header, then let the SelectList's own close snap us back there.
+                    RefreshMenuHeader();
                 },
-                () => ShowResult("Render type test cancelled."));
+                () => { });
         }
 
         /// <summary>
-        ///     Names the renderer that the library's start-up probe installed as <see cref="ImageRenderers.Default" />,
-        ///     so the "Auto" choice reports what will actually draw.
+        ///     Rebuilds the menu header, whose top line names the render method every demo will draw with, so forcing
+        ///     one shows its effect the moment you snap back to the menu — before you have even opened a demo.
+        /// </summary>
+        private void RefreshMenuHeader()
+        {
+            var headerText = new StringBuilder();
+            headerText.Append(
+                $"{Environment.NewLine}Example Console Application{Environment.NewLine}{Environment.NewLine}");
+            headerText.AppendLine("Render type: " + DescribeCurrentRenderType());
+            headerText.AppendLine("Example UserData: " + UserData.ExampleUserData);
+            headerText.Append("You may (arrow keys + ENTER, or type a number):");
+            MenuHeader = headerText.ToString();
+        }
+
+        /// <summary>
+        ///     Describes the render method the demos will use right now, and whether it is one the user forced or the
+        ///     probe's own answer. Reads the live <see cref="ImageRenderers.Default" /> and
+        ///     <see cref="AnsiConsole.ForcedColorMode" /> rather than any stored copy, so it is always current.
+        /// </summary>
+        private static string DescribeCurrentRenderType()
+        {
+            var renderer = DescribeRenderer(ImageRenderers.Default);
+            var rendererForced = !ReferenceEquals(ImageRenderers.Default, DemoImages.AutoDetectedRenderer);
+            var forcedMode = AnsiConsole.ForcedColorMode;
+            var modeForced = forcedMode.HasValue && forcedMode.Value != AnsiColorModeEnum.Auto;
+            if (!rendererForced && !modeForced)
+                return $"{renderer} (auto-detected)";
+
+            var colorMode = forcedMode switch
+            {
+                AnsiColorModeEnum.TrueColor => ", true color",
+                AnsiColorModeEnum.Palette256 => ", 256 colors",
+                AnsiColorModeEnum.Grayscale => ", grayscale",
+                AnsiColorModeEnum.None => ", text only",
+                _ => string.Empty
+            };
+            return $"{renderer}{colorMode} (forced)";
+        }
+
+        /// <summary>
+        ///     Names a renderer in a few words, for the <c>Auto</c> choice's label and the menu footer.
         ///     <para>
-        ///         Asking <see cref="AnsiConsole.DetectGraphicsProtocol" /> again here would be a different question
-        ///         with a possibly different answer: that one reads environment variables only, and on Windows Terminal
-        ///         it deliberately reports None because no version is published to key off. The probe asks the terminal
-        ///         itself and may well have found sixel. Reporting the guess while the probe's answer does the drawing
-        ///         would misattribute exactly what this screen exists to show.
+        ///         Asks the object what it is rather than re-calling <see cref="AnsiConsole.DetectGraphicsProtocol" />,
+        ///         which would be a different question with a possibly different answer: that one reads environment
+        ///         variables only, and on Windows Terminal it deliberately reports None because no version is published
+        ///         to key off. The probe asked the terminal itself and may well have found sixel; reporting the guess
+        ///         while the probe's answer does the drawing would misattribute exactly what this screen exists to show.
         ///     </para>
         /// </summary>
-        private static string DescribeDefaultRenderer()
+        /// <param name="renderer">The renderer to name.</param>
+        private static string DescribeRenderer(IImageRenderer renderer)
         {
-            return ImageRenderers.Default switch
+            return renderer switch
             {
                 KittyImageRenderer => "kitty (real pixels)",
                 SixelImageRenderer => "sixel (real pixels)",
                 HalfBlockImageRenderer => "half blocks",
-                var other => other.GetType().Name
+                var other => other?.GetType().Name ?? "none"
             };
         }
 
