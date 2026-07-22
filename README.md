@@ -34,7 +34,7 @@ dotnet build WolfCurses.sln
 
 ## Example Implementation ##
 
-A runnable example console application lives in this repository at [`example/WolfCurses.Example`](example/WolfCurses.Example). It is its own project (referencing the library directly) and shows a few different menus, windows, and forms — plus a WolfCurses logo splash on startup, **Slideshow** / **Compositing** menu items that display the `media/` photographs (and a transparent penguin composited over them), a **Show animated GIF** item that plays an animated GIF on loop at the speed the file asks for, **Sprite Test** items — **(Basic)** bounces the DVD logo around a photograph like the screensaver did, **(Advanced)** flies five animated GIFs at random sizes through one another while adding and removing them from the scene on a loop, **(Collision)** lets you walk one penguin into another with the arrow keys, all with a live fps readout — a **Force slideshow render type** item that redraws those same photos with every render type from a terminal's real pixels down to colorless ASCII, and **file/folder browser** menu items that pick an image to display or a folder to report. Run it with:
+A runnable example console application lives in this repository at [`example/WolfCurses.Example`](example/WolfCurses.Example). It is its own project (referencing the library directly) and shows a few different menus, windows, and forms, plus a WolfCurses logo splash on startup, **Slideshow** / **Compositing** menu items that display the `media/` photographs (and a transparent penguin composited over them), a **Show animated GIF** item that plays an animated GIF on loop at the speed the file asks for, and three **Sprite Test** items. **(Basic)** bounces the DVD logo around a photograph like the screensaver did, **(Advanced)** flies five animated GIFs at random sizes through one another while adding and removing them from the scene on a loop, and **(Collision)** lets you walk one penguin into another with the arrow keys, all with a live fps readout. A **Force slideshow render type** item redraws those same photos with every render type from a terminal's real pixels down to colorless ASCII, and **file/folder browser** menu items pick an image to display or a folder to report. Run it with:
 
 ```cmd
 dotnet run --project example/WolfCurses.Example
@@ -42,15 +42,15 @@ dotnet run --project example/WolfCurses.Example
 
 ![The example's basic sprite test: the DVD logo bouncing over a photograph drawn as real sixel pixels, with a live fps readout](docs/demo-sprite-basic.gif)
 
-*Real frames from the example app — the DVD logo bouncing over a photograph at ~30 fps, drawn with the sixel protocol the startup probe detects on Windows Terminal 1.22+ (and half blocks anywhere it can't).*
+*Real frames from the example app: the DVD logo bouncing over a photograph at ~30 fps, drawn with the sixel protocol the startup probe detects on Windows Terminal 1.22+ (and half blocks anywhere it can't).*
 
 ## ANSI Graphics ##
 
-Wolf Curses can display images directly in the terminal — PNG, JPEG (baseline *and* progressive) and GIF work out of the box, with no set-up and no dependencies. Images are converted to a block of text and ANSI color escape sequences that you drop into your window's rendered text like any other string, so the scene graph draws them along with everything else.
+Wolf Curses can display images directly in the terminal. PNG, JPEG (baseline *and* progressive) and GIF work out of the box, with no set-up and no dependencies. Images are converted to a block of text and ANSI color escape sequences that you drop into your window's rendered text like any other string, so the scene graph draws them along with everything else.
 
 ![The example's animated GIF demo: a progress bar fills while every frame is pre-rendered, then the animation plays on loop with fps and ms/frame readouts](docs/demo-animated-gif.gif)
 
-*The **Show animated GIF** demo: the library's own GIF decoder walks all 91 frames, a `ProgressBar` fills while they are pre-rendered into sixel, then playback is an array lookup — 0.00 ms/frame at the speed the file asks for.*
+*The **Show animated GIF** demo: the library's own GIF decoder walks all 91 frames, a `ProgressBar` fills while they are pre-rendered into sixel, then playback is an array lookup: 0.00 ms/frame at the speed the file asks for.*
 
 ```csharp
 using WolfCurses.Graphics;
@@ -59,7 +59,7 @@ using WolfCurses.Graphics;
 // (enables virtual-terminal processing + a UTF-8 output encoding on Windows):
 AnsiConsole.Enable();
 
-// Decode + render ONCE and cache the string — the escapes never change, and a window's
+// Decode + render ONCE and cache the string; the escapes never change, and a window's
 // OnRenderWindow runs every tick, so rendering there would re-decode the image constantly:
 private readonly string _logo = AnsiImage.RenderFile("media/logo.jpg");
 
@@ -68,61 +68,61 @@ public override string OnRenderWindow() => _logo;
 ```
 
 - **Sized to fit.** By default the image is scaled to fit the current console window while preserving its aspect ratio, so it is fully visible without resizing the terminal. Pass `new AnsiImageOptions { MaxColumns = …, MaxRows = … }` to bound it yourself.
-- **Fit modes.** `AnsiImageOptions.Fit` controls how the image fills the area, mirroring CSS `object-fit`: `Contain` (default — show all of the image, letterboxed), `Cover` (fill the whole scene, cropping the overflow), `Stretch` (fill exactly, ignoring aspect ratio), or `ScaleDown` (like Contain but never enlarge past native size). `HorizontalAlignment`/`VerticalAlignment` choose which part `Cover` keeps.
-- **Compositing.** Overlay a transparent image on top of another and see both — `background.Overlay(foreground)` (centered) or `background.Overlay(foreground, x, y)` alpha-composites them into one image, with the overlay's own transparency preserved. Use `.Resize(w, h)` to size an overlay first.
-- **Sprites.** When the thing on top *moves*, a `SpriteScene` keeps the background as pixels and recomposes it as often as you like: `scene.Sprites.Add(new Sprite(pixels, x, y))`, then `scene.ToAnsi(options)` each frame. Sprites draw in order (last is nearest), are clipped rather than refused so they can walk in from off-screen, and honour their own transparency. Set `sprite.Image` to animate one — an animated sprite needs nothing else. The scene is the size of its background, which is the knob worth knowing: resize the background once to something near what the terminal can show and a frame costs a fraction of what it costs at a photograph's native resolution.
+- **Fit modes.** `AnsiImageOptions.Fit` controls how the image fills the area, mirroring CSS `object-fit`: `Contain` (default, shows all of the image, letterboxed), `Cover` (fill the whole scene, cropping the overflow), `Stretch` (fill exactly, ignoring aspect ratio), or `ScaleDown` (like Contain but never enlarge past native size). `HorizontalAlignment`/`VerticalAlignment` choose which part `Cover` keeps.
+- **Compositing.** Overlay a transparent image on top of another and see both: `background.Overlay(foreground)` (centered) or `background.Overlay(foreground, x, y)` alpha-composites them into one image, with the overlay's own transparency preserved. Use `.Resize(w, h)` to size an overlay first.
+- **Sprites.** When the thing on top *moves*, a `SpriteScene` keeps the background as pixels and recomposes it as often as you like: `scene.Sprites.Add(new Sprite(pixels, x, y))`, then `scene.ToAnsi(options)` each frame. Sprites draw in order (last is nearest), are clipped rather than refused so they can walk in from off-screen, and honour their own transparency. Set `sprite.Image` to animate one; an animated sprite needs nothing else. The scene is the size of its background, which is the knob worth knowing: resize the background once to something near what the terminal can show and a frame costs a fraction of what it costs at a photograph's native resolution.
 - **Collision.** `scene.SpritesTouching(sprite)` reports *which* sprites a given one has run into, and `a.Intersects(b)` is the bare bounding-box test behind it. The three **Sprite Test** demos cover the lot: the DVD logo bouncing, five animated GIFs flying through one another while being added and removed, and two penguins you steer into each other with the arrow keys.
 
   ![The example's advanced sprite test: five animated GIF sprites at random sizes flying over a photograph, blending and bouncing](docs/demo-sprite-advanced.gif)
 
-  *The advanced sprite test: five animated GIF sprites at random sizes bouncing over a photograph — alpha blending, per-sprite animation clocks, and live scene mutation, composed and sixel-rendered fresh every frame at 30 fps.*
-- **Two pixels per character.** It uses the Unicode half-block (`▀`) trick — foreground color for the top pixel, background color for the bottom — to double the vertical resolution and keep pixels square.
+  *The advanced sprite test: five animated GIF sprites at random sizes bouncing over a photograph: alpha blending, per-sprite animation clocks, and live scene mutation, composed and sixel-rendered fresh every frame at 30 fps.*
+- **Two pixels per character.** It uses the Unicode half-block (`▀`) trick, with foreground color for the top pixel and background color for the bottom, to double the vertical resolution and keep pixels square.
 - **Transparency.** Transparent PNG pixels let the terminal background show through; set `AnsiImageOptions.BackgroundColor` to composite the image onto a solid color instead.
 - **Graceful color downgrade.** True color by default, with automatic fallback to the 256-color palette, grayscale, or shaded ASCII on terminals that cannot do better (honoring `NO_COLOR`). Force a mode with `AnsiImageOptions.ColorMode`.
-- **Decoders included, and replaceable.** PNG, JPEG and GIF are decoded by the package itself, written from their specifications in pure managed code — so images work with no set-up and the package still has **zero dependencies**. A decoder is the one part of an image pipeline everybody needs and nobody wants to choose; owning the formats outright is what avoids making every consumer of a terminal UI library take a transitive dependency on an imaging library just to show a logo. What they are *not* is the fastest available, and they don't try to be — a picture bound for a terminal is about to be scaled down to a few thousand pixels anyway. Need a format outside those three, or speed, or just to not decode images two different ways in one process? Implement `IImageDecoder` — one method — and assign `ImageDecoders.Default` once at start-up. The example has a ready-made [StbImageSharp](https://github.com/StbSharp/StbImageSharp) adapter at [`Graphics/StbImageDecoder.cs`](example/WolfCurses.Example/Graphics/StbImageDecoder.cs) to copy. Pixels you decoded yourself (`AnsiImage.FromPixels`) never touch a decoder at all.
-- **Missing textures look missing.** An image that can't be loaded — wrong path, corrupt file, a format nothing installed can decode — becomes the magenta-and-black checkerboard you already know from a game engine, instead of throwing. Nothing real is that colour, so you spot it across the room without reading anything. This matters more than it sounds: the recommended usage above is a field initializer, where an exception surfaces as a `TypeInitializationException` from a stack that no longer mentions the image; and in a text UI the console *is* the screen, so a stack trace lands on top of your interface. The reason is still in `AnsiImage.Error` (and goes to `Trace`), and `ImageDecoders.Default.Decode(stream)` still throws if you'd rather handle it yourself — the seam's contract is unchanged, only the convenience layer is forgiving.
-- **Pluggable drawing.** How pixels become screen output is a seam too — see below.
+- **Decoders included, and replaceable.** PNG, JPEG and GIF are decoded by the package itself, written from their specifications in pure managed code, so images work with no set-up and the package still has **zero dependencies**. A decoder is the one part of an image pipeline everybody needs and nobody wants to choose; owning the formats outright is what avoids making every consumer of a terminal UI library take a transitive dependency on an imaging library just to show a logo. What they are *not* is the fastest available, and they don't try to be, since a picture bound for a terminal is about to be scaled down to a few thousand pixels anyway. Need a format outside those three, or speed, or just to not decode images two different ways in one process? Implement `IImageDecoder` (one method) and assign `ImageDecoders.Default` once at start-up. The example has a ready-made [StbImageSharp](https://github.com/StbSharp/StbImageSharp) adapter at [`Graphics/StbImageDecoder.cs`](example/WolfCurses.Example/Graphics/StbImageDecoder.cs) to copy. Pixels you decoded yourself (`AnsiImage.FromPixels`) never touch a decoder at all.
+- **Missing textures look missing.** An image that can't be loaded (wrong path, corrupt file, a format nothing installed can decode) becomes the magenta-and-black checkerboard you already know from a game engine, instead of throwing. Nothing real is that colour, so you spot it across the room without reading anything. This matters more than it sounds: the recommended usage above is a field initializer, where an exception surfaces as a `TypeInitializationException` from a stack that no longer mentions the image; and in a text UI the console *is* the screen, so a stack trace lands on top of your interface. The reason is still in `AnsiImage.Error` (and goes to `Trace`), and `ImageDecoders.Default.Decode(stream)` still throws if you'd rather handle it yourself; the seam's contract is unchanged, only the convenience layer is forgiving.
+- **Pluggable drawing.** How pixels become screen output is a seam too (see below).
 
 <details>
 <summary>What the built-in decoders cover</summary>
 
 | | Covered | Not covered |
 |---|---|---|
-| **PNG** | Every colour type (greyscale, truecolour, palette, both alpha variants), every bit depth 1–16, transparency in all three forms, Adam7 interlacing | — |
+| **PNG** | Every colour type (greyscale, truecolour, palette, both alpha variants), every bit depth 1–16, transparency in all three forms, Adam7 interlacing | None |
 | **JPEG** | Baseline, extended sequential, and **progressive**; 4:4:4 / 4:2:2 / 4:2:0 and any other sampling factors; restart markers; greyscale | Arithmetic coding, lossless and hierarchical modes, CMYK/YCCK |
-| **GIF** | 87a and 89a, interlacing, transparency, local colour tables, animation (`GifDecoder.DecodeFrames`) | — |
+| **GIF** | 87a and 89a, interlacing, transparency, local colour tables, animation (`GifDecoder.DecodeFrames`) | None |
 
-Anything unsupported fails with a message naming the format and the seam, not with garbage pixels. The decoders are checked against [StbImageSharp](https://github.com/StbSharp/StbImageSharp) on real files as part of the test suite — an independent implementation reading the same bytes, which is the only cheap way to catch a misread spec.
+Anything unsupported fails with a message naming the format and the seam, not with garbage pixels. The decoders are checked against [StbImageSharp](https://github.com/StbSharp/StbImageSharp) on real files as part of the test suite, an independent implementation reading the same bytes, which is the only cheap way to catch a misread spec.
 
 </details>
 
 ### Real pixels: sixel and kitty ###
 
-Half blocks work everywhere, but they only get two pixels per character cell. Terminals that speak a true-pixel protocol can do far better — on a typical 10x20 cell that is about two hundred pixels per cell instead of two — and WolfCurses drives them **automatically**: creating your simulation asks the terminal, once, which protocol it can draw with and routes every image through the best answer, falling back to half blocks when the answer is nothing special. There is nothing to call. Drawing is a seam mirroring the decoder one, so overriding what the terminal said is one line:
+Half blocks work everywhere, but they only get two pixels per character cell. Terminals that speak a true-pixel protocol can do far better (on a typical 10x20 cell that is about two hundred pixels per cell instead of two), and WolfCurses drives them **automatically**: creating your simulation asks the terminal, once, which protocol it can draw with and routes every image through the best answer, falling back to half blocks when the answer is nothing special. There is nothing to call. Drawing is a seam mirroring the decoder one, so overriding what the terminal said is one line:
 
 ```csharp
-// Only to overrule detection — a renderer you assign always wins, before or after the simulation exists:
+// Only to overrule detection; a renderer you assign always wins, before or after the simulation exists:
 ImageRenderers.Default = new SixelImageRenderer();
 
 // ...or draw one picture differently without disturbing the global default:
 var photo = image.ToAnsi(options, new KittyImageRenderer());
 ```
 
-- **`HalfBlockImageRenderer`** — the fallback, and what detection leaves in place when the terminal offers nothing better. Colored `▀` characters; works in any terminal that can do color at all, and degrades further on its own to 256-color, grayscale, or plain ASCII.
-- **`SixelImageRenderer`** — real pixels via the DEC sixel protocol, supported by xterm (built with sixel), foot, WezTerm, mlterm, contour, recent Konsole and VTE, iTerm2, and Windows Terminal 1.22+. Sixel is indexed, so the picture is reduced to a palette (256 colors by default) chosen per-image by median cut — entries are spent where the picture actually has detail rather than on a fixed grid.
-- **`KittyImageRenderer`** — real pixels via the kitty graphics protocol, supported by kitty, WezTerm, and Ghostty. It transmits the pixels as they are — full 24-bit color and a real alpha channel, no palette — so it is preferred wherever both are available.
+- **`HalfBlockImageRenderer`**: the fallback, and what detection leaves in place when the terminal offers nothing better. Colored `▀` characters; works in any terminal that can do color at all, and degrades further on its own to 256-color, grayscale, or plain ASCII.
+- **`SixelImageRenderer`**: real pixels via the DEC sixel protocol, supported by xterm (built with sixel), foot, WezTerm, mlterm, contour, recent Konsole and VTE, iTerm2, and Windows Terminal 1.22+. Sixel is indexed, so the picture is reduced to a palette (256 colors by default) chosen per-image by median cut: entries are spent where the picture actually has detail rather than on a fixed grid.
+- **`KittyImageRenderer`**: real pixels via the kitty graphics protocol, supported by kitty, WezTerm, and Ghostty. It transmits the pixels as they are (full 24-bit color and a real alpha channel, no palette), so it is preferred wherever both are available.
 
 Both take the terminal's cell size in pixels (`new SixelImageRenderer(cellPixelWidth: 10, cellPixelHeight: 20)`), which is what converts between the pixels they draw in and the character cells the rest of the library speaks in. The defaults suit most terminals; raise them if pictures come out smaller than expected.
 
 #### Detecting what the terminal can do ####
 
-Detection happens when your `SimulationApp` is constructed, via `ImageRenderers.AutoDetect()`. It asks the terminal directly (`AnsiConsole.ProbeGraphicsProtocol()` writes a query and reads the reply off standard input — the only way to settle xterm, which has sixel only when built and started for it, and Windows Terminal, which publishes no version to say whether it is 1.22 or later), and falls back to the environment the terminal advertises itself through (`TERM`, `KITTY_WINDOW_ID`, `TERM_PROGRAM`, `VTE_VERSION`, and so on) when there is no terminal to ask. It is deliberately biased towards half blocks: **guessing wrong the safe way costs picture quality, guessing wrong the other way fills the screen with raw escape sequences.** Multiplexers (tmux, screen) report as half blocks too, since they rewrite escape sequences and need per-user passthrough configuration to let graphics past.
+Detection happens when your `SimulationApp` is constructed, via `ImageRenderers.AutoDetect()`. It asks the terminal directly (`AnsiConsole.ProbeGraphicsProtocol()` writes a query and reads the reply off standard input, the only way to settle xterm, which has sixel only when built and started for it, and Windows Terminal, which publishes no version to say whether it is 1.22 or later), and falls back to the environment the terminal advertises itself through (`TERM`, `KITTY_WINDOW_ID`, `TERM_PROGRAM`, `VTE_VERSION`, and so on) when there is no terminal to ask. It is deliberately biased towards half blocks: **guessing wrong the safe way costs picture quality, guessing wrong the other way fills the screen with raw escape sequences.** Multiplexers (tmux, screen) report as half blocks too, since they rewrite escape sequences and need per-user passthrough configuration to let graphics past.
 
-Because the terminal answers on standard input, the probe must run before anything else reads keys — and it does, by construction: it runs while the simulation is being created, and the library's own key reading starts on the first tick, which cannot come earlier. It never throws, and it is bounded by a timeout. Detection runs once per process and never overrules you: assign `ImageRenderers.Default` before creating the simulation and detection stands down entirely; assign it after and your choice replaces the answer. If you render images *before* creating the simulation, call `ImageRenderers.AutoDetect()` yourself at the top of `Main` — it is the same once-only detection, just earlier, and the constructor's later call becomes a no-op.
+Because the terminal answers on standard input, the probe must run before anything else reads keys, and it does, by construction: it runs while the simulation is being created, and the library's own key reading starts on the first tick, which cannot come earlier. It never throws, and it is bounded by a timeout. Detection runs once per process and never overrules you: assign `ImageRenderers.Default` before creating the simulation and detection stands down entirely; assign it after and your choice replaces the answer. If you render images *before* creating the simulation, call `ImageRenderers.AutoDetect()` yourself at the top of `Main`; it is the same once-only detection, just earlier, and the constructor's later call becomes a no-op.
 
-To see what any of this looks like on your own terminal, the example's **Force slideshow render type** menu item redraws the same photos with each render type in turn — kitty, sixel, half blocks in true color / 256 colors / grayscale, and the colorless ASCII fallback — alongside an *Auto* choice that reports whichever one the probe settled on. Forcing a protocol the terminal does not speak is instructive rather than harmful: you get the screenful of escape-sequence garbage that detection exists to avoid.
+To see what any of this looks like on your own terminal, the example's **Force slideshow render type** menu item redraws the same photos with each render type in turn (kitty, sixel, half blocks in true color / 256 colors / grayscale, and the colorless ASCII fallback) alongside an *Auto* choice that reports whichever one the probe settled on. Forcing a protocol the terminal does not speak is instructive rather than harmful: you get the screenful of escape-sequence garbage that detection exists to avoid.
 
-Frames present themselves through a built-in `ConsolePresenter` (flicker-free: changed rows only, overwritten in place, one write per update). Subscribing your own handler to `ScreenBufferDirtyEvent` takes presentation over — the built-in presenter stands down — and a handler that writes frames itself instead of handing them to a `ConsolePresenter` must call `AnsiGraphics.StripMarkers(frame)` first: true-pixel renderers mark the rows a picture covers so the presenter knows not to erase through them, and those markers must not reach the terminal. Frames without images pass through untouched.
+Frames present themselves through a built-in `ConsolePresenter` (flicker-free: changed rows only, overwritten in place, one write per update). Subscribing your own handler to `ScreenBufferDirtyEvent` takes presentation over (the built-in presenter stands down), and a handler that writes frames itself instead of handing them to a `ConsolePresenter` must call `AnsiGraphics.StripMarkers(frame)` first: true-pixel renderers mark the rows a picture covers so the presenter knows not to erase through them, and those markers must not reach the terminal. Frames without images pass through untouched.
 
 ## File & folder browser ##
 
@@ -140,13 +140,13 @@ FileDialog.SelectFolder(SimUnit, startDirectory: "C:\\",
     onFolderSelected: path => { /* do something with the chosen folder */ });
 ```
 
-The dialog pushes itself on top of the current screen and lets the user navigate drives and folders — type a number to open an entry, `U` to go up, `D` to list drives, `N`/`P` to page through a long folder, and `C` to cancel (plus `S` to confirm the current folder when picking a folder). When the user chooses, your callback runs with the full path and the dialog closes itself. An empty extension filter shows every file.
+The dialog pushes itself on top of the current screen and lets the user navigate drives and folders: type a number to open an entry, `U` to go up, `D` to list drives, `N`/`P` to page through a long folder, and `C` to cancel (plus `S` to confirm the current folder when picking a folder). When the user chooses, your callback runs with the full path and the dialog closes itself. An empty extension filter shows every file.
 
-The dialog's window and form ship inside the library and are discovered automatically — nothing to register. An app that overrides `AllowedWindows` to curate its window list must include `typeof(FileDialogWindow)`.
+The dialog's window and form ship inside the library and are discovered automatically; nothing to register. An app that overrides `AllowedWindows` to curate its window list must include `typeof(FileDialogWindow)`.
 
 ## Progress bars & graphs ##
 
-WolfCurses ships a set of drop-in **display widgets** (in `WolfCurses.Window.Control`) that turn data into a block of text you return from your window or form's render — no extra windows to register. They are pure string producers, so they compose with everything else (including ANSI images) and update in place as your data changes.
+WolfCurses ships a set of drop-in **display widgets** (in `WolfCurses.Window.Control`) that turn data into a block of text you return from your window or form's render, with no extra windows to register. They are pure string producers, so they compose with everything else (including ANSI images) and update in place as your data changes.
 
 ```csharp
 using WolfCurses.Window.Control;
@@ -169,26 +169,26 @@ string chart = new BarChart { Width = 20 }.Render(new[]
 string graph = new LineGraph { Width = 40, Height = 10 }.Render(samples);
 ```
 
-- **`ProgressBar`** — determinate bar with configurable width, filled/empty glyphs, optional brackets, percentage, and a leading label. Clamps out-of-range and non-finite input (a non-positive maximum renders empty rather than throwing). For a quick one-off, the older static `TextProgress.DrawProgressBar(value, max, size)` is still there; `MarqueeBar` gives you an indeterminate ping-pong bar and `SpinningPixel` a spinner.
-- **`Sparkline`** — a series drawn as one line of block glyphs (`▁▂▃▄▅▆▇█`), auto-scaled between the series min/max or a range you pin with `Minimum`/`Maximum`. Handy next to a label.
-- **`BarChart`** — one row per `BarChartValue`, labels aligned to a common width, bars scaled to the largest value, with an optional aligned "track" and printed values.
-- **`LineGraph`** — plots a series across a `Width`×`Height` grid (top = max, bottom = min) with optional connecting segments, area fill, a left Y-axis with min/max scale labels, and a bottom X-axis — good for a rolling metric over time.
+- **`ProgressBar`**: determinate bar with configurable width, filled/empty glyphs, optional brackets, percentage, and a leading label. Clamps out-of-range and non-finite input (a non-positive maximum renders empty rather than throwing). For a quick one-off, the older static `TextProgress.DrawProgressBar(value, max, size)` is still there; `MarqueeBar` gives you an indeterminate ping-pong bar and `SpinningPixel` a spinner.
+- **`Sparkline`**: a series drawn as one line of block glyphs (`▁▂▃▄▅▆▇█`), auto-scaled between the series min/max or a range you pin with `Minimum`/`Maximum`. Handy next to a label.
+- **`BarChart`**: one row per `BarChartValue`, labels aligned to a common width, bars scaled to the largest value, with an optional aligned "track" and printed values.
+- **`LineGraph`**: plots a series across a `Width`×`Height` grid (top = max, bottom = min) with optional connecting segments, area fill, a left Y-axis with min/max scale labels, and a bottom X-axis, good for a rolling metric over time.
 
 The multi-line widgets join their rows with the platform newline and emit no trailing newline, so they slot cleanly into surrounding text. The example app's **Progress bars & graphs** menu item shows all of them animating together off the simulation tick:
 
 ![The example's progress bars and graphs demo: a progress bar, marquee, sparkline, bar chart and scrolling line graph all animating together](docs/demo-progress-graphs.gif)
 
-*`ProgressBar`, `MarqueeBar`, `Sparkline`, `BarChart` and `LineGraph` animating together — every one of them just a string returned from the form's render.*
+*`ProgressBar`, `MarqueeBar`, `Sparkline`, `BarChart` and `LineGraph` animating together, every one of them just a string returned from the form's render.*
 
 ## Dialogs & panels ##
 
-Beyond the file browser, WolfCurses ships ready-made **modal dialogs** and a **panel** widget so common interactions don't have to be built from scratch. The dialogs push themselves on top of the current screen, take over input, and call you back with the result before closing themselves — the same pattern as `FileDialog`. From inside a window the simulation is available as `SimUnit`.
+Beyond the file browser, WolfCurses ships ready-made **modal dialogs** and a **panel** widget so common interactions don't have to be built from scratch. The dialogs push themselves on top of the current screen, take over input, and call you back with the result before closing themselves, the same pattern as `FileDialog`. From inside a window the simulation is available as `SimUnit`.
 
 ```csharp
 using WolfCurses.Controls;
 using WolfCurses.Window.Control;
 
-// A bordered panel (a pure string widget — no window needed):
+// A bordered panel (a pure string widget, no window needed):
 string panel = new Box { Title = "Status", Border = BoxBorderEnum.Double, Padding = 1 }.Render("All systems nominal.");
 
 // Pick one option from a list (or ChooseMany for multi-select, returning several):
@@ -206,12 +206,12 @@ TextInputDialog.Prompt(SimUnit, "What is your name?",
     validator: v => v.Length < 2 ? "Name must be at least 2 characters." : null);
 ```
 
-- **`Box`** — draws a border (single, double, rounded, ASCII, or none) around any text, with an optional aligned title and interior padding. Widths are measured ignoring ANSI color escapes, so it frames colored text and even ANSI images correctly. The dialogs use it for their own framing.
-- **`SelectList`** — a paginated picker. `Choose` returns the chosen option (by index, or by item with the generic overload); `ChooseMany` lets the user check several and returns them all. Numbers pick/toggle, `S` confirms a multi-select, `A`/`X` select all/none, `N`/`P` page, `C` cancels.
-- **`MessageBox`** — `Show` for a simple acknowledgement, `Confirm` for a yes/no question, or the buttons overload for yes/no/cancel; the callback receives the `MessageBoxResultEnum`.
-- **`TextInputDialog`** — `Prompt` for a line of text, optionally pre-filled with a default, validated (a returned message rejects and keeps the dialog open), and/or masked so typed characters echo as asterisks. Submitting a blank line cancels.
+- **`Box`**: draws a border (single, double, rounded, ASCII, or none) around any text, with an optional aligned title and interior padding. Widths are measured ignoring ANSI color escapes, so it frames colored text and even ANSI images correctly. The dialogs use it for their own framing.
+- **`SelectList`**: a paginated picker. `Choose` returns the chosen option (by index, or by item with the generic overload); `ChooseMany` lets the user check several and returns them all. Numbers pick/toggle, `S` confirms a multi-select, `A`/`X` select all/none, `N`/`P` page, `C` cancels.
+- **`MessageBox`**: `Show` for a simple acknowledgement, `Confirm` for a yes/no question, or the buttons overload for yes/no/cancel; the callback receives the `MessageBoxResultEnum`.
+- **`TextInputDialog`**: `Prompt` for a line of text, optionally pre-filled with a default, validated (a returned message rejects and keeps the dialog open), and/or masked so typed characters echo as asterisks. Submitting a blank line cancels.
 
-Each dialog is a window shipped in the library, so it is discovered automatically — nothing to register. An app that overrides `AllowedWindows` must include the window types it uses (`typeof(SelectListWindow)`, `typeof(MessageBoxWindow)`, `typeof(TextInputWindow)`). The example app demonstrates all four.
+Each dialog is a window shipped in the library, so it is discovered automatically; nothing to register. An app that overrides `AllowedWindows` must include the window types it uses (`typeof(SelectListWindow)`, `typeof(MessageBoxWindow)`, `typeof(TextInputWindow)`). The example app demonstrates all four.
 
 ## Purpose ##
 
