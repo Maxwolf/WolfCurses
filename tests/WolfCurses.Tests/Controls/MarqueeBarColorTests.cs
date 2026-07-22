@@ -239,6 +239,49 @@ namespace WolfCurses.Tests.Controls
                 Assert.DoesNotContain(ESCAPE, bar.Step());
         }
 
+        [Fact]
+        public void StyledRenderIsAStyledStepWithoutTheTrailingNewline()
+        {
+            // The newline-free Render() must carry exactly the same woven-in escapes as Step(), just without the
+            // trailing newline — proved by stepping a Render() bar and a Step() bar in lockstep.
+            var rendered = new MarqueeBar
+            {
+                ColorMode = AnsiColorModeEnum.TrueColor,
+                PointerStyle = ConsoleColor.Red,
+                TrackStyle = ConsoleColor.Blue
+            };
+            var stepped = new MarqueeBar
+            {
+                ColorMode = AnsiColorModeEnum.TrueColor,
+                PointerStyle = ConsoleColor.Red,
+                TrackStyle = ConsoleColor.Blue
+            };
+
+            for (var frame = 0; frame < 60; frame++)
+                Assert.Equal(rendered.Render() + Text.NL, stepped.Step());
+        }
+
+        [Fact]
+        public void NoneColorModeMakesAStyledRenderEmitNoEscapes()
+        {
+            // The None "emit no escapes" guarantee holds for the newline-free producer too, not just Step().
+            var plain = new MarqueeBar();
+            var suppressed = new MarqueeBar
+            {
+                ColorMode = AnsiColorModeEnum.None,
+                PointerStyle = ConsoleColor.Red,
+                TrackStyle = new TextStyle(ConsoleColor.White, ConsoleColor.DarkBlue, true)
+            };
+
+            for (var frame = 0; frame < 60; frame++)
+            {
+                var rendered = suppressed.Render();
+
+                Assert.Equal(plain.Render(), rendered);
+                Assert.DoesNotContain(ESCAPE, rendered);
+            }
+        }
+
         private static string StripEscapes(string text)
         {
             return Regex.Replace(text, @"\x1b\[[0-9;]*m", string.Empty);
