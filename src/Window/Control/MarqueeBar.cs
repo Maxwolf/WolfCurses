@@ -86,7 +86,11 @@ namespace WolfCurses.Window.Control
         }
 
         /// <summary>
-        ///     prints the progress bar according to pointers and current Direction
+        ///     Advances the marquee one frame and returns it <b>without</b> a trailing newline, so it drops inline into
+        ///     a caller's rendered text the way <see cref="SpinningPixel.Step" /> and the other producers in this
+        ///     namespace do — every one of them is newline-free, and a caller composing a line should not have to trim
+        ///     one off. <see cref="Step" /> is exactly this plus an <see cref="Environment.NewLine" />, kept for
+        ///     consumers that already rely on the trailing newline.
         ///     <para>
         ///         Color is applied to the <em>returned</em> string only, never to the stored bar. That is not a
         ///         stylistic choice: this class animates by mutating one plain string in place — it blanks the old
@@ -97,10 +101,8 @@ namespace WolfCurses.Window.Control
         ///         copy.
         ///     </para>
         /// </summary>
-        /// <returns>
-        ///     The <see cref="string" />.
-        /// </returns>
-        public string Step()
+        /// <returns>The current marquee frame, colored if a style is set, with no trailing newline.</returns>
+        public string Render()
         {
             if (_currdir == DirectionEnum.Right)
             {
@@ -117,9 +119,20 @@ namespace WolfCurses.Window.Control
                     _currdir = DirectionEnum.Right;
             }
 
-            // The newline is appended after decoration, so any style opened for the bar is closed before the line
-            // break and never bleeds onto whatever the owner renders next.
-            return Decorate(_bar) + Environment.NewLine;
+            return Decorate(_bar);
+        }
+
+        /// <summary>
+        ///     Advances the marquee one frame and returns it followed by an <see cref="Environment.NewLine" />. The
+        ///     widget's original producer, unchanged so existing consumers keep the trailing newline they relied on;
+        ///     new inline callers should prefer <see cref="Render" />, which returns the same frame without it. The
+        ///     newline is appended after decoration, so any style opened for the bar is closed before the line break
+        ///     and never bleeds onto whatever the owner renders next.
+        /// </summary>
+        /// <returns>The current marquee frame, colored if a style is set, followed by a newline.</returns>
+        public string Step()
+        {
+            return Render() + Environment.NewLine;
         }
 
         /// <summary>

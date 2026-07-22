@@ -95,7 +95,7 @@ new BarChart { Width = 20 }.Render(new[] { new BarChartValue("Wood", 12), new Ba
 new LineGraph { Width = 40, Height = 10 }.Render(samples);             // 2-D plot over time
 ```
 
-`ProgressBar` (determinate), `Sparkline`, `BarChart`, and `LineGraph` are pure string producers with robust clamping and edge-case handling (empty/flat/negative/non-finite input); `MarqueeBar`/`SpinningPixel` cover the indeterminate cases. The example app's **Progress bars & graphs** screen animates them all off the simulation tick.
+`ProgressBar` (determinate), `Sparkline`, `BarChart`, and `LineGraph` are pure string producers with robust clamping and edge-case handling (empty/flat/negative/non-finite input); `MarqueeBar`/`SpinningPixel` cover the indeterminate cases (`MarqueeBar.Render()` and `SpinningPixel.Step()` return a frame with no trailing newline, so they drop inline; `MarqueeBar.Step()` adds one, for callers that relied on it). Every one of these is just a string, so they compose into your own rendered output with no scene graph — the example app's **Progress bars & graphs** screen animates them all off the simulation tick, but a plain console app can print them just as well.
 
 They also colour. Each field of a widget takes a `TextStyle` (a `ConsoleColor` your theme still gets an opinion about, or an exact `Rgb24`, plus a background and bold), and the data widgets take a `ColorRamp` — read across the drawn extent (`Spread`) or against the datum's own value (`Level`):
 
