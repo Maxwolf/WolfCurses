@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -26,6 +26,13 @@
     <None Include="..\..\media\*.jpg" Link="images\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\media\*.png" Link="images\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\media\*.gif" Link="images\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The demo helpers (DemoImages, RendererSwitch, FrameCounter) are internal because nothing outside this app
+         should build on them - but its own test project has to reach them, the same way the library opens itself
+         to WolfCurses.Tests. Nothing else is granted access. -->
+    <InternalsVisibleTo Include="WolfCurses.Example.Tests" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+  <!-- References the GAMES app, and nothing references this. That direction is the whole point of the project
+       existing separately: WolfCurses.Tests tests the library and must never learn that an example exists, because
+       the package has to ship without them. Anything here is free to reach into the example, since the example is
+       already downstream of the library. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\example\WolfCurses.Games\WolfCurses.Games.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
+  </ItemGroup>
+
+  <!-- The chess artwork, so ChessBoardArt finds it beside the test binary exactly as it does beside the game.
+       Without this the rendering tests would silently take the "no artwork, fall back to text" path and pass. -->
+  <ItemGroup>
+    <None Include="..\..\example\WolfCurses.Games\Assets\chess\*.png" Link="chess\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
