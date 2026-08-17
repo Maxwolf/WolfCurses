@@ -61,7 +61,7 @@ namespace WolfCurses.Example
             AddCommand(ShowPrideFlags, ExampleCommandsEnum.PrideFlags);
             AddCommand(CloseSimulation, ExampleCommandsEnum.CloseSimulation);
 
-            // Flex the WolfCurses logo as an ANSI graphics splash before the menu; pressing ENTER reveals it.
+            // Open on the WolfCurses wordmark in ASCII art with a rainbow sliding through it; ENTER reveals the menu.
             SetForm(typeof (LogoSplashDialog));
         }
 

@@ -16,7 +16,7 @@ namespace WolfCurses.Graphics
     ///     </para>
     ///     <para>
     ///         Why <see cref="AnsiImage" /> shows this rather than throwing: the documented way to use this library is
-    ///         <c>private readonly string _logo = AnsiImage.RenderFile("media/logo.jpg");</c> — a field initializer,
+    ///         <c>private readonly string _logo = AnsiImage.RenderFile("media/logo.png");</c> — a field initializer,
     ///         where an exception surfaces as a <see cref="TypeInitializationException" /> naming the wrong type, from
     ///         a stack that no longer mentions the image. And in a text UI there is nowhere for an exception to go: the
     ///         console is the screen, so a stack trace lands on top of the interface. A picture that is visibly wrong,

@@ -8,7 +8,7 @@ Contains example implementation of a console application using the Wolf curses l
 
 Fork this repository and use it as the base for your next application or just look at the code and cherry pick from it as you please.
 
-![A cursing wolf.](https://raw.githubusercontent.com/Maxwolf/WolfCurses/master/media/logo.jpg)
+![A cursing wolf.](https://raw.githubusercontent.com/Maxwolf/WolfCurses/master/media/logo.gif)
 
 ## NuGet Package ##
 
@@ -34,7 +34,7 @@ dotnet build WolfCurses.sln
 
 ## Example Implementation ##
 
-A runnable example console application lives in this repository at [`example/WolfCurses.Example`](example/WolfCurses.Example). It is its own project (referencing the library directly) and shows a few different menus, windows, and forms, plus a WolfCurses logo splash on startup, **Slideshow** / **Compositing** menu items that display the `media/` photographs (and a transparent penguin composited over them), a **Show animated GIF** item that plays an animated GIF on loop at the speed the file asks for, and three **Sprite Test** items. **(Basic)** bounces the DVD logo around a photograph like the screensaver did, **(Advanced)** flies five animated GIFs at random sizes through one another while adding and removing them from the scene on a loop, and **(Collision)** lets you walk one penguin into another with the arrow keys, all with a live fps readout. A **Force slideshow render type** item redraws those same photos with every render type from a terminal's real pixels down to colorless ASCII, and **file/folder browser** menu items pick an image to display or a folder to report. Run it with:
+A runnable example console application lives in this repository at [`example/WolfCurses.Example`](example/WolfCurses.Example). It is its own project (referencing the library directly) and shows a few different menus, windows, and forms, plus an ASCII-art WolfCurses wordmark on startup with a rainbow sliding through it, **Slideshow** / **Compositing** menu items that display the `media/` photographs (and a transparent penguin composited over them), a **Show animated GIF** item that plays an animated GIF on loop at the speed the file asks for, and three **Sprite Test** items. **(Basic)** bounces the DVD logo around a photograph like the screensaver did, **(Advanced)** flies five animated GIFs at random sizes through one another while adding and removing them from the scene on a loop, and **(Collision)** lets you walk one penguin into another with the arrow keys, all with a live fps readout. A **Force render type** item overrides the whole graphics stack — a terminal's real pixels (kitty or sixel), colored half blocks at true color, 256 colors or grayscale, colorless ASCII, or *Auto* to hand it back to the startup probe — then snaps back to the menu, so whichever demo you open next is drawn that way. The color modes reach further than the pictures: widgets and styled prose resolve through the same setting, so forcing grayscale greys the graphs and the pride flags too. **File/folder browser** menu items pick an image to display or a folder to report. Run it with:
 
 ```cmd
 dotnet run --project example/WolfCurses.Example
@@ -61,7 +61,7 @@ AnsiConsole.Enable();
 
 // Decode + render ONCE and cache the string; the escapes never change, and a window's
 // OnRenderWindow runs every tick, so rendering there would re-decode the image constantly:
-private readonly string _logo = AnsiImage.RenderFile("media/logo.jpg");
+private readonly string _logo = AnsiImage.RenderFile("media/logo.png");
 
 // ...then just return the cached text from your window/form:
 public override string OnRenderWindow() => _logo;

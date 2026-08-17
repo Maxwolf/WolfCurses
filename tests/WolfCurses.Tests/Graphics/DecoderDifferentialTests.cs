@@ -27,6 +27,7 @@ namespace WolfCurses.Tests.Graphics
         [Theory]
         [InlineData("image_004.png")] // 8-bit truecolour
         [InlineData("transparent_test.png")] // 8-bit truecolour with alpha
+        [InlineData("logo.png")] // the project logo: 8-bit truecolour with alpha, 1044x234
         [InlineData("cool.gif")] // GIF: 426x318, global table, one interlaced frame
         [InlineData("animated.gif")] // GIF: 540x540, 91 frames
         [InlineData("transparent_anim.gif")] // GIF: 200x197, 8 frames, transparency + disposal 2
@@ -45,7 +46,6 @@ namespace WolfCurses.Tests.Graphics
         }
 
         [Theory]
-        [InlineData("logo.jpg")] // baseline, 4:4:4
         [InlineData("image_002.jpg")] // baseline, 4:4:4, 2000x1500
         [InlineData("image_001.jpg")] // progressive, 4:2:0 - exercises chroma upsampling
         [InlineData("image_003.jpg")] // progressive, 4:4:4
@@ -82,7 +82,7 @@ namespace WolfCurses.Tests.Graphics
             // RGB and then render as nothing at all.
             Assert.SkipUnless(TestImages.Available, "Image fixtures are not present in media/.");
 
-            foreach (var fixture in new[] {"logo.jpg", "image_001.jpg"})
+            foreach (var fixture in new[] {"image_002.jpg", "image_001.jpg"})
             {
                 var pixels = Decode(fixture, _builtIn);
                 for (var y = 0; y < pixels.Height; y += 37)

@@ -30,7 +30,7 @@ namespace WolfCurses.Example.Demos
     [ParentWindow(typeof (ExampleWindow))]
     public sealed class ImageErrorDialog : InputForm<ExampleWindowInfo>
     {
-        /// <summary>How much of the real logo the "interrupted download" case keeps.</summary>
+        /// <summary>How much of the real photograph the "interrupted download" case keeps.</summary>
         private const int TruncateAfterBytes = 100;
 
         /// <summary>
@@ -55,9 +55,9 @@ namespace WolfCurses.Example.Demos
 
             // Three loads that each fail differently. None of these calls throws; each returns an image that
             // renders as the error checkerboard and carries its reason in Error.
-            var mistyped = AnsiImage.FromFile(Path.Combine(DemoImages.Folder, "logo_typo.jpg"));
+            var mistyped = AnsiImage.FromFile(Path.Combine(DemoImages.Folder, "image_00two.jpg"));
             var imposter = AnsiImage.FromBytes(_savedErrorPage);
-            var truncated = AnsiImage.FromBytes(TruncatedLogo());
+            var truncated = AnsiImage.FromBytes(TruncatedPhoto());
 
             // Leave room under the picture for the diagnostics, and keep the checkerboard modest on tall
             // terminals — past a dozen rows it teaches nothing extra.
@@ -76,10 +76,10 @@ namespace WolfCurses.Example.Demos
             body.Append("Three different failures just drew that same texture; each reason is in AnsiImage.Error:"
                 .WordWrap(width));
             body.AppendLine();
-            AppendCase(body, width, 1, "Mistyped path - images/logo_typo.jpg does not exist:", mistyped);
+            AppendCase(body, width, 1, "Mistyped path - images/image_00two.jpg does not exist:", mistyped);
             AppendCase(body, width, 2, "A \".jpg\" that is really a saved 404 page:", imposter);
-            AppendCase(body, width, 3, $"logo.jpg cut off after {TruncateAfterBytes} bytes (interrupted download):",
-                truncated);
+            AppendCase(body, width, 3,
+                $"image_002.jpg cut off after {TruncateAfterBytes} bytes (interrupted download):", truncated);
             body.Append(("Check IsError to handle a failure deliberately; the full exception is in Error and on " +
                          "Trace. Code that wants the throw instead calls the decoder directly: " +
                          "ImageDecoders.Default.Decode(stream) is the strict path.").WordWrap(width));
@@ -106,16 +106,16 @@ namespace WolfCurses.Example.Demos
         }
 
         /// <summary>
-        ///     The real logo's first <see cref="TruncateAfterBytes" /> bytes: enough to be recognized as a JPEG, not
-        ///     enough to decode — exactly what an interrupted download leaves behind. Falls back to a bare JPEG
-        ///     signature if the logo is not beside the executable, so the demo fails the intended way regardless.
+        ///     A real photograph's first <see cref="TruncateAfterBytes" /> bytes: enough to be recognized as a JPEG,
+        ///     not enough to decode — exactly what an interrupted download leaves behind. Falls back to a bare JPEG
+        ///     signature if the file is not beside the executable, so the demo fails the intended way regardless.
         /// </summary>
-        private static byte[] TruncatedLogo()
+        private static byte[] TruncatedPhoto()
         {
-            if (!File.Exists(DemoImages.LogoPath))
+            if (!File.Exists(DemoImages.TruncatablePhotoPath))
                 return new byte[] {0xFF, 0xD8, 0xFF, 0xE0};
 
-            var bytes = File.ReadAllBytes(DemoImages.LogoPath);
+            var bytes = File.ReadAllBytes(DemoImages.TruncatablePhotoPath);
             var head = new byte[Math.Min(TruncateAfterBytes, bytes.Length)];
             Array.Copy(bytes, head, head.Length);
             return head;

@@ -64,8 +64,11 @@ namespace WolfCurses.Example.Demos
         /// <summary>Folder next to the executable that holds the copied media images.</summary>
         public static string Folder => Path.Combine(AppContext.BaseDirectory, "images");
 
-        /// <summary>Path to the WolfCurses logo used for the startup splash.</summary>
-        public static string LogoPath => Path.Combine(Folder, "logo.jpg");
+        /// <summary>
+        ///     Path to the photograph the error demo cuts short to make an "interrupted download" out of. Any real
+        ///     JPEG would do; this is a baseline one, which is the case that reads as a plain truncation.
+        /// </summary>
+        public static string TruncatablePhotoPath => Path.Combine(Folder, "image_002.jpg");
 
         /// <summary>Path to the animated GIF played by the animation demo.</summary>
         public static string AnimatedGifPath => Path.Combine(Folder, "animated.gif");
@@ -78,10 +81,11 @@ namespace WolfCurses.Example.Demos
         ///     ordered by name.
         ///     <para>
         ///         Deliberately not everything in the folder, which is why this is a filter and not a directory listing.
-        ///         <c>media/</c> is a fixture drawer rather than a gallery: the logo is the startup splash, the penguin
-        ///         is what the compositing demo puts on top, and the GIFs belong to the animation demo — a slideshow
-        ///         would show each of those as a motionless first frame and teach nothing about either. The slideshows
-        ///         are about photographs, so they get the photographs, and every other demo names the one file it wants.
+        ///         <c>media/</c> is a fixture drawer rather than a gallery: the penguin is what the compositing demo
+        ///         puts on top, the logo is the README's banner and never appears in the app at all (the splash draws
+        ///         its own wordmark — see <see cref="LogoSplashDialog" />), and the GIFs belong to the animation demo,
+        ///         which a slideshow would show as a motionless first frame and teach nothing about. The slideshows are
+        ///         about photographs, so they get the photographs, and every other demo names the one file it wants.
         ///     </para>
         /// </summary>
         public static string[] SlideshowImages()

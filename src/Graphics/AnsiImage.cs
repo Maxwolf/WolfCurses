@@ -37,7 +37,7 @@ namespace WolfCurses.Graphics
     ///     AnsiConsole.Enable();
     ///
     ///     // Decode + render ONCE and cache the resulting string (the escapes never change):
-    ///     private readonly string _logo = AnsiImage.RenderFile("media/logo.jpg");
+    ///     private readonly string _logo = AnsiImage.RenderFile("media/logo.png");
     ///
     ///     // ...then in your window/form's OnRenderWindow just return the cached text every tick:
     ///     public override string OnRenderWindow() => _logo;

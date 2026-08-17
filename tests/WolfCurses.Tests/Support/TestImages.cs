@@ -30,7 +30,7 @@ namespace WolfCurses.Tests.Support
 
         /// <summary>Absolute path to the project logo (may not exist).</summary>
         public static string Logo =>
-            MediaFolder == null ? null : Path.Combine(MediaFolder, "logo.jpg");
+            MediaFolder == null ? null : Path.Combine(MediaFolder, "logo.png");
 
         /// <summary>Resolves a file inside the media folder by name.</summary>
         public static string Media(string fileName) =>

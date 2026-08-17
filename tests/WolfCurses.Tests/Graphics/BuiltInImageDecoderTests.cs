@@ -79,7 +79,7 @@ namespace WolfCurses.Tests.Graphics
 
         [Theory]
         [InlineData("image_004.png")] // PNG
-        [InlineData("logo.jpg")] // baseline JPEG
+        [InlineData("image_002.jpg")] // baseline JPEG
         [InlineData("image_001.jpg")] // progressive JPEG
         public void Decode_DispatchesOnContentNotExtension(string fixture)
         {

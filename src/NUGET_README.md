@@ -60,7 +60,7 @@ using WolfCurses.Graphics;
 AnsiConsole.Enable();
 
 // Decode + render ONCE and cache it; OnRenderWindow runs every tick, so never render there.
-private readonly string _logo = AnsiImage.RenderFile("media/logo.jpg");
+private readonly string _logo = AnsiImage.RenderFile("media/logo.png");
 public override string OnRenderWindow() => _logo;
 ```
 

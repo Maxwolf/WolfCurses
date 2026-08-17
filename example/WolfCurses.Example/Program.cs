@@ -23,9 +23,9 @@ namespace WolfCurses.Example
             Console.CancelKeyPress += Console_CancelKeyPress;
 
             // Nothing here teaches the library to read image files, deliberately: it already knows. WolfCurses decodes
-            // PNG, JPEG and GIF itself, so the logo splash and every picture in this app load with no set-up line at
-            // all, and the package still has no dependencies. This app is the proof — every image it shows goes
-            // through the built-in decoders.
+            // PNG, JPEG and GIF itself, so every picture in this app loads with no set-up line at all, and the package
+            // still has no dependencies. This app is the proof — every image it shows goes through the built-in
+            // decoders.
             //
             // Swapping in something else is one line, and StbImageDecoder next door is a complete example of the
             // thirty-line adapter it takes to wrap an imaging library you already have. Uncomment to use it here:
