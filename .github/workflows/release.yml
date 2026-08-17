@@ -1,0 +1,236 @@
+name: Release Demos
+
+# Manual release of the two example apps: WolfCurses.Example (the image/widget tour) and
+# WolfCurses.Games (Snake and Minesweeper). This is a showcase, not a distribution channel -
+# it exists so somebody can download a demo and run it without a toolchain, a clone or a
+# .NET install. Anyone actually building against the library takes it from NuGet instead,
+# which is what publish.yml does; the two are deliberately separate and their version
+# numbers are not related.
+#
+# Version is the current YYYY.M.D.H, tagged v2026.7.29.17 style, and marks the commit the
+# demos were built from.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version override (leave blank for the current YYYY.M.D.H)"
+        required: false
+        type: string
+
+env:
+  # The clock the version is read off. UTC keeps runs reproducible regardless of who
+  # dispatches them; set it to e.g. America/Chicago to number releases in local time.
+  RELEASE_TZ: UTC
+
+jobs:
+  # ---------------------------------------------------------------------------------------
+  # Version, tests, and the one build that is not tied to a platform.
+  # ---------------------------------------------------------------------------------------
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Compute version
+        id: version
+        run: |
+          set -euo pipefail
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="$(TZ="$RELEASE_TZ" date +'%Y.%-m.%-d.%-H')"
+          fi
+          # Two runs inside the same hour would want the same tag, and pushing a duplicate
+          # tag fails - so say so here rather than after twenty-two builds have run.
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null 2>&1; then
+            echo "::error::Tag v$VERSION already exists. Wait for the next hour or pass a version override."
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing v$VERSION from ${{ github.ref_name }} (${{ github.sha }})"
+
+      # The demos are the library's own showcase, so shipping them from a commit whose tests
+      # fail would be showcasing the wrong thing. Cheap, and a manual run can be dispatched
+      # from any branch, not just the one CI already gated.
+      - name: Test
+        run: dotnet test WolfCurses.sln -c Release
+
+      # The portable build is the answer for architectures with no runtime pack to be
+      # self-contained with (linux-loongarch64 and linux-riscv64 have .NET support but ship
+      # no Microsoft.NETCore.App.Runtime.* package, so `-r` cannot target them). It needs a
+      # .NET 10 runtime already installed and is launched with `dotnet <app>.dll`, but it is
+      # ~7 MB instead of ~75 and runs on anything the runtime does, including future targets.
+      - name: Publish portable (framework-dependent) demos
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          for proj in WolfCurses.Example WolfCurses.Games; do
+            out="publish/$proj-portable"
+            dotnet publish "example/$proj/$proj.csproj" -c Release -p:Version="$VERSION" -o "$out"
+            (cd "$out" && zip -qr "../../artifacts/$proj-v$VERSION-portable.zip" .)
+          done
+          ls -lh artifacts
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: demo-portable
+          path: artifacts/*
+          retention-days: 1
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------------------
+  # A self-contained download per platform. The matrix is every RID .NET 10 publishes a
+  # runtime pack for that makes sense for a console app - verified against nuget.org rather
+  # than assumed. Deliberately absent: linux-bionic-* (Android; a runtime pack exists, but
+  # there is no unpack-and-run terminal story for it) and the browser/iOS targets, which
+  # cannot host a console app at all.
+  #
+  # All of them build on the Linux runner: a self-contained publish is a file copy plus the
+  # apphost, so no per-OS runner and no native toolchain is involved.
+  # ---------------------------------------------------------------------------------------
+  demos:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      # Build every platform even when one breaks, so a bad RID shows up as one red square
+      # instead of hiding the other ten. The release job still requires all of them to pass.
+      fail-fast: false
+      matrix:
+        rid:
+          - win-x64
+          - win-x86
+          - win-arm64
+          - linux-x64
+          - linux-arm
+          - linux-arm64
+          - linux-musl-x64
+          - linux-musl-arm
+          - linux-musl-arm64
+          - osx-x64
+          - osx-arm64
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      # Single-file so a download is one executable plus the images/ folder the demos read
+      # (AppContext.BaseDirectory, the one path property single-file keeps honest).
+      # Trimming is deliberately OFF: window and form discovery is reflection over the
+      # loaded assemblies, and a trimmer has no way to see those types are used.
+      - name: Publish ${{ matrix.rid }}
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          RID: ${{ matrix.rid }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          for proj in WolfCurses.Example WolfCurses.Games; do
+            out="publish/$proj-$RID"
+            dotnet publish "example/$proj/$proj.csproj" \
+              -c Release -r "$RID" --self-contained true \
+              -p:PublishSingleFile=true -p:PublishTrimmed=false \
+              -p:Version="$VERSION" -o "$out"
+            case "$RID" in
+              win-*)
+                (cd "$out" && zip -qr "../../artifacts/$proj-v$VERSION-$RID.zip" .)
+                ;;
+              *)
+                # tar, not zip, so the executable bit survives the round trip - and set it
+                # explicitly first, since a cross-published apphost does not always carry one.
+                chmod +x "$out/$proj"
+                tar -czf "artifacts/$proj-v$VERSION-$RID.tar.gz" -C "$out" .
+                ;;
+            esac
+          done
+          ls -lh artifacts
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: demo-${{ matrix.rid }}
+          path: artifacts/*
+          retention-days: 1
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------------------
+  # Tag the commit and publish the GitHub Release. No .NET needed here - just files.
+  # ---------------------------------------------------------------------------------------
+  release:
+    needs: [prepare, demos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the tag and the GitHub Release
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Collect artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Compose release notes
+        run: |
+          set -euo pipefail
+          cat > release-notes.md <<EOF
+          Two demo apps built on WolfCurses. Every per-platform download is **self-contained** -
+          unpack and run, no .NET install needed. Both are terminal UIs, so start them from a
+          real terminal window rather than by double-clicking, and give the window some room.
+
+          | App | What it is |
+          | --- | --- |
+          | \`WolfCurses.Example\` | The library tour: image rendering (kitty/sixel/half blocks), sprites, progress bars and graphs, colored widgets, file and list dialogs. |
+          | \`WolfCurses.Games\` | A small arcade built on the library - Snake and Minesweeper, characters only. |
+
+          | Platform | Download |
+          | --- | --- |
+          | Windows | \`win-x64\`, \`win-arm64\`, \`win-x86\` (.zip) |
+          | macOS | \`osx-arm64\` (Apple silicon), \`osx-x64\` (Intel) (.tar.gz) |
+          | Linux (glibc) | \`linux-x64\`, \`linux-arm64\`, \`linux-arm\` (.tar.gz) |
+          | Linux (musl / Alpine) | \`linux-musl-x64\`, \`linux-musl-arm64\`, \`linux-musl-arm\` (.tar.gz) |
+          | Anything else | \`portable\` (.zip) - needs .NET 10 installed, run with \`dotnet WolfCurses.Example.dll\` |
+
+          On macOS and Linux, unpack with \`tar -xzf <file>\` and run \`./WolfCurses.Example\`.
+          macOS quarantines unsigned downloads, so if Gatekeeper objects:
+          \`xattr -d com.apple.quarantine ./WolfCurses.Example\`.
+
+          The \`portable\` build covers architectures that have no self-contained runtime pack
+          to build against, such as loongarch64 and riscv64.
+
+          ---
+
+          These are demonstrations. To build something with the library, install it from NuGet -
+          \`dotnet add package WolfCurses\` - which has no relation to the version number above.
+          EOF
+          cat release-notes.md
+
+      - name: Tag
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$VERSION" -m "WolfCurses demos v$VERSION"
+          git push origin "v$VERSION"
+
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >
+          gh release create "v$VERSION" artifacts/*
+          --title "Demos v$VERSION"
+          --notes-file release-notes.md
+          --generate-notes

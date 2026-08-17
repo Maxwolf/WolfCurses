@@ -1,12 +1,25 @@
 name: Publish to NuGet
 
+# Publishes the library itself, which is how anyone building against WolfCurses takes it.
+# The example apps are shipped separately by release.yml; the two share a version *scheme*
+# but not a number, since each is computed when its own workflow runs.
+#
+# Versions are date-based on purpose and must stay that way: old published versions
+# (2018.9.12.1) outrank semver 10.x in NuGet's ordering, so anything below 2018.x would
+# never show up as the latest release.
+
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Package version (leave blank for date-based YYYY.M.D.run#)"
+        description: "Package version (leave blank for the current YYYY.M.D.H)"
         required: false
         type: string
+
+env:
+  # The clock the version is read off. UTC keeps runs reproducible regardless of who
+  # dispatches them; set it to e.g. America/Chicago to number releases in local time.
+  RELEASE_TZ: UTC
 
 jobs:
   publish:
@@ -24,10 +37,31 @@ jobs:
       - name: Compute version
         id: version
         run: |
+          set -euo pipefail
           if [ -n "${{ inputs.version }}" ]; then
             VERSION="${{ inputs.version }}"
           else
-            VERSION="$(date +%Y.%-m.%-d).${{ github.run_number }}"
+            VERSION="$(TZ="$RELEASE_TZ" date +'%Y.%-m.%-d.%-H')"
+          fi
+          # The old scheme ended in github.run_number, which was unique by construction;
+          # an hour is not, so two runs in the same hour now want the same version. A
+          # published NuGet version can never be re-pushed, so ask nuget.org up front
+          # rather than discovering it from a 409 after the tests and pack have run.
+          # Best-effort by design: the flat-container index is CDN-cached and can lag a
+          # push by a few minutes, and an unreadable index falls through to the push,
+          # which rejects a duplicate anyway. It buys a clear message, not a guarantee.
+          INDEX="$(curl -sSL --max-time 30 "https://api.nuget.org/v3-flatcontainer/wolfcurses/index.json" || true)"
+          if VERSION="$VERSION" INDEX="$INDEX" python3 -c '
+          import json, os, sys
+          try:
+              versions = json.loads(os.environ["INDEX"])["versions"]
+          except Exception:
+              print("::warning::Could not read the nuget.org version index; skipping the duplicate check.")
+              sys.exit(1)
+          sys.exit(0 if os.environ["VERSION"] in versions else 1)
+          '; then
+            echo "::error::WolfCurses $VERSION is already on nuget.org. Wait for the next hour or pass a version override."
+            exit 1
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Publishing version $VERSION"
