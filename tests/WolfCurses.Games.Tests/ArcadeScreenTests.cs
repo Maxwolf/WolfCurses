@@ -108,7 +108,13 @@ namespace WolfCurses.Games.Tests
             Assert.True(CountHidden(game.Screen) < hiddenBefore,
                 "opening a square revealed nothing:\n" + game.Describe());
 
-            game.Type("f a1");
+            // Flagged wherever the board still shows a face-down square, read off the screen. Naming a fixed
+            // square is flaky and was: flagging a face-up square is correctly a no-op, the app's randomiser is not
+            // seeded, and whether the opening cascade reached a1 is a coin toss.
+            var hidden = FirstHiddenSquareName(game.Screen);
+            Assert.NotNull(hidden);
+
+            game.Type("f " + hidden);
             Assert.Contains("Mines 9 left", game.Screen, StringComparison.Ordinal);
         }
 
@@ -195,6 +201,31 @@ namespace WolfCurses.Games.Tests
         /// <summary>Whether the screen is showing the character board rather than the rendered picture.</summary>
         private static bool IsLetterBoard(string screen) =>
             screen.Contains("a  b  c  d  e  f  g  h", StringComparison.Ordinal);
+
+        /// <summary>
+        ///     The name of a square the board still shows as face down, read straight off the screen — which is the
+        ///     only place a screen test is entitled to look. Rows render as <c>│ 4 · · 1 …│</c>, so the cells sit at
+        ///     every second character from index four and the file follows from the offset.
+        /// </summary>
+        /// <param name="screen">The visible screen.</param>
+        /// <returns>A square such as "C4", or null if the whole board is face up.</returns>
+        private static string FirstHiddenSquareName(string screen)
+        {
+            foreach (var line in screen.Split('\n'))
+            {
+                var row = line.TrimEnd('\r');
+                if (row.Length < 6 || row[0] != '│' || !char.IsDigit(row[2]))
+                    continue;
+
+                for (var index = 4; index < row.Length; index += 2)
+                {
+                    if (row[index] == '·')
+                        return $"{(char) ('A' + (index - 4) / 2)}{row[2]}";
+                }
+            }
+
+            return null;
+        }
 
         /// <summary>How many squares on a minesweeper board are still face down.</summary>
         private static int CountHidden(string screen)

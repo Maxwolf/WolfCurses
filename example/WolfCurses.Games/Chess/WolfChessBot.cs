@@ -115,7 +115,21 @@ namespace WolfCurses.Games.Chess
             20, 30, 10, 0, 0, 10, 30, 20
         };
 
-        /// <summary>How long a whole move may take before the search gives up on going deeper.</summary>
+        /// <summary>
+        ///     How long a whole move may take, in accumulated <see cref="Think" /> time, before the search gives up
+        ///     on going deeper.
+        ///     <para>
+        ///         <b>This is the bot's only wall-clock dependency, and it is the one thing that makes its answer
+        ///         non-deterministic.</b> Everything else about the search is fixed — the root order, the carried
+        ///         alpha — so the same position at the same depth gives the same move and the same score however
+        ///         finely the work is sliced. When this deadline fires it does not: the search keeps whatever depth
+        ///         finished, so a machine under load can return a shallower answer than an idle one. That is the
+        ///         deliberate trade (a pathological position must not think forever) and not a bug, but anything
+        ///         comparing two searches has to hold the depth constant or it is comparing the machine's mood —
+        ///         which is exactly how a test of this class first came to fail only when the rest of the suite was
+        ///         running beside it.
+        ///     </para>
+        /// </summary>
         private static readonly TimeSpan _hardLimit = TimeSpan.FromSeconds(3);
 
         /// <summary>
