@@ -2,7 +2,6 @@
 // Timestamp 07/11/2026
 
 using System;
-using System.Diagnostics;
 using System.Text;
 using WolfCurses.Graphics;
 using WolfCurses.Window;
@@ -82,13 +81,16 @@ namespace WolfCurses.Example.Demos
         private static readonly TimeSpan _framePeriod = TimeSpan.FromMilliseconds(40);
 
         /// <summary>
-        ///     Runs for the life of the splash and is never restarted, so the gradient's position is a pure function of
-        ///     how long the screen has been up. Accumulating a phase per frame instead would let rounding drift.
+        ///     Paces the recompositions, and doubles as the phase clock.
+        ///     <para>
+        ///         Both halves come off one timer because they want different things from it and
+        ///         <see cref="IntervalTimer" /> keeps them apart: <see cref="IntervalTimer.TryConsume()" /> answers
+        ///         "is another frame due", while <see cref="IntervalTimer.TotalElapsed" /> — which nothing resets,
+        ///         deliberately — is how long the screen has been up, so the gradient's position stays a pure
+        ///         function of time. Accumulating a phase per frame instead would let rounding drift.
+        ///     </para>
         /// </summary>
-        private readonly Stopwatch _clock = Stopwatch.StartNew();
-
-        /// <summary>When the next recomposition is due, measured on <see cref="_clock" />.</summary>
-        private TimeSpan _nextFrame;
+        private readonly IntervalTimer _frame = new(_framePeriod);
 
         /// <summary>The composed banner, rebuilt on the clock and handed back unchanged by every render in between.</summary>
         private string _rendered;
@@ -116,11 +118,10 @@ namespace WolfCurses.Example.Demos
 
             // On the system tick, not the simulation tick: the simulation ticks once a second, and a gradient that
             // moved once a second would not read as movement at all.
-            if (_clock.Elapsed < _nextFrame)
+            if (!_frame.TryConsume())
                 return;
 
-            _nextFrame = _clock.Elapsed + _framePeriod;
-            _rendered = Compose(_clock.Elapsed.TotalSeconds);
+            _rendered = Compose(_frame.TotalElapsed.TotalSeconds);
         }
 
         /// <inheritdoc />

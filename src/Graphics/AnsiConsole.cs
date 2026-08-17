@@ -393,8 +393,16 @@ namespace WolfCurses.Graphics
                    major >= minimum;
         }
 
-        /// <summary>Whether standard output is redirected, reported as "yes" if the question itself fails.</summary>
-        internal static bool SafeIsOutputRedirected()
+        /// <summary>
+        ///     Whether standard output is redirected, reported as "yes" if the question itself fails.
+        ///     <para>
+        ///         The pessimistic answer is the safe one everywhere this is used: "there might be no terminal
+        ///         there" costs a plainer picture, where "there is definitely a terminal there" costs escape
+        ///         sequences printed as literal garbage into a file.
+        ///     </para>
+        /// </summary>
+        /// <returns>True when output is redirected, or when the console could not be asked.</returns>
+        public static bool SafeIsOutputRedirected()
         {
             try
             {
@@ -406,8 +414,39 @@ namespace WolfCurses.Graphics
             }
         }
 
-        /// <summary>Console window width in columns, or <paramref name="fallback" /> when there is no console.</summary>
-        internal static int SafeWindowWidth(int fallback = 80)
+        /// <summary>
+        ///     Console window width in columns, or 80 when there is no console to ask.
+        ///     <para>
+        ///         <b>Read it once into a local rather than calling it per row.</b> Every call is a live syscall —
+        ///         <c>GetConsoleScreenBufferInfo</c> on Windows, a <c>TIOCGWINSZ</c> ioctl elsewhere — and a render
+        ///         path that asks per cell is asking thousands of times a second for a number that changes when
+        ///         somebody drags a window edge.
+        ///     </para>
+        ///     <para>
+        ///         Public because every application that sizes anything to the terminal needs exactly this, and
+        ///         needs the two guards it carries: the <c>try</c> for a host with no console at all, and the
+        ///         <c>&gt; 0</c> check for one that answers zero. Both are load-bearing rather than defensive — a
+        ///         redirected test host reports zero, and a widget that then divides by it produces a layout no
+        ///         assertion can describe.
+        ///     </para>
+        /// </summary>
+        /// <returns>The console width in columns, or 80.</returns>
+        public static int SafeWindowWidth()
+        {
+            return SafeWindowWidth(80);
+        }
+
+        /// <summary>
+        ///     Console window width in columns, or <paramref name="fallback" /> when there is no console.
+        ///     <para>
+        ///         A separate overload rather than an optional parameter on <see cref="SafeWindowWidth()" />, because
+        ///         an optional parameter's default is compiled into every caller's call site: publishing it that way
+        ///         would freeze 80 into every consumer binary and make it impossible to change here later.
+        ///     </para>
+        /// </summary>
+        /// <param name="fallback">What to report when the console cannot say.</param>
+        /// <returns>The console width in columns, or <paramref name="fallback" />.</returns>
+        public static int SafeWindowWidth(int fallback)
         {
             try
             {
@@ -420,8 +459,23 @@ namespace WolfCurses.Graphics
             }
         }
 
-        /// <summary>Console window height in rows, or <paramref name="fallback" /> when there is no console.</summary>
-        internal static int SafeWindowHeight(int fallback = 24)
+        /// <summary>
+        ///     Console window height in rows, or 24 when there is no console to ask. Costs a syscall per call, the
+        ///     same as <see cref="SafeWindowWidth()" /> — read it into a local.
+        /// </summary>
+        /// <returns>The console height in rows, or 24.</returns>
+        public static int SafeWindowHeight()
+        {
+            return SafeWindowHeight(24);
+        }
+
+        /// <summary>
+        ///     Console window height in rows, or <paramref name="fallback" /> when there is no console. A separate
+        ///     overload for the reason given on <see cref="SafeWindowWidth(int)" />.
+        /// </summary>
+        /// <param name="fallback">What to report when the console cannot say.</param>
+        /// <returns>The console height in rows, or <paramref name="fallback" />.</returns>
+        public static int SafeWindowHeight(int fallback)
         {
             try
             {

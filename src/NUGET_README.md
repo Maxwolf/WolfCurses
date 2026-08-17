@@ -68,6 +68,27 @@ By default the image is scaled to fit the console window while keeping its aspec
 
 **Decoders included, and replaceable.** PNG, JPEG and GIF are decoded by the package itself, written from their specifications in pure managed code, so images work out of the box and this still has **zero dependencies**. PNG covers every colour type, bit depth and Adam7; JPEG covers baseline *and* progressive at any chroma subsampling; GIF covers 87a/89a, interlacing and transparency, and `GifDecoder.DecodeFrames` walks an animation frame by frame with its delays. They aim at correctness rather than speed, which is the right trade when the picture is about to be scaled down to fit a terminal anyway. Need another format, or more speed, or just to reuse the imaging library you already have? Implement `IImageDecoder` (a single method) and assign `ImageDecoders.Default` once at start-up; the example app has a [StbImageSharp](https://github.com/StbSharp/StbImageSharp) adapter to copy. `AnsiImage.FromPixels` needs no decoder at all.
 
+## Laying out styled text
+
+An escape sequence has length but no width, so `string.Length` is the wrong number for anything you want to pad, centre, or place beside something else — a colored row twenty columns wide can be hundreds of characters long. `AnsiText.VisibleLength` and `AnsiText.StripEscapes` are the library's own escape walk, made public for exactly this; they share one parser, so `StripEscapes(x).Length == VisibleLength(x)` always holds. `AnsiConsole.SafeWindowWidth()` / `SafeWindowHeight()` report the terminal size, or 80x24 when there is no terminal to ask (each call is a syscall — read it into a local rather than per row).
+
+## Real-time screens
+
+Anything that moves on its own — an animation, a game, a progress display that is not driven by input — paces itself with `IntervalTimer`, off the system tick rather than the once-a-second simulation tick:
+
+```csharp
+private readonly IntervalTimer _step = new(TimeSpan.FromMilliseconds(120));
+
+public override void OnTick(bool systemTick, bool skipDay)
+{
+    base.OnTick(systemTick, skipDay);
+    if (_step.TryConsume())
+        Advance();
+}
+```
+
+A late period is dropped rather than banked, so a slow frame is never repaid as a burst of instant ones. The companion is `Form<TData>.RestartOnActivate(_step)`: a form stops ticking while a dialog is on top of it, but its clock does not stop measuring, so without this it comes back owing every step that fell due while it was away and takes them all at once.
+
 **Missing textures look missing.** An image that can't be loaded (wrong path, corrupt file, unsupported format) becomes the magenta-and-black checkerboard familiar from game engines rather than throwing, because the documented usage is a field initializer (where an exception becomes a confusing `TypeInitializationException`) and because in a text UI a stack trace lands on top of your interface. The reason stays in `AnsiImage.Error`; `ImageDecoders.Default.Decode(stream)` still throws if you want to handle it yourself.
 
 ### Real pixels: sixel and kitty

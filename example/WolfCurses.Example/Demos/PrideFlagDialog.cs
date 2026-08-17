@@ -1,4 +1,4 @@
-// Created by Maxwolf (bigmaxwolf.com)
+﻿// Created by Maxwolf (bigmaxwolf.com)
 // Timestamp 07/20/2026
 
 using System;
@@ -238,10 +238,10 @@ namespace WolfCurses.Example.Demos
             // only reach a row or two per stripe, so Progress alone came out short and wide beside the rest. Capped so
             // a tall console does not simply make every flag bigger, and floored at one row per stripe (the outer
             // Max, for a flag with more stripes than the target) so the whole flag is always drawn.
-            var budget = Math.Max(stripes, Math.Min(SafeWindowHeight() - 12, TargetFlagHeight));
+            var budget = Math.Max(stripes, Math.Min(AnsiConsole.SafeWindowHeight() - 12, TargetFlagHeight));
             var rowsPerStripe = Math.Clamp(budget / stripes, 1, MaximumRowsPerStripe);
 
-            _chart.Width = Math.Clamp(SafeWindowWidth() - 10, 20, 72);
+            _chart.Width = Math.Clamp(AnsiConsole.SafeWindowWidth() - 10, 20, 72);
             _chart.Ramp = flag.Ramp;
 
             // Equal values, so every bar is the full width and the chart is nothing but color. The label is empty on
@@ -267,7 +267,7 @@ namespace WolfCurses.Example.Demos
         /// </summary>
         private static int ProseWidth()
         {
-            return Math.Max(20, SafeWindowWidth() - 2);
+            return Math.Max(20, AnsiConsole.SafeWindowWidth() - 2);
         }
 
         /// <summary>
@@ -299,29 +299,7 @@ namespace WolfCurses.Example.Demos
             return sb.ToString();
         }
 
-        private static int SafeWindowWidth()
-        {
-            try
-            {
-                return Console.WindowWidth;
-            }
-            catch
-            {
-                return 80;
-            }
-        }
 
-        private static int SafeWindowHeight()
-        {
-            try
-            {
-                return Console.WindowHeight;
-            }
-            catch
-            {
-                return 24;
-            }
-        }
 
         /// <summary>One entry in the list: what the flag is called, who made it, and the ramp that draws it.</summary>
         private readonly struct Flag

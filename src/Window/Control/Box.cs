@@ -1,9 +1,8 @@
-// Created by Maxwolf (bigmaxwolf.com)
+﻿// Created by Maxwolf (bigmaxwolf.com)
 // Timestamp 07/11/2026
 
 using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using WolfCurses.Graphics;
 
 namespace WolfCurses.Window.Control
@@ -17,7 +16,17 @@ namespace WolfCurses.Window.Control
     ///     <para>
     ///         The frame itself can be colored via <see cref="BorderStyle" /> and <see cref="TitleStyle" />; that same
     ///         escape-blind measurement is what lets it, since a box drawn in color is still measured — by this class
-    ///         and by any outer box it is nested inside — as the plain glyphs it wraps.
+    ///         and by any outer box it is nested inside — as the plain glyphs it wraps. The measurement is
+    ///         <see cref="AnsiText.VisibleLength" />, the library's one escape walk, which this class used to
+    ///         approximate with a regular expression that understood <c>ESC[…m</c> and nothing else.
+    ///     </para>
+    ///     <para>
+    ///         <b>Do not frame a sixel or kitty picture.</b> A true-pixel payload is a marked row that the presenter
+    ///         must recognise to leave alone (see <see cref="Graphics.AnsiGraphics" />), and putting a border glyph in
+    ///         front of it destroys that recognition — the payload is then written as ordinary text and the frame
+    ///         punches holes through the picture. This has always been true of this class; measuring the payload as
+    ///         zero columns rather than as its escape length makes the arithmetic honest but does not make the
+    ///         combination work.
     ///     </para>
     /// </summary>
     /// <example>
@@ -33,8 +42,6 @@ namespace WolfCurses.Window.Control
     /// </example>
     public sealed class Box
     {
-        private static readonly Regex _ansiEscape = new(@"\x1b\[[0-9;?=]*[A-Za-z]", RegexOptions.Compiled);
-
         /// <summary>The border line style. Defaults to a single line.</summary>
         public BoxBorderEnum Border { get; set; } = BoxBorderEnum.Single;
 
@@ -76,7 +83,7 @@ namespace WolfCurses.Window.Control
         ///     <para>
         ///         The layout arithmetic runs on the <em>plain</em> title and is finished before any escape is added,
         ///         which is what keeps the frame square: the horizontal runs are sized from
-        ///         <c>VisibleWidth(label)</c>, and escapes are zero-width by that measure anyway. A title the caller
+        ///         <c>AnsiText.VisibleLength(label)</c>, and escapes are zero-width by that measure anyway. A title the caller
         ///         already colored is styled around, not re-colored — worth knowing, because the caller's own reset
         ///         will close this style early and the rest of the title reverts to the terminal default.
         ///     </para>
@@ -97,7 +104,7 @@ namespace WolfCurses.Window.Control
             // Body width fits the widest content row (measured without ANSI escapes) but at least the minimum.
             var bodyWidth = minWidth;
             foreach (var line in lines)
-                bodyWidth = Math.Max(bodyWidth, VisibleWidth(line));
+                bodyWidth = Math.Max(bodyWidth, AnsiText.VisibleLength(line));
 
             var inner = bodyWidth + 2 * padding;
 
@@ -111,7 +118,7 @@ namespace WolfCurses.Window.Control
             if (hasTitle)
             {
                 // A title can force the box wider than its content; grow the interior (and body) to fit it.
-                inner = Math.Max(inner, VisibleWidth(label));
+                inner = Math.Max(inner, AnsiText.VisibleLength(label));
                 bodyWidth = inner - 2 * padding;
             }
 
@@ -170,7 +177,7 @@ namespace WolfCurses.Window.Control
             if (string.IsNullOrEmpty(label))
                 return Paint(borderOpen, glyphs.TopLeft + new string(glyphs.Horizontal, inner) + glyphs.TopRight);
 
-            var remaining = inner - VisibleWidth(label);
+            var remaining = inner - AnsiText.VisibleLength(label);
             if (remaining < 0)
                 remaining = 0;
 
@@ -218,16 +225,8 @@ namespace WolfCurses.Window.Control
         /// <summary>Right-pads a line with spaces to reach the given visible width (ANSI escapes are zero-width).</summary>
         private static string PadToVisible(string line, int width)
         {
-            var needed = width - VisibleWidth(line);
+            var needed = width - AnsiText.VisibleLength(line);
             return needed > 0 ? line + new string(' ', needed) : line;
-        }
-
-        /// <summary>The number of visible columns in a line, i.e. its length after stripping ANSI escape sequences.</summary>
-        private static int VisibleWidth(string line)
-        {
-            if (string.IsNullOrEmpty(line))
-                return 0;
-            return line.IndexOf('\x1b') < 0 ? line.Length : _ansiEscape.Replace(line, string.Empty).Length;
         }
 
         private static BorderGlyphs GlyphsFor(BoxBorderEnum border)

@@ -46,7 +46,7 @@ namespace WolfCurses.Example.Demos
         /// <summary>How long a frame lasts. Thirty a second is smooth and leaves the machine alone.</summary>
         private static readonly TimeSpan _frameLength = TimeSpan.FromMilliseconds(33);
 
-        private readonly Stopwatch _clock = new();
+        private readonly IntervalTimer _frame = new(_frameLength);
         private readonly FrameCounter _counter = new();
         private readonly RendererSwitch _renderer = new();
 
@@ -73,7 +73,7 @@ namespace WolfCurses.Example.Demos
 
             ParentWindow.PromptText = "TAB to switch renderer, ENTER or ESC to return to the menu";
             Build();
-            _clock.Restart();
+            RestartOnActivate(_frame);
         }
 
         /// <inheritdoc />
@@ -100,10 +100,9 @@ namespace WolfCurses.Example.Demos
 
             // On the system tick, not the simulation tick, which fires once a second: a sprite moving once a second is
             // not moving. Everything below runs at most thirty times a second regardless of how fast the host loops.
-            if (_scene == null || _clock.Elapsed < _frameLength)
+            if (_scene == null || !_frame.TryConsume())
                 return;
 
-            _clock.Restart();
             Move();
 
             // Composed and rendered here rather than in OnRenderForm, which the scene graph calls on every one of those

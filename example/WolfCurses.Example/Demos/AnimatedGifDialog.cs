@@ -84,8 +84,11 @@ namespace WolfCurses.Example.Demos
         /// </summary>
         private static readonly TimeSpan _loadBudgetPerTick = TimeSpan.FromMilliseconds(30);
 
-        /// <summary>Measures real time between frames, rather than counting ticks of unknown length.</summary>
-        private readonly Stopwatch _clock = new();
+        /// <summary>
+        ///     Paces playback on real elapsed time. The interval is passed per frame rather than set on the timer,
+        ///     because every frame of a GIF declares its own delay.
+        /// </summary>
+        private readonly IntervalTimer _frame = new(_fastFrameDelay);
 
         /// <summary>
         ///     The same readout the sprite tests carry, and it says something different here — which is the useful part.
@@ -160,6 +163,7 @@ namespace WolfCurses.Example.Demos
             base.OnFormPostCreate();
 
             ParentWindow.PromptText = "TAB to switch renderer, ENTER or ESC to return to the menu";
+            RestartOnActivate(_frame);
 
             // Only sets the load going; the frames are rendered a slice per tick from here. The playback clock is not
             // started here but in FinishLoad, so the wait at the door is never charged to the first frame's timing.
@@ -203,13 +207,8 @@ namespace WolfCurses.Example.Demos
 
             // On the system tick, not the simulation tick: the simulation ticks once a second and the frames here last
             // thirty milliseconds.
-            if (_slides.Length == 0 || _clock.Elapsed < _delays[_index])
+            if (_slides.Length == 0 || !_frame.TryConsume(_delays[_index]))
                 return;
-
-            // Restarting rather than subtracting the delay drops whatever the tick overshot by, so a long frame is
-            // never made up for later. With the host looping every millisecond that overshoot is about a millisecond,
-            // and letting it accumulate into a debt the animation tries to repay is how a player ends up sprinting.
-            _clock.Restart();
 
             var started = Stopwatch.GetTimestamp();
             _index = (_index + 1) % _slides.Length;
@@ -375,7 +374,7 @@ namespace WolfCurses.Example.Demos
 
             // Playback, and the readout, begin now rather than when the form opened, so the load is not divided into the
             // first frame's timing. Restart leaves the counter's clock stopped until the first frame actually arrives.
-            _clock.Restart();
+            _frame.Restart();
             _counter.Restart();
         }
 

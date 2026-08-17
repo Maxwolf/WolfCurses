@@ -74,10 +74,17 @@ namespace WolfCurses.Example.Demos
         /// <summary>How long between one sprite being taken off the scene and the next. Five of these is the cycle.</summary>
         private static readonly TimeSpan _removalInterval = TimeSpan.FromSeconds(2);
 
-        private readonly Stopwatch _clock = new();
+        private readonly IntervalTimer _frame = new(_frameLength);
         private readonly FrameCounter _counter = new();
         private readonly RendererSwitch _renderer = new();
-        private readonly Stopwatch _lifecycleClock = new();
+
+        /// <summary>
+        ///     Paces the 12-second spawn/remove cycle. Deliberately <b>not</b> registered with
+        ///     <see cref="Form{TData}.RestartOnActivate" />, unlike <see cref="_frame" />: this one is timing a
+        ///     scripted sequence rather than a frame rate, and restarting it on activation would stretch whichever
+        ///     phase of the cycle happened to be running.
+        /// </summary>
+        private readonly IntervalTimer _lifecycle = new(_removalInterval);
         private readonly List<BouncingSprite> _movers = new();
         private readonly Random _random = new();
 
@@ -103,8 +110,8 @@ namespace WolfCurses.Example.Demos
 
             ParentWindow.PromptText = "TAB to switch renderer, ENTER or ESC to return to the menu";
             Build();
-            _clock.Restart();
-            _lifecycleClock.Restart();
+            RestartOnActivate(_frame);
+            _lifecycle.Restart();
         }
 
         /// <inheritdoc />
@@ -127,11 +134,12 @@ namespace WolfCurses.Example.Demos
 
             // On the system tick, not the simulation tick, which fires once a second. Everything below runs at most
             // thirty times a second regardless of how fast the host loops.
-            if (_scene == null || _clock.Elapsed < _frameLength)
+            if (_scene == null || !_frame.TryConsume())
                 return;
 
-            var elapsed = _clock.Elapsed;
-            _clock.Restart();
+            // The period that just closed, overshoot included — which is what the sprites need to move by, and what
+            // used to have to be snapshotted into a local before the restart could eat it.
+            var elapsed = _frame.LastElapsed;
 
             Lifecycle();
 
@@ -174,10 +182,8 @@ namespace WolfCurses.Example.Demos
         /// </summary>
         private void Lifecycle()
         {
-            if (_lifecycleClock.Elapsed < _removalInterval)
+            if (!_lifecycle.TryConsume())
                 return;
-
-            _lifecycleClock.Restart();
 
             if (_movers.Count > 0)
             {

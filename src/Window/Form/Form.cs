@@ -191,10 +191,70 @@ namespace WolfCurses.Window.Form
         ///     Fired when the window is activated and or refocused after another window was removed from being on-top of it.
         ///     Useful for re-initializing form data after something like a random event runs which might kill people or alter the
         ///     vehicle inventory.
+        ///     <para>
+        ///         <b>An override must call base</b> if the form registered anything with
+        ///         <see cref="RestartOnActivate" />, which is where those timers are restarted.
+        ///     </para>
         /// </summary>
         public virtual void OnFormActivate()
         {
-            // Nothing to see here, move along...
+            if (_activationTimers == null)
+                return;
+
+            foreach (var timer in _activationTimers)
+                timer.Restart();
+        }
+
+        /// <summary>
+        ///     Timers to restart whenever this form is focused again. Null until something registers, so a form that
+        ///     never asks for this allocates nothing and <see cref="OnFormActivate" /> returns immediately.
+        /// </summary>
+        private List<IntervalTimer> _activationTimers;
+
+        /// <summary>
+        ///     Says that these timers should start their period over whenever this form regains focus, and starts
+        ///     them over now.
+        ///     <para>
+        ///         <b>This exists because forgetting it fails silently and looks like a game bug.</b> A form only
+        ///         ticks while its window is the focused one, so putting a dialog on top freezes it — which is the
+        ///         right behaviour and comes free. But the clock a form paces itself with is measuring real time, and
+        ///         it does not freeze. Come back from a message box that was up for four seconds and the form is owed
+        ///         four seconds of steps, which it takes all at once: the sprite teleports, the piece drops, the
+        ///         snake runs into a wall the player never saw it approach. Every real-time screen in this
+        ///         repository hit this and every one of them fixed it by hand-writing the same
+        ///         <see cref="OnFormActivate" /> override.
+        ///     </para>
+        ///     <para>
+        ///         Registering restarts immediately, so a form set up in <see cref="OnFormPostCreate" /> does not
+        ///         also need its own <see cref="IntervalTimer.Restart" /> call. Registering the same timer twice is
+        ///         harmless and keeps one entry.
+        ///     </para>
+        ///     <para>
+        ///         Not blanket-correct, which is why it is opt-in per timer rather than automatic: a timer measuring
+        ///         a <i>scripted sequence</i> rather than a frame rate must not be restarted, or its phase stretches
+        ///         by however long the dialog was up. A timer read through
+        ///         <see cref="IntervalTimer.TotalElapsed" /> is unaffected either way — restarting deliberately does
+        ///         not touch that.
+        ///     </para>
+        /// </summary>
+        /// <param name="timers">The timers to restart on activation. Null entries are ignored.</param>
+        protected void RestartOnActivate(params IntervalTimer[] timers)
+        {
+            if (timers == null)
+                return;
+
+            _activationTimers ??= new List<IntervalTimer>();
+
+            foreach (var timer in timers)
+            {
+                if (timer == null)
+                    continue;
+
+                if (!_activationTimers.Contains(timer))
+                    _activationTimers.Add(timer);
+
+                timer.Restart();
+            }
         }
 
         /// <summary>

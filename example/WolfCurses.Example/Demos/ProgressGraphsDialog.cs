@@ -1,4 +1,4 @@
-// Created by Maxwolf (bigmaxwolf.com)
+﻿// Created by Maxwolf (bigmaxwolf.com)
 // Timestamp 07/11/2026
 
 using System;
@@ -114,8 +114,8 @@ namespace WolfCurses.Example.Demos
             base.OnFormPostCreate();
 
             // Size the graph to the current console, leaving room for the labels and the surrounding chrome.
-            var graphWidth = Math.Clamp(SafeWindowWidth() - 14, 24, 64);
-            var graphHeight = Math.Clamp(SafeWindowHeight() - 19, 5, 12);
+            var graphWidth = Math.Clamp(AnsiConsole.SafeWindowWidth() - 14, 24, 64);
+            var graphHeight = Math.Clamp(AnsiConsole.SafeWindowHeight() - 19, 5, 12);
             _capacity = graphWidth;
 
             _lineGraph = new LineGraph
@@ -188,7 +188,7 @@ namespace WolfCurses.Example.Demos
             // auto-wrap disabled for the frame (ConsolePresenter turns DECAWM off) the tail was clipped, not reflowed.
             sb.AppendLine(Wrap(_dimStyle,
                 "Colors come from TextStyle and ColorRamp; with NO_COLOR set not one escape is emitted.",
-                Math.Max(20, SafeWindowWidth() - 2)));
+                Math.Max(20, AnsiConsole.SafeWindowWidth() - 2)));
             sb.AppendLine();
 
             // Determinate progress bar and the indeterminate marquee side by side conceptually, with the spinner
@@ -277,28 +277,6 @@ namespace WolfCurses.Example.Demos
             return sb.ToString();
         }
 
-        private static int SafeWindowWidth()
-        {
-            try
-            {
-                return Console.WindowWidth;
-            }
-            catch
-            {
-                return 80;
-            }
-        }
 
-        private static int SafeWindowHeight()
-        {
-            try
-            {
-                return Console.WindowHeight;
-            }
-            catch
-            {
-                return 24;
-            }
-        }
     }
 }

@@ -54,7 +54,7 @@ namespace WolfCurses.Example.Demos
         /// <summary>How long a frame lasts.</summary>
         private static readonly TimeSpan _frameLength = TimeSpan.FromMilliseconds(33);
 
-        private readonly Stopwatch _clock = new();
+        private readonly IntervalTimer _frame = new(_frameLength);
         private readonly FrameCounter _counter = new();
         private readonly RendererSwitch _renderer = new();
 
@@ -84,19 +84,19 @@ namespace WolfCurses.Example.Demos
 
             ParentWindow.PromptText = "Arrow keys to move, TAB to switch renderer, ENTER/ESC for the menu";
             Build();
-            _clock.Restart();
+            RestartOnActivate(_frame);
         }
 
         /// <inheritdoc />
         public override void OnFormActivate()
         {
+            // Back from the message box, and both clocks have been running the whole time it was up. The frame timer
+            // is restarted by the base call, because it was registered above — without that the next frame thinks it
+            // has been away for however long the reading took. The counter is this app's own type and has to be told
+            // separately: without it the fps readout divides the frames from before the box by the time spent reading
+            // it and reports something like 3, which measures the reader rather than anything this code did.
             base.OnFormActivate();
 
-            // Back from the message box, and both clocks have been running the whole time it was up. Without the first
-            // line the next frame thinks it has been away for however long the reading took; without the second the fps
-            // readout divides the frames from before the box by the time spent reading it and reports something like 3,
-            // which is a measurement of the reader rather than of anything this code did.
-            _clock.Restart();
             _counter.Restart();
         }
 
@@ -145,10 +145,9 @@ namespace WolfCurses.Example.Demos
         {
             base.OnTick(systemTick, skipDay);
 
-            if (_scene == null || _clock.Elapsed < _frameLength)
+            if (_scene == null || !_frame.TryConsume())
                 return;
 
-            _clock.Restart();
             CheckCollision();
 
             var started = Stopwatch.GetTimestamp();

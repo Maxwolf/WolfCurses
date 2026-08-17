@@ -1,4 +1,4 @@
-// Created by Maxwolf (bigmaxwolf.com)
+﻿// Created by Maxwolf (bigmaxwolf.com)
 // Timestamp 07/15/2026
 
 using System;
@@ -298,115 +298,30 @@ namespace WolfCurses
         ///     The number of character cells a line occupies on screen, counting escape sequences (CSI, OSC/DCS-style
         ///     strings, and short ESC sequences) as zero width. Cells are counted per UTF-16 code unit, the same
         ///     measure the rest of the library uses.
+        ///     <para>
+        ///         The walk itself lives in <see cref="AnsiText" />, which is public. It moved there because this
+        ///         class's whole argument for having it — that the measure and the strip must share one parser or
+        ///         drift apart invisibly — applies just as hard to anything outside the library framing or aligning
+        ///         styled text, and keeping it here made every such consumer write the second parser. This forwarder
+        ///         stays so the presenter's internals and their pinned tests read exactly as they did.
+        ///     </para>
         /// </summary>
         internal static int VisibleLength(string line)
         {
-            var length = 0;
-            var i = 0;
-            while (i < line.Length)
-            {
-                if (line[i] != Escape)
-                {
-                    length++;
-                    i++;
-                    continue;
-                }
-
-                i = SkipEscape(line, i);
-            }
-
-            return length;
+            return AnsiText.VisibleLength(line);
         }
 
         /// <summary>
         ///     Removes every escape sequence from a line, keeping only the characters that occupy a visible cell.
-        ///     Walks the exact same grammar <see cref="VisibleLength" /> measures — they share
-        ///     <see cref="SkipEscape" /> so the two can never disagree — which is the point: the stripped string's
-        ///     length equals its visible width. Used by <see cref="PresentLegacy" />, which runs on a console that
-        ///     cannot interpret escapes at all, where an unstripped sequence would both print as literal garbage and
-        ///     be miscounted as visible columns in that method's width arithmetic.
+        ///     Walks the exact same grammar <see cref="VisibleLength" /> measures — see <see cref="AnsiText" />, where
+        ///     both share one skip so the two can never disagree — which is the point: the stripped string's length
+        ///     equals its visible width. Used by <see cref="PresentLegacy" />, which runs on a console that cannot
+        ///     interpret escapes at all, where an unstripped sequence would both print as literal garbage and be
+        ///     miscounted as visible columns in that method's width arithmetic.
         /// </summary>
         internal static string StripEscapes(string line)
         {
-            var sb = new StringBuilder(line.Length);
-            var i = 0;
-            while (i < line.Length)
-            {
-                if (line[i] != Escape)
-                {
-                    sb.Append(line[i]);
-                    i++;
-                    continue;
-                }
-
-                i = SkipEscape(line, i);
-            }
-
-            return sb.ToString();
-        }
-
-        /// <summary>
-        ///     Given a line and the index of an <see cref="Escape" /> character within it, returns the index of the
-        ///     first character after the escape sequence that starts there — so both <see cref="VisibleLength" /> and
-        ///     <see cref="StripEscapes" /> skip escapes identically. A bare trailing <see cref="Escape" /> with nothing
-        ///     following it consumes to the end of the line.
-        /// </summary>
-        /// <param name="line">The line being scanned.</param>
-        /// <param name="i">The index of the <see cref="Escape" /> character.</param>
-        /// <returns>The index just past the escape sequence.</returns>
-        private static int SkipEscape(string line, int i)
-        {
-            if (i + 1 >= line.Length)
-                return line.Length;
-
-            var kind = line[i + 1];
-            if (kind == '[')
-            {
-                // CSI: parameter/intermediate bytes (0x20-0x3F) up to a final byte in 0x40-0x7E.
-                i += 2;
-                while (i < line.Length && (line[i] < '@' || line[i] > '~'))
-                    i++;
-                if (i < line.Length)
-                    i++;
-            }
-            else if (kind == ']' || kind == 'P' || kind == '^' || kind == '_' || kind == 'X')
-            {
-                // OSC/DCS/PM/APC/SOS string (e.g. an OSC 8 hyperlink): runs until BEL or the ST terminator
-                // "ESC \"; any other escape means the string was left unterminated and a new sequence begins.
-                i += 2;
-                while (i < line.Length)
-                {
-                    if (line[i] == (char) 7)
-                    {
-                        i++;
-                        break;
-                    }
-
-                    if (line[i] == Escape)
-                    {
-                        if (i + 1 < line.Length && line[i + 1] == '\\')
-                            i += 2;
-                        break;
-                    }
-
-                    i++;
-                }
-            }
-            else
-            {
-                // A short ESC sequence: optional intermediate bytes (0x20-0x2F, e.g. the "(" of a charset
-                // designation like "ESC ( B") followed by one final byte.
-                i += 2;
-                if (kind >= ' ' && kind <= '/')
-                {
-                    while (i < line.Length && line[i] >= ' ' && line[i] <= '/')
-                        i++;
-                    if (i < line.Length)
-                        i++;
-                }
-            }
-
-            return i;
+            return AnsiText.StripEscapes(line);
         }
 
         /// <summary>

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\WolfCurses.csproj" />
+  </ItemGroup>
+
+  <!-- Nothing else. No package references and no content to copy: every game here is made of characters, which is
+       the point of the project. WolfCurses.Example next door is where the image stack, the media/ fixtures and the
+       StbImageSharp adapter live. -->
+
+</Project>

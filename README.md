@@ -40,6 +40,12 @@ A runnable example console application lives in this repository at [`example/Wol
 dotnet run --project example/WolfCurses.Example
 ```
 
+A second example, [`example/WolfCurses.Games`](example/WolfCurses.Games), is a small arcade: **Snake**, **Minesweeper** and **Tetris**. Each is deliberately built on a different part of the library — Snake is steered with the arrow keys and paced by a stopwatch off the system tick, Minesweeper is played by typing squares into the command buffer, and Tetris puts a score panel *beside* the well, which needs a width measured in visible columns rather than characters once the rows are full of color escapes. Between them they cover both input styles, real-time and turn-based redraw, and styled output. Every game's rules live in a plain class with no console attached, next to the form that draws it.
+
+```cmd
+dotnet run --project example/WolfCurses.Games
+```
+
 ![The example's basic sprite test: the DVD logo bouncing over a photograph drawn as real sixel pixels, with a live fps readout](docs/demo-sprite-basic.gif)
 
 *Real frames from the example app: the DVD logo bouncing over a photograph at ~30 fps, drawn with the sixel protocol the startup probe detects on Windows Terminal 1.22+ (and half blocks anywhere it can't).*

@@ -1,4 +1,4 @@
-// Created by Maxwolf (bigmaxwolf.com)
+﻿// Created by Maxwolf (bigmaxwolf.com)
 // Timestamp 07/11/2026
 
 using System;
@@ -120,8 +120,8 @@ namespace WolfCurses.Example.Demos
         {
             return new AnsiImageOptions
             {
-                MaxColumns = Math.Max(1, SafeWindowWidth() - 2),
-                MaxRows = Math.Max(1, SafeWindowHeight() - 8)
+                MaxColumns = Math.Max(1, AnsiConsole.SafeWindowWidth() - 2),
+                MaxRows = Math.Max(1, AnsiConsole.SafeWindowHeight() - 8)
             };
         }
 
@@ -140,28 +140,6 @@ namespace WolfCurses.Example.Demos
             }
         }
 
-        private static int SafeWindowWidth()
-        {
-            try
-            {
-                return Console.WindowWidth;
-            }
-            catch
-            {
-                return 80;
-            }
-        }
 
-        private static int SafeWindowHeight()
-        {
-            try
-            {
-                return Console.WindowHeight;
-            }
-            catch
-            {
-                return 24;
-            }
-        }
     }
 }
