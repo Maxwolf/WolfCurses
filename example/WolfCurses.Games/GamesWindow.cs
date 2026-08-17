@@ -7,6 +7,7 @@ using WolfCurses.Games.Chess;
 using WolfCurses.Games.Labyrinth;
 using WolfCurses.Games.Minesweeper;
 using WolfCurses.Games.MissileCommand;
+using WolfCurses.Games.PacMan;
 using WolfCurses.Games.Snake;
 using WolfCurses.Games.Tetris;
 using WolfCurses.Window;
@@ -38,6 +39,7 @@ namespace WolfCurses.Games
             AddCommand(PlayChess, GamesCommandsEnum.Chess);
             AddCommand(PlayMissileCommand, GamesCommandsEnum.MissileCommand);
             AddCommand(PlayLabyrinth, GamesCommandsEnum.Labyrinth);
+            AddCommand(PlayPacMan, GamesCommandsEnum.PacMan);
             AddCommand(Quit, GamesCommandsEnum.Quit);
 
             RefreshMenuHeader();
@@ -86,7 +88,8 @@ namespace WolfCurses.Games
                               $"Tetris best: {UserData.TetrisBestLines} rows");
             header.AppendLine($"Chess wins: {UserData.ChessWins}   " +
                               $"Missile Command best: {UserData.MissileCommandBestScore:N0}   " +
-                              $"Mazes escaped: {UserData.LabyrinthMazesEscaped}");
+                              $"Mazes escaped: {UserData.LabyrinthMazesEscaped}   " +
+                              $"Pac-Man best: {UserData.PacManHighScore:N0}");
             header.AppendLine();
             header.Append("Choose one (arrow keys + ENTER, or type a number):");
             MenuHeader = header.ToString();
@@ -120,6 +123,11 @@ namespace WolfCurses.Games
         private void PlayLabyrinth()
         {
             SetForm(typeof (LabyrinthDialog));
+        }
+
+        private void PlayPacMan()
+        {
+            SetForm(typeof (PacManDialog));
         }
 
         private void Quit()

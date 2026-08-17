@@ -249,6 +249,62 @@ namespace WolfCurses.Tests.Controls
         }
 
         [Fact]
+        public void TextIsWrittenOneCharacterPerCell()
+        {
+            var grid = new TextGrid(8, 2);
+            grid.DrawText(2, 1, "hi");
+
+            Assert.Equal("        " + Environment.NewLine + "  hi    ", grid.Render());
+        }
+
+        [Fact]
+        public void TextIsClippedAtBothEndsRatherThanThrowing()
+        {
+            var grid = new TextGrid(4, 1);
+            grid.DrawText(-2, 0, "abcdefgh");
+
+            Assert.Equal("cdef", grid.Render());
+        }
+
+        [Fact]
+        public void TextEntirelyOffTheGridWritesNothing()
+        {
+            var grid = new TextGrid(4, 2);
+            grid.DrawText(0, -1, "nope");
+            grid.DrawText(0, 2, "nope");
+            grid.DrawText(4, 0, "nope");
+            grid.DrawText(-4, 0, "nope");
+            grid.DrawText(0, 0, null);
+            grid.DrawText(0, 0, string.Empty);
+
+            Assert.Equal("    " + Environment.NewLine + "    ", grid.Render());
+        }
+
+        [Fact]
+        public void TextTakesTheStyleItWasGivenAndNothingElseDoes()
+        {
+            var grid = new TextGrid(6, 1) {ColorMode = AnsiColorModeEnum.TrueColor};
+            grid.DrawText(2, 0, "ab", new TextStyle(new TextColor(new Rgb24(1, 2, 3))));
+
+            var rendered = grid.Render();
+
+            Assert.Equal(6, AnsiText.VisibleLength(rendered));
+            Assert.Equal("  ab  ", AnsiText.StripEscapes(rendered));
+            Assert.Equal(2, AnsiRuns.Escapes(rendered).Count);
+        }
+
+        [Fact]
+        public void TextIsSpacedOutByCellWidthRatherThanDoubledUp()
+        {
+            // Cells, not columns. Doubling every character would spell "hhii", which is not a word - so a caller who
+            // wants text at its natural width puts it beside the grid rather than in it.
+            var grid = new TextGrid(4, 1) {CellWidth = 2};
+            grid.DrawText(0, 0, "hi");
+
+            Assert.Equal("hhii    ", grid.Render());
+        }
+
+        [Fact]
         public void ReadingOffTheGridAnswersBlankRatherThanThrowing()
         {
             var grid = new TextGrid(2, 2) {Blank = '~'};

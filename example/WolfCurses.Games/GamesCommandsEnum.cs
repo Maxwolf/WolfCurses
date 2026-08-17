@@ -1,4 +1,4 @@
-// Created by Maxwolf (bigmaxwolf.com)
+﻿// Created by Maxwolf (bigmaxwolf.com)
 // Timestamp 08/16/2026
 
 using WolfCurses.Utility;
@@ -49,7 +49,14 @@ namespace WolfCurses.Games
         /// </summary>
         [Description("Labyrinth - escape a maze bigger than the screen.")] Labyrinth = 6,
 
+        /// <summary>
+        ///     Four ghosts, four one-line rules, and no path-finding anywhere — the demonstration that interesting
+        ///     behaviour is a property of the rules rather than of the cleverness of the code. Also the first screen
+        ///     to draw its walls as a connected network of lines rather than as blocks.
+        /// </summary>
+        [Description("Pac-Man - eat the board, avoid the ghosts.")] PacMan = 7,
+
         /// <summary>Closes the arcade and returns to the operating system.</summary>
-        [Description("Quit.")] Quit = 7
+        [Description("Quit.")] Quit = 8
     }
 }

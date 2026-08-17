@@ -190,6 +190,40 @@ namespace WolfCurses.Window.Control
             _anyStyle |= !style.IsEmpty;
         }
 
+        /// <summary>
+        ///     Writes a string across a row, one character per cell, starting at a cell and clipping at both ends.
+        ///     <para>
+        ///         The member every caller writes for itself the first time it wants a word on a board — a score, a
+        ///         label, a <c>READY!</c> over the middle of a maze. <b>It writes cells, not columns</b>, so with a
+        ///         <see cref="CellWidth" /> above one each character comes out that many columns wide and the text is
+        ///         spaced out rather than doubled up; a caller wanting text at its natural width draws it beside the
+        ///         grid instead of into it.
+        ///     </para>
+        /// </summary>
+        /// <param name="x">The cell to start at; the text may begin off the left edge and be clipped.</param>
+        /// <param name="y">The row to write on; a row off the grid writes nothing.</param>
+        /// <param name="text">What to write. Null or empty writes nothing.</param>
+        /// <param name="style">How to colour it.</param>
+        public void DrawText(int x, int y, string text, TextStyle style = default)
+        {
+            if (string.IsNullOrEmpty(text) || y < 0 || y >= Height)
+                return;
+
+            _anyStyle |= !style.IsEmpty;
+
+            // Clipped by the loop range rather than per character, so a caption starting a long way off the left of
+            // the grid costs its own length and not the distance it starts from.
+            var from = x < 0 ? -x : 0;
+            var to = Math.Min(text.Length, Width - x);
+
+            for (var i = from; i < to; i++)
+            {
+                var index = y*Width + x + i;
+                _glyphs[index] = text[i];
+                _styles[index] = style;
+            }
+        }
+
         /// <summary>The character in a cell, or <see cref="Blank" /> when the cell is off the grid.</summary>
         /// <param name="x">The column, counting from zero.</param>
         /// <param name="y">The row, counting from zero.</param>

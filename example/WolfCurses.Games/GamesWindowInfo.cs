@@ -1,4 +1,4 @@
-// Created by Maxwolf (bigmaxwolf.com)
+﻿// Created by Maxwolf (bigmaxwolf.com)
 // Timestamp 08/16/2026
 
 using WolfCurses.Window;
@@ -29,5 +29,8 @@ namespace WolfCurses.Games
 
         /// <summary>How many mazes the player has found their way out of this session.</summary>
         public int LabyrinthMazesEscaped { get; set; }
+
+        /// <summary>Highest score reached in a single game of Pac-Man this session.</summary>
+        public int PacManHighScore { get; set; }
     }
 }
