@@ -29,7 +29,13 @@ namespace WolfCurses.Games
         /// </summary>
         [Description("Tetris - arrows to move, SPACE to drop.")] Tetris = 3,
 
+        /// <summary>
+        ///     The one game here that draws real pixels: the board is composited from piece artwork and rendered
+        ///     through the graphics stack, with a bot that thinks in slices so the screen keeps moving.
+        /// </summary>
+        [Description("WolfChess 5000 - chess, with graphics and a bot.")] Chess = 4,
+
         /// <summary>Closes the arcade and returns to the operating system.</summary>
-        [Description("Quit.")] Quit = 4
+        [Description("Quit.")] Quit = 5
     }
 }

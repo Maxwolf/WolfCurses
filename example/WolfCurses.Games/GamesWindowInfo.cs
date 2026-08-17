@@ -20,5 +20,8 @@ namespace WolfCurses.Games
 
         /// <summary>Most rows cleared in a single well of tetris this session.</summary>
         public int TetrisBestLines { get; set; }
+
+        /// <summary>How many games of chess the player has won this session.</summary>
+        public int ChessWins { get; set; }
     }
 }

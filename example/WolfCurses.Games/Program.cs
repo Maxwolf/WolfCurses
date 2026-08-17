@@ -3,6 +3,7 @@
 
 using System;
 using System.Threading;
+using WolfCurses.Graphics;
 
 namespace WolfCurses.Games
 {
@@ -14,12 +15,37 @@ namespace WolfCurses.Games
     internal static class Program
     {
         /// <summary>Main entry point for the application being startup.</summary>
-        private static void Main()
+        /// <param name="args">
+        ///     Command line arguments. <c>perft [depth]</c> runs the chess move generator against published node
+        ///     counts and exits without starting the interface — a check that belongs with the rules rather than in
+        ///     the library's test project, which testing an example app would point the wrong way round.
+        /// </param>
+        /// <returns>The process exit code.</returns>
+        private static int Main(string[] args)
         {
-            Console.Title = "WolfCurses Games";
+            if (args.Length > 0 && string.Equals(args[0], "perft", StringComparison.OrdinalIgnoreCase))
+                return Chess.ChessPerft.Run(args[1..]);
+
+            if (args.Length > 0 && string.Equals(args[0], "rules", StringComparison.OrdinalIgnoreCase))
+                return Chess.ChessRulesCheck.Run();
+
+            if (args.Length > 0 && string.Equals(args[0], "bot", StringComparison.OrdinalIgnoreCase))
+                return Chess.ChessBotCheck.Run();
+
+            if (args.Length > 0 && string.Equals(args[0], "board", StringComparison.OrdinalIgnoreCase))
+                return Chess.ChessRenderCheck.Run(args[1..]);
+
             Console.WriteLine("Starting...");
-            Console.CursorVisible = false;
             Console.CancelKeyPress += Console_CancelKeyPress;
+
+            // Guarded because both of these throw when there is no real console behind standard output — which is
+            // exactly how anything driving this app for a screenshot or a test runs it. The library answers the
+            // question for us rather than each host catching IOException itself.
+            if (!AnsiConsole.SafeIsOutputRedirected())
+            {
+                Console.Title = "WolfCurses Games";
+                Console.CursorVisible = false;
+            }
 
             // The whole host loop, and everything it does not have to do, is the same as WolfCurses.Example's: the
             // simulation reads the keyboard itself at the start of each tick, and presents each changed frame to this
@@ -41,6 +67,7 @@ namespace WolfCurses.Games
             Console.WriteLine("Thanks for playing!");
             Console.WriteLine("Press ANY KEY to close this window...");
             Console.ReadKey();
+            return 0;
         }
 
         /// <summary>Fired when the user presses CTRL-C, which closes the simulation rather than the process.</summary>

@@ -11,8 +11,16 @@
     <ProjectReference Include="..\..\src\WolfCurses.csproj" />
   </ItemGroup>
 
-  <!-- Nothing else. No package references and no content to copy: every game here is made of characters, which is
-       the point of the project. WolfCurses.Example next door is where the image stack, the media/ fixtures and the
-       StbImageSharp adapter live. -->
+  <!-- Still no PackageReferences, and there should not be any: everything here is BCL plus the library, which is
+       the whole claim these examples exist to back up. Snake, Minesweeper and Tetris also copy no content, being
+       made of characters. WolfChess 5000 is the exception and needs to be, since a chess game drawn with real
+       piece artwork is what exercises the graphics stack. -->
+  <ItemGroup>
+    <!-- The twelve piece sprites, flattened next to the executable into a chess/ folder. 8-bit RGBA PNG, ~48x48,
+         from github.com/samboy/ChessGraphics, which places them in the public domain (Unlicense / BSD-0) and asks
+         for no attribution - credited anyway, because where art came from is worth being able to look up. They are
+         decoded by the library's own PNG decoder like everything else here. -->
+    <None Include="Assets\chess\*.png" Link="chess\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 
 </Project>

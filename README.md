@@ -40,7 +40,16 @@ A runnable example console application lives in this repository at [`example/Wol
 dotnet run --project example/WolfCurses.Example
 ```
 
-A second example, [`example/WolfCurses.Games`](example/WolfCurses.Games), is a small arcade: **Snake**, **Minesweeper** and **Tetris**. Each is deliberately built on a different part of the library — Snake is steered with the arrow keys and paced by a stopwatch off the system tick, Minesweeper is played by typing squares into the command buffer, and Tetris puts a score panel *beside* the well, which needs a width measured in visible columns rather than characters once the rows are full of color escapes. Between them they cover both input styles, real-time and turn-based redraw, and styled output. Every game's rules live in a plain class with no console attached, next to the form that draws it.
+A second example, [`example/WolfCurses.Games`](example/WolfCurses.Games), is a small arcade: **Snake**, **Minesweeper**, **Tetris** and **WolfChess 5000**. Each is deliberately built on a different part of the library — Snake is steered with the arrow keys and paced by a stopwatch off the system tick, Minesweeper is played by typing squares into the command buffer, Tetris puts a score panel *beside* the well (which needs a width measured in visible columns rather than characters once the rows are full of color escapes), and the chess game draws its board as **real piece artwork composited into one image** and rendered through the graphics stack, with a built-in bot that searches in slices so the screen keeps moving while it thinks. Between them they cover both input styles, real-time and turn-based redraw, styled output and true-pixel graphics. Every game's rules live in a plain class with no console attached, next to the form that draws it.
+
+The chess rules are checked against published perft node counts rather than by hand-written examples, which is the only test of a move generator worth having:
+
+```cmd
+dotnet run --project example/WolfCurses.Games -- perft 4   # move generation vs. published counts
+dotnet run --project example/WolfCurses.Games -- rules      # notation, results, the draw rules
+dotnet run --project example/WolfCurses.Games -- bot        # tactics and thinking time
+dotnet run --project example/WolfCurses.Games -- board      # the render pipeline, as ASCII
+```
 
 ```cmd
 dotnet run --project example/WolfCurses.Games
