@@ -69,9 +69,19 @@ namespace WolfCurses.Graphics
             var checkWidth = Math.Max(1, (width + checks - 1) / checks);
             var checkHeight = Math.Max(1, (height + checks - 1) / checks);
 
-            for (var y = 0; y < height; y++)
-            for (var x = 0; x < width; x++)
-                texture.SetPixel(x, y, (x / checkWidth + y / checkHeight) % 2 == 0 ? Magenta : Black);
+            // Drawn as checks rather than as pixels: Fill clips, so the ragged last check that ceiling division just
+            // created needs no special case, and the default 128x128 texture becomes at most eighty-one clipped
+            // rectangle writes instead of sixteen thousand individually bounds-checked ones. The parity is the same
+            // expression the per-pixel loop used, evaluated once per check instead of once per pixel.
+            var columns = (width + checkWidth - 1) / checkWidth;
+            var rows = (height + checkHeight - 1) / checkHeight;
+
+            for (var row = 0; row < rows; row++)
+            for (var column = 0; column < columns; column++)
+            {
+                texture.Fill(column*checkWidth, row*checkHeight, checkWidth, checkHeight,
+                    (column + row) % 2 == 0 ? Magenta : Black);
+            }
 
             return texture;
         }

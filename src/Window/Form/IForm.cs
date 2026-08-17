@@ -35,6 +35,22 @@ namespace WolfCurses.Window.Form
         /// <summary>
         ///     Returns a text only representation of the current game Windows state. Could be a statement, information, question
         ///     waiting input, etc.
+        ///     <para>
+        ///         <b>This is called on every system tick — roughly a thousand times a second — and not once per
+        ///         frame.</b> <see cref="Core.SceneGraph" /> asks the focused window for the whole screen on every
+        ///         tick and compares the answer against the last one, so a form that <i>builds</i> its text in here
+        ///         pays for that a thousand times a second in order to show perhaps thirty of the results. Anything
+        ///         costing real work — laying out a playfield, compositing a picture, resampling an image — belongs in
+        ///         <see cref="ITick.OnTick" />, paced by an <see cref="IntervalTimer" /> and stored in a field that
+        ///         this method hands straight back. A form whose text is genuinely cheap, or which only changes when
+        ///         something else changed it, can compose here and loses nothing.
+        ///     </para>
+        ///     <para>
+        ///         The other half of that pattern is <see cref="Form{TData}.RestartOnActivate" />: a form stops being
+        ///         ticked while a modal window sits on top of it, but its clock does not stop measuring — so without
+        ///         registering the timer, the form comes back owing every step that fell due and takes them all at
+        ///         once.
+        ///     </para>
         /// </summary>
         /// <returns>
         ///     The text user interface.<see cref="string" />.

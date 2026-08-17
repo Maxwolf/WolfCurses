@@ -28,7 +28,7 @@ namespace WolfCurses.Games.Tests
             // One override on the window covers every game, because they are all forms on that one window. This is
             // the app-level idiom the library deliberately does not ship - see CLAUDE.md on ESC in src/Controls.
             using var game = new DrivenGamesApp();
-            game.ChooseMenuItem(1);
+            game.ChooseMenuItem((int) GamesCommandsEnum.Snake);
             Assert.Contains("Score", game.Screen, StringComparison.Ordinal);
 
             game.Escape();
@@ -40,7 +40,7 @@ namespace WolfCurses.Games.Tests
         public void SnakeAdvancesOnItsOwnClockAndSteers()
         {
             using var game = new DrivenGamesApp();
-            game.ChooseMenuItem(1);
+            game.ChooseMenuItem((int) GamesCommandsEnum.Snake);
 
             var opening = game.Screen;
             game.Press(ConsoleKey.DownArrow);
@@ -63,7 +63,7 @@ namespace WolfCurses.Games.Tests
             // InputFillsBuffer => false is what stops WASD accumulating in the echoed prompt. Tetris matters most
             // because its hard drop is SPACE, which is printable.
             using var game = new DrivenGamesApp();
-            game.ChooseMenuItem(3);
+            game.ChooseMenuItem((int) GamesCommandsEnum.Tetris);
 
             game.PressChar(' ', ConsoleKey.Spacebar);
             game.PressChar('w', ConsoleKey.W);
@@ -77,7 +77,7 @@ namespace WolfCurses.Games.Tests
             // The two-column layout, which only lines up because TextColumns measures visible width rather than
             // string length. Asserted on the stripped screen so the escapes cannot flatter it.
             using var game = new DrivenGamesApp();
-            game.ChooseMenuItem(3);
+            game.ChooseMenuItem((int) GamesCommandsEnum.Tetris);
 
             var starts = new System.Collections.Generic.HashSet<int>();
             foreach (var line in game.Screen.Split('\n'))
@@ -97,7 +97,7 @@ namespace WolfCurses.Games.Tests
         public void MinesweeperIsPlayedByTypingASquare()
         {
             using var game = new DrivenGamesApp();
-            game.ChooseMenuItem(2);
+            game.ChooseMenuItem((int) GamesCommandsEnum.Minesweeper);
             Assert.Contains("Mines 10 left", game.Screen, StringComparison.Ordinal);
 
             var hiddenBefore = CountHidden(game.Screen);
@@ -122,7 +122,7 @@ namespace WolfCurses.Games.Tests
         public void MinesweeperRejectsNonsenseWithoutChangingTheBoard()
         {
             using var game = new DrivenGamesApp();
-            game.ChooseMenuItem(2);
+            game.ChooseMenuItem((int) GamesCommandsEnum.Minesweeper);
             game.Type("e5");
 
             var before = game.Screen;
@@ -136,7 +136,7 @@ namespace WolfCurses.Games.Tests
         public void ChessPlaysAMoveAndAnswersIt()
         {
             using var game = new DrivenGamesApp();
-            game.ChooseMenuItem(4);
+            game.ChooseMenuItem((int) GamesCommandsEnum.Chess);
 
             game.Type("e4");
             Assert.True(game.TickUntil("WolfChess 5000 (depth"), "the bot never replied:\n" + game.Describe());
@@ -151,7 +151,7 @@ namespace WolfCurses.Games.Tests
             // budget is 15ms, so a tick that runs to hundreds of milliseconds means the slicing has regressed and
             // ESC would be dead for that long.
             using var game = new DrivenGamesApp();
-            game.ChooseMenuItem(4);
+            game.ChooseMenuItem((int) GamesCommandsEnum.Chess);
 
             game.Type("e4");
             var (replied, worst) = game.TickUntilTimed("WolfChess 5000 (depth");
@@ -167,7 +167,7 @@ namespace WolfCurses.Games.Tests
             // Otherwise the player can type Black's reply while the bot is working out Black's reply, and the search
             // finishes and plays a second one from a position that has moved on.
             using var game = new DrivenGamesApp();
-            game.ChooseMenuItem(4);
+            game.ChooseMenuItem((int) GamesCommandsEnum.Chess);
 
             game.Type("e4");
             game.Type("e5");
@@ -184,7 +184,7 @@ namespace WolfCurses.Games.Tests
             // same smudge and the game switches to letters — and a test host's console size is whatever the runner
             // happened to have. What IS invariant: exactly one of the two is showing, and "text" swaps them.
             using var game = new DrivenGamesApp();
-            game.ChooseMenuItem(4);
+            game.ChooseMenuItem((int) GamesCommandsEnum.Chess);
 
             var opened = game.Screen;
             game.Type("text");
@@ -244,7 +244,7 @@ namespace WolfCurses.Games.Tests
         public void ChessCommandsWork()
         {
             using var game = new DrivenGamesApp();
-            game.ChooseMenuItem(4);
+            game.ChooseMenuItem((int) GamesCommandsEnum.Chess);
 
             game.Type("level 2");
             Assert.Contains("level 2", game.Screen, StringComparison.Ordinal);

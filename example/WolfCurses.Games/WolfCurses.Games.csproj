@@ -11,6 +11,15 @@
     <ProjectReference Include="..\..\src\WolfCurses.csproj" />
   </ItemGroup>
 
+  <!-- Granted to this app's OWN test project and nowhere else, exactly as WolfCurses.Example does it. The rules
+       classes are fully public; what this opens up is the handful of internal seams that let a test build an exact
+       position - a warhead here, a fireball there - instead of advancing a randomised wave until something like the
+       scenario it means happens to turn up. Fishing for a situation in random state is how this repository has
+       already shipped two flaky tests. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="WolfCurses.Games.Tests" />
+  </ItemGroup>
+
   <!-- Still no PackageReferences, and there should not be any: everything here is BCL plus the library, which is
        the whole claim these examples exist to back up. Snake, Minesweeper and Tetris also copy no content, being
        made of characters. WolfChess 5000 is the exception and needs to be, since a chess game drawn with real

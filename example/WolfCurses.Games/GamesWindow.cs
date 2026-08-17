@@ -5,6 +5,7 @@ using System;
 using System.Text;
 using WolfCurses.Games.Chess;
 using WolfCurses.Games.Minesweeper;
+using WolfCurses.Games.MissileCommand;
 using WolfCurses.Games.Snake;
 using WolfCurses.Games.Tetris;
 using WolfCurses.Window;
@@ -34,6 +35,7 @@ namespace WolfCurses.Games
             AddCommand(PlayMinesweeper, GamesCommandsEnum.Minesweeper);
             AddCommand(PlayTetris, GamesCommandsEnum.Tetris);
             AddCommand(PlayChess, GamesCommandsEnum.Chess);
+            AddCommand(PlayMissileCommand, GamesCommandsEnum.MissileCommand);
             AddCommand(Quit, GamesCommandsEnum.Quit);
 
             RefreshMenuHeader();
@@ -79,8 +81,9 @@ namespace WolfCurses.Games
             header.AppendLine();
             header.AppendLine($"Snake best: {UserData.SnakeHighScore}   " +
                               $"Minefields cleared: {UserData.MinefieldsCleared}   " +
-                              $"Tetris best: {UserData.TetrisBestLines} rows   " +
-                              $"Chess wins: {UserData.ChessWins}");
+                              $"Tetris best: {UserData.TetrisBestLines} rows");
+            header.AppendLine($"Chess wins: {UserData.ChessWins}   " +
+                              $"Missile Command best: {UserData.MissileCommandBestScore:N0}");
             header.AppendLine();
             header.Append("Choose one (arrow keys + ENTER, or type a number):");
             MenuHeader = header.ToString();
@@ -104,6 +107,11 @@ namespace WolfCurses.Games
         private void PlayChess()
         {
             SetForm(typeof (ChessDialog));
+        }
+
+        private void PlayMissileCommand()
+        {
+            SetForm(typeof (MissileCommandDialog));
         }
 
         private void Quit()

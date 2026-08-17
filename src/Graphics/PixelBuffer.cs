@@ -2,6 +2,7 @@
 // Timestamp 07/11/2026
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 namespace WolfCurses.Graphics
@@ -11,6 +12,17 @@ namespace WolfCurses.Graphics
     ///     exchange type between an <see cref="IImageDecoder" /> (which turns a file or stream into pixels) and the
     ///     <see cref="AnsiImageRenderer" /> (which turns pixels into an ANSI string). It intentionally has no external
     ///     dependencies so the rendering half of the feature can be exercised with hand-built synthetic images in tests.
+    ///     <para>
+    ///         <b><see cref="Fill(Rgba32)" /> paints; every <c>Draw</c> composites.</b> That split is not an accident of
+    ///         naming and there are no exceptions to it. <see cref="Fill(Rgba32)" /> has to <i>set</i> pixels, because
+    ///         clearing a canvas is exactly what a compositing operation provably cannot do — source-over with a
+    ///         transparent colour leaves the destination untouched, so a compositing "clear to transparent" is a no-op.
+    ///         Everything else composites, because a caller who wants replacement passes an opaque colour and gets it
+    ///         for free, while a caller who wants a translucent fireball over a missile trail has no way to fake a blend
+    ///         out of a paint. This is also why there is no <c>FillCircle</c>: a compositing method wearing the
+    ///         <c>Fill</c> prefix would be an exception you could only learn from documentation, and — worse — one whose
+    ///         wrongness is invisible over a black canvas, which is the only canvas anybody would test it on.
+    ///     </para>
     /// </summary>
     public sealed class PixelBuffer
     {
@@ -124,6 +136,12 @@ namespace WolfCurses.Graphics
         ///         duplicated at every call site. Replaces the nested <see cref="SetPixel" /> loop that
         ///         <see cref="Decoding.GifDecoder" /> and any compositing caller would otherwise write, and writes
         ///         the row bytes directly rather than going through the per-pixel bounds test.
+        ///     </para>
+        ///     <para>
+        ///         Because it clips, <c>Fill(x, y, 1, 1, colour)</c> is also the bounds-safe single pixel:
+        ///         <see cref="SetPixel" /> throws, and a caller plotting a computed shape almost always wants the clip
+        ///         rather than the exception. For shapes with more than one pixel in them see <see cref="DrawLine(int, int, int, int, Rgba32)" />
+        ///         and <see cref="DrawDisc" />, which composite rather than paint — see the remarks on this class.
         ///     </para>
         /// </summary>
         /// <param name="x">Left edge, which may be negative.</param>
@@ -393,30 +411,310 @@ namespace WolfCurses.Graphics
                         continue; // fully transparent overlay pixel: leave the destination untouched
 
                     var di = (dy * Width + dx) * BytesPerPixel;
-                    if (sa == 255)
-                    {
-                        // Opaque overlay pixel fully replaces the destination.
-                        Data[di] = overlay.Data[si];
-                        Data[di + 1] = overlay.Data[si + 1];
-                        Data[di + 2] = overlay.Data[si + 2];
-                        Data[di + 3] = 255;
-                        continue;
-                    }
-
-                    int da = Data[di + 3];
-                    var dstContribution = da * (255 - sa) / 255; // destination weight after the overlay covers it
-                    var outA = sa + dstContribution;
-                    if (outA <= 0)
-                        continue; // both transparent -> nothing to write (destination already transparent)
-
-                    // Straight-alpha "over": each channel is the alpha-weighted mix, divided back out by the result
-                    // alpha. Values are provably within 0-255, so no clamping is needed.
-                    Data[di] = (byte) ((overlay.Data[si] * sa + Data[di] * dstContribution + outA / 2) / outA);
-                    Data[di + 1] = (byte) ((overlay.Data[si + 1] * sa + Data[di + 1] * dstContribution + outA / 2) / outA);
-                    Data[di + 2] = (byte) ((overlay.Data[si + 2] * sa + Data[di + 2] * dstContribution + outA / 2) / outA);
-                    Data[di + 3] = (byte) outA;
+                    BlendInto(di, overlay.Data[si], overlay.Data[si + 1], overlay.Data[si + 2], sa);
                 }
             }
+        }
+
+        /// <summary>
+        ///     Draws a one-pixel-wide straight line between two points, compositing it over what is already there.
+        ///     Both endpoints are included, and the line is clipped to the image rather than refused by it.
+        /// </summary>
+        /// <param name="x0">Start column, which may lie outside the image.</param>
+        /// <param name="y0">Start row, which may lie outside the image.</param>
+        /// <param name="x1">End column, which may lie outside the image.</param>
+        /// <param name="y1">End row, which may lie outside the image.</param>
+        /// <param name="color">The colour to draw; a translucent one blends, an opaque one replaces.</param>
+        public void DrawLine(int x0, int y0, int x1, int y1, Rgba32 color)
+        {
+            DrawLine(x0, y0, x1, y1, color, 1);
+        }
+
+        /// <summary>
+        ///     Draws a straight line of the given thickness between two points, compositing it over what is already
+        ///     there. Both endpoints are included, and the line is clipped to the image rather than refused by it.
+        ///     <para>
+        ///         <b>Every pixel of the line is blended exactly once.</b> The line is drawn as one perpendicular span
+        ///         per integer step of its major axis — distinct steps are distinct major coordinates, so the spans are
+        ///         provably disjoint. That is the whole reason this method is worth having rather than being left to
+        ///         the caller: the obvious way to give a line thickness is to stamp a square at each step, and
+        ///         consecutive stamps overlap by all but one row, so a <i>translucent</i> stamped line blends most of
+        ///         itself twice and comes out blotchy and darker than asked for. An opaque line hides the bug
+        ///         completely, which is how it survives being eyeballed.
+        ///     </para>
+        ///     <para>
+        ///         Thickness grows perpendicular to the major axis and the ends are square-cut rather than extended,
+        ///         so a thick line covers exactly the span the thin one did, widened. An even thickness cannot be
+        ///         centred on a pixel, so it grows one further down (or right) than up (or left).
+        ///     </para>
+        /// </summary>
+        /// <param name="x0">Start column, which may lie outside the image.</param>
+        /// <param name="y0">Start row, which may lie outside the image.</param>
+        /// <param name="x1">End column, which may lie outside the image.</param>
+        /// <param name="y1">End row, which may lie outside the image.</param>
+        /// <param name="color">The colour to draw; a translucent one blends, an opaque one replaces.</param>
+        /// <param name="thickness">How many pixels wide the line is; zero or less draws nothing.</param>
+        public void DrawLine(int x0, int y0, int x1, int y1, Rgba32 color, int thickness)
+        {
+            if (thickness <= 0 || color.A == 0)
+                return;
+
+            // How far the span reaches back from the centre line. Integer division is what makes an even thickness
+            // lean one way, which is documented above rather than corrected.
+            var half = (thickness - 1) / 2;
+
+            // Reject in constant time when nothing can land. Expanding both axes by the half-width is deliberately
+            // conservative - the span only widens across one of them - since a reject that fires slightly less often
+            // costs nothing and getting the axis wrong would clip a line that should have been drawn.
+            if (Math.Max(x0, x1) + (long) half < 0 || Math.Min(x0, x1) - (long) half >= Width)
+                return;
+            if (Math.Max(y0, y1) + (long) half < 0 || Math.Min(y0, y1) - (long) half >= Height)
+                return;
+
+            var dx = (long) x1 - x0;
+            var dy = (long) y1 - y0;
+            var steps = Math.Max(Math.Abs(dx), Math.Abs(dy));
+
+            if (steps == 0)
+            {
+                // A zero-length line is still a mark rather than nothing, which is what a caller drawing a trail from
+                // a missile's origin to a missile that has not moved yet is relying on.
+                BlendSpanVertical(x0, y0 - (long) half, y0 - (long) half + thickness - 1, color);
+                return;
+            }
+
+            // A horizontal line writes one pixel per column the long way round: correct, but it walks down a
+            // row-major array a whole stride at a time for every one of them. Drawn as rows instead it is the same
+            // set of pixels, still each visited once, at a fraction of the cache cost - and this is the common case,
+            // being every rule, axis and ground line anybody draws.
+            if (dy == 0)
+            {
+                var top = y0 - (long) half;
+                for (var row = top; row < top + thickness; row++)
+                {
+                    if (row >= 0 && row < Height)
+                        BlendSpanHorizontal((int) row, Math.Min(x0, x1), Math.Max(x0, x1), color);
+                }
+
+                return;
+            }
+
+            var xMajor = Math.Abs(dx) >= Math.Abs(dy);
+
+            // Which values of the step counter put the major axis inside the image. Clipping the loop rather than the
+            // pixels is what keeps a line drawn between coordinates millions of pixels apart from costing millions of
+            // iterations - and it is only safe because the position below is a pure function of `step`, computed from
+            // the original endpoints every time. An incremental error accumulator would give different pixels
+            // depending on where the loop was entered, which is the bug this shape exists to not have.
+            var majorStart = xMajor ? x0 : y0;
+            var majorLimit = xMajor ? Width : Height;
+            var forward = xMajor ? dx > 0 : dy > 0;
+
+            var first = forward ? -(long) majorStart : majorStart - (majorLimit - 1L);
+            var last = forward ? majorLimit - 1L - majorStart : majorStart;
+            if (first < 0) first = 0;
+            if (last > steps) last = steps;
+
+            for (var step = first; step <= last; step++)
+            {
+                // The major axis advances exactly one pixel per step, so only the minor one is interpolated - and
+                // rounding it away from zero keeps the line symmetric when it is drawn in either direction.
+                var minor = (int) Math.Round((double) (xMajor ? dy : dx) * step / steps, MidpointRounding.AwayFromZero);
+
+                if (xMajor)
+                {
+                    var x = x0 + (forward ? step : -step);
+                    var top = y0 + minor - (long) half;
+                    BlendSpanVertical((int) x, top, top + thickness - 1, color);
+                }
+                else
+                {
+                    var y = y0 + (forward ? step : -step);
+                    var left = x0 + minor - (long) half;
+                    BlendSpanHorizontal((int) y, left, left + thickness - 1, color);
+                }
+            }
+        }
+
+        /// <summary>
+        ///     Draws a filled circle centred on a point, compositing it over what is already there and clipping it to
+        ///     the image rather than refusing it.
+        ///     <para>
+        ///         <b>Every pixel of the disc is blended exactly once</b>, because it is drawn as one horizontal span
+        ///         per row and rows cannot overlap. That is the point of the method. The textbook alternative — a
+        ///         midpoint circle mirrored into eight octants — plots the octant seams and the four axis extremes
+        ///         twice, which is invisible for an opaque colour and paints a dark X straight through a
+        ///         <i>translucent</i> one. Anything drawing a fading blast, a glow or a soft highlight hits that
+        ///         immediately, and it is the kind of bug that reads as "my alpha maths is wrong".
+        ///     </para>
+        ///     <para>
+        ///         It is called <c>DrawDisc</c> and not <c>FillCircle</c> because it composites: see the remarks on
+        ///         this class for why nothing named <c>Fill</c> is allowed to. There is deliberately no outline circle
+        ///         and no outline rectangle — an outline is a different algorithm with its own double-plotting seams,
+        ///         and neither has a caller.
+        ///     </para>
+        /// </summary>
+        /// <param name="centerX">Column of the centre, which may lie outside the image.</param>
+        /// <param name="centerY">Row of the centre, which may lie outside the image.</param>
+        /// <param name="radius">Radius in pixels; zero or less draws nothing.</param>
+        /// <param name="color">The colour to draw; a translucent one blends, an opaque one replaces.</param>
+        public void DrawDisc(int centerX, int centerY, int radius, Rgba32 color)
+        {
+            if (radius <= 0 || color.A == 0)
+                return;
+
+            if ((long) centerX + radius < 0 || (long) centerX - radius >= Width ||
+                (long) centerY + radius < 0 || (long) centerY - radius >= Height)
+                return;
+
+            // Clipped before the loop runs rather than inside it, so a radius far larger than the image costs one
+            // span per row of the image and not one per row of the circle.
+            var top = (int) Math.Max(0L, (long) centerY - radius);
+            var bottom = (int) Math.Min(Height - 1L, (long) centerY + radius);
+
+            // Promoted to double BEFORE the multiply. In int arithmetic this overflows for any radius above 46,340
+            // and the radicand comes out negative, so every row's half-width is the square root of a negative number
+            // cast to zero - a disc that silently draws nothing at exactly the sizes somebody passed by mistake.
+            var radiusSquared = (double) radius * radius;
+
+            for (var y = top; y <= bottom; y++)
+            {
+                // Also a double: the clipped row can be an arbitrary distance from a centre that lies far off the
+                // image, and the difference of two ints at those extremes overflows.
+                var distance = (double) y - centerY;
+                var halfWidth = (long) Math.Sqrt(radiusSquared - distance*distance);
+                BlendSpanHorizontal(y, centerX - halfWidth, centerX + halfWidth, color);
+            }
+        }
+
+        /// <summary>
+        ///     Composites a run of one colour along a row, clipped to the image. The alpha test is hoisted out of the
+        ///     loop because it is constant for the whole span, which is what makes an opaque draw write the same bytes
+        ///     by the same shape of code as the equivalent <see cref="Fill(int, int, int, int, Rgba32)" />.
+        /// </summary>
+        /// <param name="y">The row to write.</param>
+        /// <param name="left">Leftmost column, which may be negative.</param>
+        /// <param name="right">Rightmost column inclusive, which may be past the right edge.</param>
+        /// <param name="color">The colour to composite.</param>
+        private void BlendSpanHorizontal(int y, long left, long right, Rgba32 color)
+        {
+            if ((uint) y >= (uint) Height)
+                return;
+
+            var from = (int) Math.Max(0L, left);
+            var to = (int) Math.Min(Width - 1L, right);
+            if (to < from)
+                return;
+
+            var index = (y * Width + from) * BytesPerPixel;
+
+            if (color.A == 255)
+            {
+                for (var x = from; x <= to; x++)
+                {
+                    Data[index] = color.R;
+                    Data[index + 1] = color.G;
+                    Data[index + 2] = color.B;
+                    Data[index + 3] = 255;
+                    index += BytesPerPixel;
+                }
+
+                return;
+            }
+
+            for (var x = from; x <= to; x++)
+            {
+                BlendInto(index, color.R, color.G, color.B, color.A);
+                index += BytesPerPixel;
+            }
+        }
+
+        /// <summary>Composites a run of one colour down a column, clipped to the image.</summary>
+        /// <param name="x">The column to write.</param>
+        /// <param name="top">Topmost row, which may be negative.</param>
+        /// <param name="bottom">Bottommost row inclusive, which may be past the bottom edge.</param>
+        /// <param name="color">The colour to composite.</param>
+        private void BlendSpanVertical(int x, long top, long bottom, Rgba32 color)
+        {
+            if ((uint) x >= (uint) Width)
+                return;
+
+            var from = (int) Math.Max(0L, top);
+            var to = (int) Math.Min(Height - 1L, bottom);
+            if (to < from)
+                return;
+
+            var index = (from * Width + x) * BytesPerPixel;
+            var stride = Width * BytesPerPixel;
+
+            if (color.A == 255)
+            {
+                for (var y = from; y <= to; y++)
+                {
+                    Data[index] = color.R;
+                    Data[index + 1] = color.G;
+                    Data[index + 2] = color.B;
+                    Data[index + 3] = 255;
+                    index += stride;
+                }
+
+                return;
+            }
+
+            for (var y = from; y <= to; y++)
+            {
+                BlendInto(index, color.R, color.G, color.B, color.A);
+                index += stride;
+            }
+        }
+
+        /// <summary>
+        ///     Composites one straight-alpha "source over" pixel into the buffer at an already-validated byte offset:
+        ///     each channel becomes the alpha-weighted mix of source and destination, divided back out by the result
+        ///     alpha, which is provably within 0-255 so no clamping is needed.
+        ///     <para>
+        ///         <b>The one and only source-over blend in this class, and every drawing method routes through it.</b>
+        ///         A second copy of this arithmetic written for the shape primitives would disagree with
+        ///         <see cref="DrawImage" /> by a rounding step and nothing would ever catch it — which is the same trap
+        ///         that had three separate escape-sequence parsers in this repository before
+        ///         <see cref="AnsiText" /> was published, arriving this time inside a single file.
+        ///     </para>
+        ///     <para>
+        ///         Does no bounds checking whatsoever: <paramref name="destIndex" /> is a byte offset the caller has
+        ///         already clipped, which is what lets the span writers hoist the clip out of their inner loops.
+        ///     </para>
+        /// </summary>
+        /// <param name="destIndex">Byte offset of the destination pixel, known to be in range.</param>
+        /// <param name="r">Source red channel.</param>
+        /// <param name="g">Source green channel.</param>
+        /// <param name="b">Source blue channel.</param>
+        /// <param name="sourceAlpha">Source alpha, 0-255.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void BlendInto(int destIndex, byte r, byte g, byte b, int sourceAlpha)
+        {
+            if (sourceAlpha == 0)
+                return; // fully transparent source: leave the destination untouched
+
+            if (sourceAlpha == 255)
+            {
+                // Opaque source fully replaces the destination.
+                Data[destIndex] = r;
+                Data[destIndex + 1] = g;
+                Data[destIndex + 2] = b;
+                Data[destIndex + 3] = 255;
+                return;
+            }
+
+            int da = Data[destIndex + 3];
+            var dstContribution = da * (255 - sourceAlpha) / 255; // destination weight after the source covers it
+            var outA = sourceAlpha + dstContribution;
+            if (outA <= 0)
+                return; // both transparent -> nothing to write (destination already transparent)
+
+            Data[destIndex] = (byte) ((r * sourceAlpha + Data[destIndex] * dstContribution + outA / 2) / outA);
+            Data[destIndex + 1] = (byte) ((g * sourceAlpha + Data[destIndex + 1] * dstContribution + outA / 2) / outA);
+            Data[destIndex + 2] = (byte) ((b * sourceAlpha + Data[destIndex + 2] * dstContribution + outA / 2) / outA);
+            Data[destIndex + 3] = (byte) outA;
         }
 
         /// <summary>

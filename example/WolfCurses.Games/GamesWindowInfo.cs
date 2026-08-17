@@ -23,5 +23,8 @@ namespace WolfCurses.Games
 
         /// <summary>How many games of chess the player has won this session.</summary>
         public int ChessWins { get; set; }
+
+        /// <summary>Highest score reached in a single game of Missile Command this session.</summary>
+        public int MissileCommandBestScore { get; set; }
     }
 }

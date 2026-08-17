@@ -35,7 +35,14 @@ namespace WolfCurses.Games
         /// </summary>
         [Description("WolfChess 5000 - chess, with graphics and a bot.")] Chess = 4,
 
+        /// <summary>
+        ///     The only game here whose board is not a grid: a continuous ballistics field, drawn as a picture the
+        ///     library <i>generates</i> rather than decodes, moving by elapsed time rather than by step. It is also
+        ///     where a terminal's missing key-up event stops being a curiosity and starts being the design problem.
+        /// </summary>
+        [Description("Missile Command - arrows aim, SPACE fires.")] MissileCommand = 5,
+
         /// <summary>Closes the arcade and returns to the operating system.</summary>
-        [Description("Quit.")] Quit = 5
+        [Description("Quit.")] Quit = 6
     }
 }

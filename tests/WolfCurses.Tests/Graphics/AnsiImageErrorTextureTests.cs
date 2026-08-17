@@ -147,5 +147,32 @@ namespace WolfCurses.Tests.Graphics
         {
             Assert.Throws<ArgumentOutOfRangeException>(() => ImageErrorTexture.Create(64, 64, checks));
         }
+
+        [Theory]
+        [InlineData(128, 128, 8)] // the defaults, checks dividing evenly
+        [InlineData(100, 60, 8)] // neither axis divides, so the last check of each row and column is ragged
+        [InlineData(7, 5, 8)] // more checks asked for than there are pixels
+        [InlineData(1, 1, 1)] // the smallest texture there is
+        public void Create_ChecksAlternateOnBothAxesAtEveryBoundary(int width, int height, int checks)
+        {
+            // Pinned by POSITION rather than by construction, because the body was rewritten from a per-pixel loop
+            // into per-check Fill calls and the two must be indistinguishable. The parity expression is stated here
+            // independently of the implementation, so a rewrite that got the check size or the alternation wrong
+            // fails on a named coordinate instead of quietly drawing a different checkerboard.
+            var checkWidth = Math.Max(1, (width + checks - 1) / checks);
+            var checkHeight = Math.Max(1, (height + checks - 1) / checks);
+
+            var texture = ImageErrorTexture.Create(width, height, checks);
+
+            for (var y = 0; y < height; y++)
+            for (var x = 0; x < width; x++)
+            {
+                var expected = (x / checkWidth + y / checkHeight) % 2 == 0
+                    ? ImageErrorTexture.Magenta
+                    : ImageErrorTexture.Black;
+
+                Assert.Equal(expected, texture.GetPixel(x, y));
+            }
+        }
     }
 }
