@@ -274,13 +274,13 @@ namespace WolfCurses.Example
         /// <param name="renderer">The renderer to name.</param>
         private static string DescribeRenderer(IImageRenderer renderer)
         {
-            return renderer switch
-            {
-                KittyImageRenderer => "kitty (real pixels)",
-                SixelImageRenderer => "sixel (real pixels)",
-                HalfBlockImageRenderer => "half blocks",
-                var other => other?.GetType().Name ?? "none"
-            };
+            // The renderer says what it is. This used to switch on the three built-in types, which named a
+            // third-party renderer by its class name and quietly told the user it was not real pixels when it may
+            // well have been.
+            if (renderer == null)
+                return "none";
+
+            return renderer.DrawsTruePixels ? $"{renderer.Name} (real pixels)" : renderer.Name;
         }
 
         private void SelectFromList()

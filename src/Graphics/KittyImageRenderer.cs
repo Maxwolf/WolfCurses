@@ -27,6 +27,12 @@ namespace WolfCurses.Graphics
     /// </summary>
     public sealed class KittyImageRenderer : IImageRenderer
     {
+        /// <inheritdoc />
+        public string Name => "kitty";
+
+        /// <inheritdoc />
+        public bool DrawsTruePixels => true;
+
         /// <summary>The ASCII escape control character (0x1B) that begins every ANSI control sequence.</summary>
         private const char Escape = (char) 27;
 

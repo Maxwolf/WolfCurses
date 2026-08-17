@@ -18,8 +18,9 @@ namespace WolfCurses.Games.Tetris
     ///     <para>
     ///         That turns out to be the interesting part. A row of the well is twenty visible columns wrapped in
     ///         several hundred bytes of color escapes, so lining a panel up against it needs a width measured in
-    ///         columns and not in characters — see <see cref="SideBySide" />, which is a dozen lines and the only
-    ///         thing here that is not either the game or a call into the library.
+    ///         columns and not in characters. This game once carried its own <c>SideBySide</c> helper to do that;
+    ///         the library owns it now as <see cref="TextColumns" />, so there is nothing left in this file that is
+    ///         not either the game or a call into the library.
     ///     </para>
     ///     <para>
     ///         The well is <b>sixteen rows rather than the traditional twenty</b>, so the whole screen — status line,
@@ -191,7 +192,7 @@ namespace WolfCurses.Games.Tetris
 
             var body = new StringBuilder();
             body.AppendLine();
-            body.AppendLine(SideBySide.Join(_frame.Render(ComposeWell()), panels.ToString(), 2));
+            body.AppendLine(TextColumns.Join(_frame.Render(ComposeWell()), panels.ToString()));
             body.AppendLine();
             body.Append(_message);
             return body.ToString();

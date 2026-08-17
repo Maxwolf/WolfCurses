@@ -1,4 +1,4 @@
-// Created by Maxwolf (bigmaxwolf.com)
+﻿// Created by Maxwolf (bigmaxwolf.com)
 // Timestamp 07/17/2026
 
 using System;
@@ -537,13 +537,9 @@ namespace WolfCurses.Graphics.Decoding
         private static void ClearRectangle(PixelBuffer canvas, byte[] globalPalette, int backgroundIndex,
             int transparentIndex, int left, int top, int frameWidth, int frameHeight)
         {
-            var fill = BackgroundColor(globalPalette, backgroundIndex, transparentIndex);
-
-            var right = Math.Min(left + frameWidth, canvas.Width);
-            var bottom = Math.Min(top + frameHeight, canvas.Height);
-            for (var y = Math.Max(top, 0); y < bottom; y++)
-            for (var x = Math.Max(left, 0); x < right; x++)
-                canvas.SetPixel(x, y, fill);
+            // Fill clips to the canvas, which is what the hand-written min/max loop this replaced was doing.
+            canvas.Fill(left, top, frameWidth, frameHeight,
+                BackgroundColor(globalPalette, backgroundIndex, transparentIndex));
         }
 
         /// <summary>

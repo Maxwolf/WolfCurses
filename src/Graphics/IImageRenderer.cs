@@ -23,6 +23,33 @@ namespace WolfCurses.Graphics
     public interface IImageRenderer
     {
         /// <summary>
+        ///     A short name for how this renderer draws — "sixel", "kitty", "half blocks" — for a status line or a
+        ///     picker. Defaults to the implementing type's name, which is a serviceable answer for a renderer that
+        ///     does not care to give a better one.
+        /// </summary>
+        string Name => GetType().Name;
+
+        /// <summary>
+        ///     Whether this renderer paints <b>real pixels</b> — sixel, kitty — rather than character cells.
+        ///     <para>
+        ///         The question an application asks when it has to decide something about layout: how many rows a
+        ///         picture needs to be worth showing, whether to fall back to text, whether a thumbnail will read at
+        ///         all. Half blocks get two pixels per row, so eight chess squares across twenty rows is under four
+        ///         pixels a square and a knight is the same smudge as a bishop; the same rows of sixel are a picture.
+        ///     </para>
+        ///     <para>
+        ///         <b>This exists because the alternative was type-testing the built-in classes</b>, which is what
+        ///         both example applications were reduced to doing — and which quietly gets the wrong answer for
+        ///         exactly the renderers this seam exists to allow, since a third-party true-pixel renderer is not
+        ///         <see cref="SixelImageRenderer" /> or <see cref="KittyImageRenderer" />. Defaults to false for the
+        ///         same reason <see cref="AnsiConsole.DetectGraphicsProtocol()" /> is biased to
+        ///         <see cref="AnsiGraphicsProtocolEnum.None" />: guessing wrong this way costs a plainer picture,
+        ///         guessing wrong the other way costs a screen full of escape garbage.
+        ///     </para>
+        /// </summary>
+        bool DrawsTruePixels => false;
+
+        /// <summary>
         ///     Renders the image, sized and colored according to <paramref name="options" />.
         /// </summary>
         /// <param name="image">The decoded image to draw. Implementations should throw on null.</param>

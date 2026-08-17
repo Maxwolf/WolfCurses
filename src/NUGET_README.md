@@ -70,7 +70,11 @@ By default the image is scaled to fit the console window while keeping its aspec
 
 ## Laying out styled text
 
-An escape sequence has length but no width, so `string.Length` is the wrong number for anything you want to pad, centre, or place beside something else — a colored row twenty columns wide can be hundreds of characters long. `AnsiText.VisibleLength` and `AnsiText.StripEscapes` are the library's own escape walk, made public for exactly this; they share one parser, so `StripEscapes(x).Length == VisibleLength(x)` always holds. `AnsiConsole.SafeWindowWidth()` / `SafeWindowHeight()` report the terminal size, or 80x24 when there is no terminal to ask (each call is a syscall — read it into a local rather than per row).
+An escape sequence has length but no width, so `string.Length` is the wrong number for anything you want to pad, centre, or place beside something else — a colored row twenty columns wide can be hundreds of characters long. `AnsiText.VisibleLength` and `AnsiText.StripEscapes` are the library's own escape walk, made public for exactly this; they share one parser, so `StripEscapes(x).Length == VisibleLength(x)` always holds. `TextColumns.Join` puts blocks of text beside each other using that measurement — a panel next to content, two boxes on one row:
+
+```csharp
+string screen = TextColumns.Join(2, board, sidePanel);
+``` `AnsiConsole.SafeWindowWidth()` / `SafeWindowHeight()` report the terminal size, or 80x24 when there is no terminal to ask (each call is a syscall — read it into a local rather than per row).
 
 ## Real-time screens
 

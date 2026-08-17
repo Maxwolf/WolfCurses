@@ -114,9 +114,11 @@ namespace WolfCurses.Games.Chess
             if (AnsiConsole.DetectColorMode() == AnsiColorModeEnum.None)
                 return false;
 
+            // Asked of the renderer rather than type-tested against the built-in classes, which is what this line
+            // used to do - and which gets the wrong answer for exactly the third-party renderers the seam exists
+            // to allow.
             var rows = BoardRows();
-            var truePixels = ImageRenderers.Default is SixelImageRenderer or KittyImageRenderer;
-            return truePixels ? rows >= 10 : rows >= 40;
+            return ImageRenderers.Default.DrawsTruePixels ? rows >= 10 : rows >= 40;
         }
 
         /// <summary>How many rows the board may claim, after the chrome and the prompt have had theirs.</summary>

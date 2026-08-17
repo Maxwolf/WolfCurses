@@ -18,6 +18,16 @@ namespace WolfCurses.Graphics
     public sealed class HalfBlockImageRenderer : IImageRenderer
     {
         /// <inheritdoc />
+        public string Name => "half blocks";
+
+        /// <inheritdoc />
+        /// <remarks>
+        ///     False: a cell here is a character with a foreground and a background, so the vertical resolution is
+        ///     two pixels per row and everything else is one pixel per column.
+        /// </remarks>
+        public bool DrawsTruePixels => false;
+
+        /// <inheritdoc />
         public string Render(PixelBuffer image, AnsiImageOptions options = null)
         {
             return AnsiImageRenderer.Render(image, options);

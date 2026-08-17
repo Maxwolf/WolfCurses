@@ -1,4 +1,4 @@
-// Created by Maxwolf (bigmaxwolf.com)
+﻿// Created by Maxwolf (bigmaxwolf.com)
 // Timestamp 07/16/2026
 
 using System;
@@ -34,6 +34,12 @@ namespace WolfCurses.Graphics
     /// </remarks>
     public sealed class SixelImageRenderer : IImageRenderer
     {
+        /// <inheritdoc />
+        public string Name => "sixel";
+
+        /// <inheritdoc />
+        public bool DrawsTruePixels => true;
+
         /// <summary>The ASCII escape control character (0x1B) that begins every ANSI control sequence.</summary>
         private const char Escape = (char) 27;
 

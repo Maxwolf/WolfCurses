@@ -1,4 +1,4 @@
-// Created by Maxwolf (bigmaxwolf.com)
+﻿// Created by Maxwolf (bigmaxwolf.com)
 // Timestamp 07/11/2026
 
 using System;
@@ -105,6 +105,54 @@ namespace WolfCurses.Graphics
             Data[i + 1] = color.G;
             Data[i + 2] = color.B;
             Data[i + 3] = color.A;
+        }
+
+        /// <summary>Paints every pixel of the image one colour.</summary>
+        /// <param name="color">The colour to paint.</param>
+        public void Fill(Rgba32 color)
+        {
+            Fill(0, 0, Width, Height, color);
+        }
+
+        /// <summary>
+        ///     Paints a rectangle one colour, <b>clipped</b> to the image rather than throwing — a rectangle that
+        ///     hangs off the edge paints the part that lands, and one entirely outside paints nothing.
+        ///     <para>
+        ///         Clipping rather than validating is deliberate, and matches <see cref="DrawImage" />: the callers
+        ///         that want a rectangle are compositing, where "draw this tile at that offset" routinely runs off
+        ///         the edge and having to bounds-check every call before making it is how the arithmetic ends up
+        ///         duplicated at every call site. Replaces the nested <see cref="SetPixel" /> loop that
+        ///         <see cref="Decoding.GifDecoder" /> and any compositing caller would otherwise write, and writes
+        ///         the row bytes directly rather than going through the per-pixel bounds test.
+        ///     </para>
+        /// </summary>
+        /// <param name="x">Left edge, which may be negative.</param>
+        /// <param name="y">Top edge, which may be negative.</param>
+        /// <param name="width">Width in pixels; zero or less paints nothing.</param>
+        /// <param name="height">Height in pixels; zero or less paints nothing.</param>
+        /// <param name="color">The colour to paint.</param>
+        public void Fill(int x, int y, int width, int height, Rgba32 color)
+        {
+            var left = Math.Max(0, x);
+            var top = Math.Max(0, y);
+            var right = Math.Min(Width, x + width);
+            var bottom = Math.Min(Height, y + height);
+
+            if (right <= left || bottom <= top)
+                return;
+
+            for (var row = top; row < bottom; row++)
+            {
+                var i = (row * Width + left) * BytesPerPixel;
+                for (var column = left; column < right; column++)
+                {
+                    Data[i] = color.R;
+                    Data[i + 1] = color.G;
+                    Data[i + 2] = color.B;
+                    Data[i + 3] = color.A;
+                    i += BytesPerPixel;
+                }
+            }
         }
 
         /// <summary>

@@ -104,7 +104,7 @@ namespace WolfCurses.Games.Chess
                 var mark = ChessSquareMarkEnum.None;
                 marks?.TryGetValue(square, out mark);
 
-                FillSquare(canvas, column * SquarePixels, row * SquarePixels,
+                canvas.Fill(column * SquarePixels, row * SquarePixels, SquarePixels, SquarePixels,
                     ColorFor((file + rank) % 2 != 0, mark));
 
                 var piece = board[square];
@@ -146,13 +146,6 @@ namespace WolfCurses.Games.Chess
                 (byte) ((baseColor.G + tint.G * 3) / 4),
                 (byte) ((baseColor.B + tint.B * 3) / 4),
                 0xFF);
-        }
-
-        private static void FillSquare(PixelBuffer canvas, int left, int top, Rgba32 color)
-        {
-            for (var y = 0; y < SquarePixels; y++)
-            for (var x = 0; x < SquarePixels; x++)
-                canvas.SetPixel(left + x, top + y, color);
         }
 
         /// <summary>The file name stem for a piece, which is how the artwork is named: "WKnight", "BPawn".</summary>
