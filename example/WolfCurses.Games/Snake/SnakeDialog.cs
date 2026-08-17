@@ -42,9 +42,6 @@ namespace WolfCurses.Games.Snake
         /// <summary>Playfield height in cells, which is also its height in screen rows.</summary>
         private const int BoardHeight = 15;
 
-        /// <summary>How wide one cell is drawn. Two, because a character cell is about twice as tall as it is wide.</summary>
-        private const int CellWidth = 2;
-
         /// <summary>How long a step takes at the start, and how much each piece of food takes off it, down to a floor.</summary>
         private static readonly TimeSpan _startingStep = TimeSpan.FromMilliseconds(130);
 
@@ -60,6 +57,24 @@ namespace WolfCurses.Games.Snake
 
         /// <summary>The playfield's frame. A widget from the library, doing here exactly what it does in a dialog.</summary>
         private readonly Box _frame = new() {Title = "Snake", Padding = 0};
+
+        /// <summary>
+        ///     The playfield itself, as cells. <c>CellWidth</c> is two because a character cell is about twice as
+        ///     tall as it is wide, so a board meant to look square has to draw each cell two columns across.
+        ///     <para>
+        ///         This used to be a <c>char[,]</c> and thirty lines that walked each row breaking it into runs of
+        ///         like cells and styling each run once — which is what put <see cref="TextGrid" /> in the library,
+        ///         since the missile field and the chess text board had each written the same loop. The grid is kept
+        ///         and cleared rather than reallocated, and <b>the clear is load-bearing here</b> in a way it is not
+        ///         everywhere: the snake vacates its tail cell every step, and a cell nobody repaints keeps whatever
+        ///         it had.
+        ///     </para>
+        /// </summary>
+        private readonly TextGrid _playfield = new(BoardWidth, BoardHeight) {CellWidth = 2};
+
+        private static readonly TextStyle _headStyle = new(ConsoleColor.Green);
+        private static readonly TextStyle _bodyStyle = new(ConsoleColor.DarkGreen);
+        private static readonly TextStyle _foodStyle = new(ConsoleColor.Red);
 
         private SnakeBoard _board;
         private string _rendered;
@@ -198,71 +213,30 @@ namespace WolfCurses.Games.Snake
         }
 
         /// <summary>
-        ///     Draws the cells, coloring runs rather than characters.
+        ///     Draws the cells. The grid does the colouring, a run of like cells at a time rather than a cell at a
+        ///     time — a snake fifty segments long would otherwise be fifty identical escape sequences the terminal
+        ///     did not need.
         ///     <para>
-        ///         A row is built as a run of like cells and styled once per run, which is the same discipline the
-        ///         library's own widgets follow: an open sequence per character would be correct and would trip over
-        ///         itself, since a snake fifty segments long is fifty identical escapes the terminal did not need. The
-        ///         glyphs differ as well as the colors on purpose — under <c>NO_COLOR</c>, or on a terminal that
-        ///         cannot do color at all, the food has to still be findable.
+        ///         The glyphs differ as well as the colors on purpose: under <c>NO_COLOR</c>, or on a terminal that
+        ///         cannot do color at all, the food has to still be findable. The head shares the body's glyph and
+        ///         differs only by colour, which is the one exception and is deliberate — losing the head in the body
+        ///         costs nothing, since it is always the end that is moving.
         ///     </para>
         /// </summary>
         private string ComposePlayfield()
         {
-            var head = _board.Body[0];
-            var cells = new char[_board.Height, _board.Width];
+            _playfield.Clear();
 
-            for (var y = 0; y < _board.Height; y++)
-            for (var x = 0; x < _board.Width; x++)
-                cells[y, x] = ' ';
-
+            // Body first, then the head over it: the head is part of the body, so painting it first would be
+            // painted over by its own second segment.
             foreach (var (x, y) in _board.Body)
-                cells[y, x] = '█';
+                _playfield.Set(x, y, '█', _bodyStyle);
 
-            cells[_board.Food.Y, _board.Food.X] = '▓';
-
-            var sb = new StringBuilder();
-            for (var y = 0; y < _board.Height; y++)
-            {
-                if (y > 0)
-                    sb.AppendLine();
-
-                var runStart = 0;
-                for (var x = 1; x <= _board.Width; x++)
-                {
-                    var sameAsRun = x < _board.Width &&
-                                    cells[y, x] == cells[y, runStart] &&
-                                    IsHead(x, y) == IsHead(runStart, y);
-                    if (sameAsRun)
-                        continue;
-
-                    AppendRun(sb, cells[y, runStart], IsHead(runStart, y), x - runStart);
-                    runStart = x;
-                }
-            }
-
-            return sb.ToString();
-        }
-
-        /// <summary>Whether that cell is the snake's head, which is drawn in its own color so the player can find it.</summary>
-        private bool IsHead(int x, int y)
-        {
             var head = _board.Body[0];
-            return head.X == x && head.Y == y;
-        }
+            _playfield.Set(head.X, head.Y, '█', _headStyle);
+            _playfield.Set(_board.Food.X, _board.Food.Y, '▓', _foodStyle);
 
-        /// <summary>Writes one run of identical cells, styled once.</summary>
-        private static void AppendRun(StringBuilder sb, char glyph, bool isHead, int count)
-        {
-            var text = new string(glyph, count*CellWidth);
-            var style = glyph switch
-            {
-                '█' => isHead ? new TextStyle(ConsoleColor.Green) : new TextStyle(ConsoleColor.DarkGreen),
-                '▓' => new TextStyle(ConsoleColor.Red),
-                _ => TextStyle.None
-            };
-
-            sb.Append(style.Apply(text));
+            return _playfield.Render();
         }
     }
 }

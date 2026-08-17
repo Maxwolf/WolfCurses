@@ -1,9 +1,10 @@
-// Created by Maxwolf (bigmaxwolf.com)
+﻿// Created by Maxwolf (bigmaxwolf.com)
 // Timestamp 08/16/2026
 
 using System;
 using System.Text;
 using WolfCurses.Games.Chess;
+using WolfCurses.Games.Labyrinth;
 using WolfCurses.Games.Minesweeper;
 using WolfCurses.Games.MissileCommand;
 using WolfCurses.Games.Snake;
@@ -36,6 +37,7 @@ namespace WolfCurses.Games
             AddCommand(PlayTetris, GamesCommandsEnum.Tetris);
             AddCommand(PlayChess, GamesCommandsEnum.Chess);
             AddCommand(PlayMissileCommand, GamesCommandsEnum.MissileCommand);
+            AddCommand(PlayLabyrinth, GamesCommandsEnum.Labyrinth);
             AddCommand(Quit, GamesCommandsEnum.Quit);
 
             RefreshMenuHeader();
@@ -83,7 +85,8 @@ namespace WolfCurses.Games
                               $"Minefields cleared: {UserData.MinefieldsCleared}   " +
                               $"Tetris best: {UserData.TetrisBestLines} rows");
             header.AppendLine($"Chess wins: {UserData.ChessWins}   " +
-                              $"Missile Command best: {UserData.MissileCommandBestScore:N0}");
+                              $"Missile Command best: {UserData.MissileCommandBestScore:N0}   " +
+                              $"Mazes escaped: {UserData.LabyrinthMazesEscaped}");
             header.AppendLine();
             header.Append("Choose one (arrow keys + ENTER, or type a number):");
             MenuHeader = header.ToString();
@@ -112,6 +115,11 @@ namespace WolfCurses.Games
         private void PlayMissileCommand()
         {
             SetForm(typeof (MissileCommandDialog));
+        }
+
+        private void PlayLabyrinth()
+        {
+            SetForm(typeof (LabyrinthDialog));
         }
 
         private void Quit()

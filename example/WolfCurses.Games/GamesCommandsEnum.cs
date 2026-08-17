@@ -42,7 +42,14 @@ namespace WolfCurses.Games
         /// </summary>
         [Description("Missile Command - arrows aim, SPACE fires.")] MissileCommand = 5,
 
+        /// <summary>
+        ///     The only game here whose world is bigger than the terminal, which is what makes it the one that needs a
+        ///     camera. Also the only one with no clock at all: it is steered, and yet nothing happens until a key is
+        ///     pressed.
+        /// </summary>
+        [Description("Labyrinth - escape a maze bigger than the screen.")] Labyrinth = 6,
+
         /// <summary>Closes the arcade and returns to the operating system.</summary>
-        [Description("Quit.")] Quit = 6
+        [Description("Quit.")] Quit = 7
     }
 }

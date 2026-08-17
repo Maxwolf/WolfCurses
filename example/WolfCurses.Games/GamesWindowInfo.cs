@@ -26,5 +26,8 @@ namespace WolfCurses.Games
 
         /// <summary>Highest score reached in a single game of Missile Command this session.</summary>
         public int MissileCommandBestScore { get; set; }
+
+        /// <summary>How many mazes the player has found their way out of this session.</summary>
+        public int LabyrinthMazesEscaped { get; set; }
     }
 }
