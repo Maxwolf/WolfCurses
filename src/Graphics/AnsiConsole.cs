@@ -489,6 +489,98 @@ namespace WolfCurses.Graphics
         }
 
         /// <summary>
+        ///     Whether mouse reporting is currently on. Get-only: two spellings of one piece of state is a bug
+        ///     generator, so <see cref="EnableMouse" /> and <see cref="DisableMouse" /> are the only ways to move it.
+        /// </summary>
+        public static bool MouseEnabled { get; private set; }
+
+        /// <summary>Whether the process-exit restore hooks have been attached, so repeated enabling cannot stack them.</summary>
+        private static bool _mouseRestoreHooked;
+
+        /// <summary>
+        ///     Asks the terminal to report mouse presses, so that
+        ///     <see cref="Window.IWindow.OnMousePressed" /> starts firing.
+        ///     <para>
+        ///         <b>Opt-in, host-only, and nothing inside this library ever calls it</b> — which is what makes an
+        ///         application that does not want the mouse provably unaffected by any of this. Enabling has two
+        ///         costs the caller is agreeing to: it takes click-drag text selection away from the user for as long
+        ///         as it is on, and it swaps this process's console read path wholesale, because
+        ///         <c>Console.KeyAvailable</c> destroys mouse records and cannot be run beside a mouse reader.
+        ///     </para>
+        ///     <para>
+        ///         Call it <i>after</i> constructing the <see cref="SimulationApp" />: that constructor probes the
+        ///         terminal for a graphics protocol, which reads standard input.
+        ///     </para>
+        ///     <para>
+        ///         <b>Windows only today.</b> Everywhere else this answers false having written nothing at all and
+        ///         changed nothing — no escape sequence is emitted, so a terminal that would not have understood one
+        ///         never sees it, and every key path stays exactly as it was. A caller should treat false as "this
+        ///         terminal has no mouse" and keep whatever keyboard controls it already had.
+        ///     </para>
+        ///     <para>
+        ///         Remember to call <see cref="DisableMouse" /> before exiting. On a classic console host the mode
+        ///         belongs to the window rather than to the process, so a program that dies without restoring it
+        ///         leaves that window with text selection switched off until it is closed and reopened.
+        ///     </para>
+        /// </summary>
+        /// <returns>TRUE when mouse presses will now be reported.</returns>
+        public static bool EnableMouse()
+        {
+            if (MouseEnabled)
+                return true;
+
+            // A host with no console, or one whose streams are redirected, has no mouse and must not be poked.
+            try
+            {
+                if (SafeIsOutputRedirected() || Console.IsInputRedirected)
+                    return false;
+            }
+            catch
+            {
+                return false;
+            }
+
+            if (!Core.WindowsConsoleInput.TryEnable())
+                return false;
+
+            RegisterMouseRestoreHooks();
+            MouseEnabled = true;
+            return true;
+        }
+
+        /// <summary>
+        ///     Arranges for the console mode to be handed back even when the program does not get to its own exit
+        ///     path.
+        ///     <para>
+        ///         This lives in the library rather than being left to each host on purpose. Forgetting it does not
+        ///         break the program that forgot — it breaks the <i>user's console window</i>, which on a classic
+        ///         host keeps the mode after the process is gone, leaving their own click-drag text selection dead
+        ///         until they close and reopen it. That is somebody else's terminal, so the safe default belongs
+        ///         here. <see cref="AppDomain.ProcessExit" /> deliberately is not enough by itself: it does not run
+        ///         when an exception goes unhandled, which is the most likely way a full-screen application dies.
+        ///     </para>
+        /// </summary>
+        private static void RegisterMouseRestoreHooks()
+        {
+            if (_mouseRestoreHooked)
+                return;
+
+            _mouseRestoreHooked = true;
+            AppDomain.CurrentDomain.ProcessExit += (_, _) => DisableMouse();
+            AppDomain.CurrentDomain.UnhandledException += (_, _) => DisableMouse();
+        }
+
+        /// <summary>
+        ///     Puts the terminal back the way it was found. Safe to call when the mouse was never enabled, safe to
+        ///     call twice, and never throws — it is meant to be reachable from an exit handler.
+        /// </summary>
+        public static void DisableMouse()
+        {
+            Core.WindowsConsoleInput.Disable();
+            MouseEnabled = false;
+        }
+
+        /// <summary>
         ///     Turns on <c>ENABLE_VIRTUAL_TERMINAL_PROCESSING</c> for the standard output handle. Returns false (rather
         ///     than throwing) when there is no real console attached, for example because output is a pipe or file.
         /// </summary>

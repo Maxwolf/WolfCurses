@@ -91,6 +91,20 @@ namespace WolfCurses.Window.Form
         }
 
         /// <summary>
+        ///     Fired when a mouse button goes down somewhere on the terminal, if the host asked for the mouse at all.
+        ///     <para>
+        ///         A mouse press never touches the input buffer — not as content, since a click has no character to
+        ///         contribute, and not as buffer control either, since <c>InputBuffer</c> is append-only and has no
+        ///         caret to move. So unlike ENTER and BACKSPACE nothing about a click is consumed before it gets
+        ///         here.
+        ///     </para>
+        /// </summary>
+        /// <param name="mouse">Where the press landed and which button it was.</param>
+        void OnMousePressed(MouseEvent mouse)
+        {
+        }
+
+        /// <summary>
         ///     Fired after the state has been completely attached to the simulation letting the state know it can browse the user
         ///     data and other properties below it.
         /// </summary>

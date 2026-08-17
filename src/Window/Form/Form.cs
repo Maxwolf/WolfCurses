@@ -177,6 +177,15 @@ namespace WolfCurses.Window.Form
         }
 
         /// <summary>
+        ///     Fired when a mouse button goes down while this form is showing, if the host asked for the mouse at all
+        ///     with <see cref="Graphics.AnsiConsole.EnableMouse" />. Does nothing unless overridden.
+        /// </summary>
+        /// <param name="mouse">Where the press landed and which button it was.</param>
+        public virtual void OnMousePressed(MouseEvent mouse)
+        {
+        }
+
+        /// <summary>
         ///     Fired when the host reports a key press with the whole <see cref="ConsoleKeyInfo" /> attached. Override
         ///     this one instead of <see cref="OnKeyPressed(ConsoleKey)" /> when the bare key is not enough —
         ///     <see cref="ConsoleKeyInfo.KeyChar" /> is the reliable discriminator for shifted punctuation (',' and

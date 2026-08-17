@@ -420,6 +420,26 @@ namespace WolfCurses.Window
         }
 
         /// <summary>
+        ///     Fired when a mouse button goes down. Hands it to the attached form, and does nothing at all when there
+        ///     is not one.
+        ///     <para>
+        ///         <b>Deliberately asymmetric with <see cref="OnKeyPressed(ConsoleKey)" /></b>, which falls through to
+        ///         the menu navigator when no form is attached. A click cannot drive a menu because nothing in this
+        ///         library knows where a menu item landed on screen: <see cref="RenderMenuCommands" /> hands off to
+        ///         <see cref="Menu.MenuLayout" />, which may reflow the items column-major into a grid it does not
+        ///         keep, and <see cref="Core.SceneGraph" /> prepends the spinner, the window label and the
+        ///         application's own pre-render text on that same first line. Hit-testing a menu needs a layout model
+        ///         the library does not have, and is a larger feature than mouse input itself; until it exists a click
+        ///         on a menu is swallowed quietly, exactly as a key that is not an arrow already is.
+        ///     </para>
+        /// </summary>
+        /// <param name="mouse">Where the press landed and which button it was.</param>
+        public virtual void OnMousePressed(MouseEvent mouse)
+        {
+            Form?.OnMousePressed(mouse);
+        }
+
+        /// <summary>
         ///     Fired when the host reports a key press with the whole <see cref="ConsoleKeyInfo" /> attached — this is
         ///     the overload the simulation dispatches. The base implementation forwards through
         ///     <see cref="OnKeyPressed(ConsoleKey)" />, which stays the single routing point so a subclass override of

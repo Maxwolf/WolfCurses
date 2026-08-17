@@ -54,6 +54,9 @@ namespace WolfCurses.Games.MissileCommand
         /// <summary>Rows of chrome around the field: a blank, the status, a blank, the message and the prompt.</summary>
         private const int ChromeRows = 6;
 
+        /// <summary>The renderer used while the mouse is on — see <see cref="BoardRenderer" /> for why.</summary>
+        private static readonly HalfBlockImageRenderer _halfBlocks = new();
+
         private readonly IntervalTimer _frame = new(_framePace);
 
         /// <summary>
@@ -88,6 +91,25 @@ namespace WolfCurses.Games.MissileCommand
         private bool _forceText;
         private bool _scoreRecorded;
 
+        /// <summary>
+        ///     Where the board landed in the frame the player is looking at, so a click can be turned back into a
+        ///     world position. Rebuilt every time the screen is composed - see <see cref="MissileBoardMap" />.
+        /// </summary>
+        private MissileBoardMap _boardMap;
+
+        /// <summary>
+        ///     The last click the game received, kept only so the status line can show it.
+        ///     <para>
+        ///         This is a diagnostic and it earns its place: whether the mouse works at all depends on the
+        ///         terminal, on the console host, and on whether something else has already claimed the pointer, and
+        ///         none of that can be established from inside a test. Showing the received cell means "nothing
+        ///         happens when I click" can be told apart from "it fires in the wrong place" without a debugger.
+        ///     </para>
+        /// </summary>
+        private MouseEvent _lastClick;
+
+        private bool _clicked;
+
         /// <summary>Initializes a new instance of the <see cref="MissileCommandDialog" /> class.</summary>
         /// <param name="window">The parent window.</param>
         // ReSharper disable once UnusedMember.Global
@@ -109,8 +131,11 @@ namespace WolfCurses.Games.MissileCommand
         {
             base.OnFormPostCreate();
 
-            ParentWindow.PromptText =
-                "Arrows or WASD aim, SPACE fires, Z/X/C picks a battery, TAB switches board, ENTER or ESC quits";
+            // The mouse is only advertised when the host actually got one - a prompt promising a click that the
+            // terminal will never report is worse than saying nothing.
+            ParentWindow.PromptText = AnsiConsole.MouseEnabled
+                ? "Click to fire, or arrows/WASD aim and SPACE fires; Z/X/C picks a battery, TAB switches board, ENTER quits"
+                : "Arrows or WASD aim, SPACE fires, Z/X/C picks a battery, TAB switches board, ENTER or ESC quits";
 
             // Asked once, not per frame. Enable does real work - it sets the output encoding and, on Windows, calls
             // into the console API - and the answer cannot change under a running process.
@@ -228,6 +253,56 @@ namespace WolfCurses.Games.MissileCommand
             ClearForm();
         }
 
+        /// <summary>
+        ///     Aims at a world position, clamped to the field and to the floor the player may not shoot below. Both
+        ///     the keyboard and the mouse come through here so the two clamps exist in exactly one place.
+        /// </summary>
+        /// <param name="x">Where to aim, in world units.</param>
+        /// <param name="y">Where to aim, in world units.</param>
+        private void SetAim(double x, double y)
+        {
+            _aimX = Math.Clamp(x, 0.0, MissileField.Aspect);
+            _aimY = Math.Clamp(y, MissileField.MinAimY, 1.0);
+        }
+
+        /// <summary>
+        ///     A click puts the crosshair on the clicked cell and fires from whichever battery can get there first.
+        ///     <para>
+        ///         <b>The drift is zeroed, and that is the whole of the arbitration between mouse and keyboard.</b>
+        ///         Nothing revives drift without a fresh key press and <see cref="SteerCrosshair" /> returns
+        ///         immediately when both axes are zero, so the pointer wins until the player touches an arrow again
+        ///         and then the arrow wins - with no mode flag and nothing to get out of step.
+        ///     </para>
+        ///     <para>
+        ///         A click that lands off the board is <i>dropped</i> rather than clamped onto it: clamping would
+        ///         turn a click on the status line into a shot at the top of the sky, which is a worse answer than
+        ///         doing nothing.
+        ///     </para>
+        /// </summary>
+        /// <param name="mouse">Where the press landed and which button it was.</param>
+        public override void OnMousePressed(MouseEvent mouse)
+        {
+            base.OnMousePressed(mouse);
+
+            _lastClick = mouse;
+            _clicked = true;
+
+            if (mouse.Button != MouseButtonEnum.Left || _field.IsOver)
+                return;
+
+            if (!_boardMap.TryToWorld(mouse.Row, mouse.Column, out var worldX, out var worldY))
+                return;
+
+            SetAim(worldX, worldY);
+            _driftX = 0;
+            _driftY = 0;
+
+            FireAt(_field.BestSilo(_aimX, _aimY));
+
+            // Deliberately no Refresh() here. The next paced frame is at most 33 ms away and will draw this, whereas
+            // recomposing per click repeats the ChessDialog bug of rebuilding the screen once per input event.
+        }
+
         /// <summary>Fires from a battery, if it can, and refuses quietly rather than loudly when it cannot.</summary>
         /// <param name="silo">Which battery, or -1 when nothing can answer.</param>
         private void FireAt(int silo)
@@ -271,8 +346,7 @@ namespace WolfCurses.Games.MissileCommand
                 speed /= Math.Sqrt(2.0);
 
             var step = speed*elapsed.TotalSeconds;
-            _aimX = Math.Clamp(_aimX + _driftX*step, 0.0, MissileField.Aspect);
-            _aimY = Math.Clamp(_aimY + _driftY*step, MissileField.MinAimY, 1.0);
+            SetAim(_aimX + _driftX*step, _aimY + _driftY*step);
         }
 
         /// <summary>Deals a fresh field.</summary>
@@ -324,7 +398,25 @@ namespace WolfCurses.Games.MissileCommand
             // Half blocks give two pixels a row, so a field squeezed into a dozen rows is a smear; real pixels only
             // need enough rows to be worth looking at. Asked of the renderer rather than type-tested against the
             // built-in classes, which gets the wrong answer for exactly the third-party renderers the seam allows.
-            return ImageRenderers.Default.DrawsTruePixels ? rows >= 12 : rows >= 26;
+            return BoardRenderer().DrawsTruePixels ? rows >= 12 : rows >= 26;
+        }
+
+        /// <summary>
+        ///     Which renderer draws the picture.
+        ///     <para>
+        ///         <b>Half blocks are forced while the mouse is enabled, and that is not a shortcut.</b> Aiming with
+        ///         a pointer means knowing exactly which rectangle of the screen the board occupies, and for a
+        ///         true-pixel renderer nothing does: sixel emits pixel rows the terminal draws one-for-one against a
+        ///         character cell whose real size it has no way to ask for, so the game's idea of where the picture
+        ///         ends can be a quarter of the field out. Half blocks are exactly one pixel pair per cell by
+        ///         definition, so the board's rectangle is the string it returned. A player who would rather have the
+        ///         better picture than the mouse simply does not enable the mouse.
+        ///     </para>
+        /// </summary>
+        /// <returns>The renderer to draw with.</returns>
+        private static IImageRenderer BoardRenderer()
+        {
+            return AnsiConsole.MouseEnabled ? _halfBlocks : ImageRenderers.Default;
         }
 
         /// <summary>Rebuilds the screen: status above, the field, then the message.</summary>
@@ -339,10 +431,77 @@ namespace WolfCurses.Games.MissileCommand
             sb.AppendLine();
             sb.AppendLine(StatusLine());
             sb.AppendLine();
-            sb.AppendLine(PictureIsWorthIt(rows) ? PaintPicture(rows, width) : PaintText(rows, width));
+
+            var usePicture = PictureIsWorthIt(rows);
+            var columns = Math.Max(20, width - 2);
+            var board = usePicture ? PaintPicture(rows, width) : PaintText(columns, rows);
+
+            // COUNTED, never written down as a constant. The library contributes exactly one un-terminated line
+            // above the form - SceneGraph appends the spinner, the window label and the application's pre-render
+            // text with no newline between them - so the leading AppendLine above TERMINATES that line rather than
+            // making a blank one. Counting the breaks already in the builder cannot drift when any of that changes,
+            // where a hardcoded 3 quietly becomes wrong and puts every shot a row out.
+            var originRow = CountLineBreaks(sb);
+
+            _boardMap = usePicture
+                ? MissileBoardMap.ForPicture(originRow, 0, MeasuredColumns(board), MeasuredRows(board))
+                : MissileBoardMap.ForCharacters(originRow, 0, columns, rows);
+
+            sb.AppendLine(board);
             sb.Append(_field.Message);
 
             _rendered = sb.ToString();
+        }
+
+        /// <summary>How many line breaks are already in the builder, which is the row the next line will occupy.</summary>
+        /// <param name="builder">The frame being composed.</param>
+        /// <returns>The count.</returns>
+        private static int CountLineBreaks(StringBuilder builder)
+        {
+            var breaks = 0;
+            for (var i = 0; i < builder.Length; i++)
+            {
+                if (builder[i] == '\n')
+                    breaks++;
+            }
+
+            return breaks;
+        }
+
+        /// <summary>How many rows a drawn board really covers.</summary>
+        /// <param name="board">The board as it will be written.</param>
+        /// <returns>The row count.</returns>
+        private static int MeasuredRows(string board)
+        {
+            var rows = 1;
+            foreach (var character in board)
+            {
+                if (character == '\n')
+                    rows++;
+            }
+
+            return rows;
+        }
+
+        /// <summary>
+        ///     How many columns a drawn board really covers, measured rather than assumed.
+        ///     <para>
+        ///         The picture is fitted with <c>Contain</c>, so it keeps the field's proportions and is usually
+        ///         <i>narrower</i> than the columns it was offered - at eighty by twenty-four it draws about
+        ///         fifty-eight of the seventy-nine it was allowed. Inverting a click against the offered width rather
+        ///         than the drawn width is wrong by a third of the field at the right-hand edge, which is several
+        ///         blast radii and looks exactly like the collision test being broken.
+        ///     </para>
+        /// </summary>
+        /// <param name="board">The board as it will be written.</param>
+        /// <returns>The visible width of its widest row.</returns>
+        private static int MeasuredColumns(string board)
+        {
+            var widest = 0;
+            foreach (var row in board.Replace("\r\n", "\n").Split('\n'))
+                widest = Math.Max(widest, AnsiText.VisibleLength(row));
+
+            return widest;
         }
 
         /// <summary>Draws the field as real pixels, through whatever the terminal turned out to support.</summary>
@@ -361,13 +520,18 @@ namespace WolfCurses.Games.MissileCommand
                 RowMargin = 0
             };
 
-            return AnsiImage.FromPixels(_art.Paint(_field, _aimX, _aimY)).ToAnsi(options);
+            return AnsiImage.FromPixels(_art.Paint(_field, _aimX, _aimY)).ToAnsi(options, BoardRenderer());
         }
 
-        /// <summary>Draws the field as characters.</summary>
-        private string PaintText(int rows, int columns)
+        /// <summary>
+        ///     Draws the field as characters, at exactly the size the board map was told about — the two must agree
+        ///     or a click lands somewhere other than where it was drawn.
+        /// </summary>
+        /// <param name="columns">How many columns the board covers.</param>
+        /// <param name="rows">How many rows the board covers.</param>
+        private string PaintText(int columns, int rows)
         {
-            return MissileFieldText.Render(_field, _aimX, _aimY, Math.Max(20, columns - 2), rows);
+            return MissileFieldText.Render(_field, _aimX, _aimY, columns, rows);
         }
 
         /// <summary>The line above the field: which wave, the score, and what is left to defend it with.</summary>
@@ -388,9 +552,21 @@ namespace WolfCurses.Games.MissileCommand
                     : "-");
             }
 
+            // The pointer readout is a diagnostic, and it stays. Whether a click is reported at all depends on the
+            // terminal and on the console host, neither of which any test running here can establish — so showing
+            // the cell that actually arrived is what separates "the mouse is dead" from "the mouse is aiming
+            // somewhere else", without anybody having to attach a debugger to find out which.
+            var pointer = !AnsiConsole.MouseEnabled
+                ? "  ·  Mouse off"
+                : _clicked
+                    ? string.Format(CultureInfo.InvariantCulture, "  ·  Mouse r{0}c{1}",
+                        _lastClick.Row, _lastClick.Column)
+                    : "  ·  Mouse ready";
+
             return string.Format(CultureInfo.InvariantCulture,
-                "Wave {0}  ·  Score {1:N0}  ·  x{2}  ·  Cities {3}  ·  Ammo {4}  ·  Best {5:N0}",
-                _field.Wave, _field.Score, _field.Multiplier, cities, ammo, UserData.MissileCommandBestScore);
+                "Wave {0}  ·  Score {1:N0}  ·  x{2}  ·  Cities {3}  ·  Ammo {4}  ·  Best {5:N0}{6}",
+                _field.Wave, _field.Score, _field.Multiplier, cities, ammo, UserData.MissileCommandBestScore,
+                pointer);
         }
     }
 }

@@ -53,6 +53,13 @@ namespace WolfCurses.Games
             // OnKeyPressed and returns a string, and that is the entire contract.
             GamesSimulationApp.Create();
 
+            // Asked for AFTER the app is built, because the SimulationApp constructor probes the terminal for a
+            // graphics protocol and that probe reads standard input. Opt-in and host-owned on purpose: enabling it
+            // takes click-drag text selection away from the user and swaps the console read path, so the library
+            // never does it behind an application's back. It answers false on a terminal that has no mouse to give,
+            // and every game here still plays exactly as it did from the keyboard.
+            AnsiConsole.EnableMouse();
+
             while (GamesSimulationApp.Instance != null)
             {
                 GamesSimulationApp.Instance.OnTick(true);
@@ -62,6 +69,11 @@ namespace WolfCurses.Games
                 // granularity is about 15ms, so "one tick" is not a unit of time anyone should build a game on.
                 Thread.Sleep(1);
             }
+
+            // Handed back before anything else. On a classic console host the mouse mode belongs to the WINDOW
+            // rather than to this process, so a program that exits without restoring it leaves that window with the
+            // user's own text selection switched off until they close and reopen it.
+            AnsiConsole.DisableMouse();
 
             Console.Clear();
             Console.WriteLine("Thanks for playing!");
@@ -75,6 +87,7 @@ namespace WolfCurses.Games
         /// <param name="e">The console cancel event arguments.</param>
         private static void Console_CancelKeyPress(object sender, ConsoleCancelEventArgs e)
         {
+            AnsiConsole.DisableMouse();
             GamesSimulationApp.Instance?.Destroy();
             e.Cancel = true;
         }

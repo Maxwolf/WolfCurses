@@ -58,6 +58,12 @@ namespace WolfCurses.Core
         private Queue<ConsoleKeyInfo> _keyQueue;
 
         /// <summary>
+        ///     Holds mouse presses waiting to be handed to the focused window. Its own queue for the same reason the
+        ///     keys have one: the command queue drops a duplicate, and two clicks on the same cell are two shots.
+        /// </summary>
+        private Queue<MouseEvent> _mouseQueue;
+
+        /// <summary>
         ///     Set when reading the console failed despite input not reporting as redirected — an unusual host whose
         ///     console cannot be asked for keys. Remembered so the failure costs one exception ever, not one per tick.
         /// </summary>
@@ -72,6 +78,7 @@ namespace WolfCurses.Core
             _simUnit = simUnit;
             _commandQueue = new Queue<string>();
             _keyQueue = new Queue<ConsoleKeyInfo>();
+            _mouseQueue = new Queue<MouseEvent>();
             InputBuffer = string.Empty;
             ReadsConsoleInput = true;
         }
@@ -87,7 +94,8 @@ namespace WolfCurses.Core
         ///     <see cref="InputBuffer" /> does not count: a half-typed line is not pending work, it is a user (or
         ///     driver) that has not pressed ENTER yet.
         /// </summary>
-        public bool IsIdle => (_commandQueue?.Count ?? 0) == 0 && (_keyQueue?.Count ?? 0) == 0;
+        public bool IsIdle => (_commandQueue?.Count ?? 0) == 0 && (_keyQueue?.Count ?? 0) == 0 &&
+                              (_mouseQueue?.Count ?? 0) == 0;
 
         /// <summary>
         ///     Whether this manager reads the console's own key buffer on every system tick (the default). Set false
@@ -121,6 +129,9 @@ namespace WolfCurses.Core
             // And any key presses that arrived but were never handed on.
             _keyQueue.Clear();
             _keyQueue = null;
+
+            _mouseQueue.Clear();
+            _mouseQueue = null;
         }
 
         /// <summary>
@@ -164,6 +175,19 @@ namespace WolfCurses.Core
                 _simUnit.WindowManager.FocusedWindow?.OnKeyPressed(pressed);
             }
 
+            // Mouse presses next, and every one of them, for all the same reasons the keys above are handled that
+            // way - and one more. This sits AHEAD of the early return below rather than after it because a screen
+            // being played with the mouse typically has no menu commands at all while its form is attached, so
+            // dispatching behind that return would make the mouse work on menus and nowhere else.
+            //
+            // Dequeue BEFORE the null-conditional dispatch, or the argument is not evaluated when there is no
+            // window, the queue never shrinks, and this loop spins forever. That exact bug shipped for keys.
+            while (_mouseQueue.Count > 0)
+            {
+                var clicked = _mouseQueue.Dequeue();
+                _simUnit.WindowManager.FocusedWindow?.OnMousePressed(clicked);
+            }
+
             // Skip if there are no commands to tick.
             if (_commandQueue.Count <= 0)
                 return;
@@ -198,6 +222,16 @@ namespace WolfCurses.Core
             {
                 for (var fed = source(); fed.HasValue; fed = source())
                     SendConsoleKey(fed.Value);
+                return;
+            }
+
+            // While a host has asked for the mouse, the platform reader owns the console read completely. It has to:
+            // Console.KeyAvailable peeks and then DISCARDS every record that is not a key-down, mouse records
+            // included, so a mouse reader cannot run beside it. Null unless AnsiConsole.EnableMouse() succeeded.
+            var mouseReader = WindowsConsoleInput.Active;
+            if (mouseReader != null)
+            {
+                mouseReader.Drain(SendConsoleKey, SendMousePress);
                 return;
             }
 
@@ -390,6 +424,24 @@ namespace WolfCurses.Core
         }
 
         /// <summary>
+        ///     Reports a mouse press to the focused window on the next tick.
+        ///     <para>
+        ///         Queued rather than delivered at once, for the same reason <see cref="SendKeyPress(ConsoleKeyInfo)" />
+        ///         is: a form is free to answer a click by putting a window up, and doing that from the middle of the
+        ///         host's read loop would be editing the window stack from outside the simulation's own turn.
+        ///     </para>
+        ///     <para>
+        ///         Public, so a host reading input itself gets identical behaviour by handing presses here. Not gated
+        ///         on <c>AcceptingInput</c> - that rule protects the text buffer, and a click is not text.
+        ///     </para>
+        /// </summary>
+        /// <param name="mouse">Where the press landed and which button it was.</param>
+        public void SendMousePress(MouseEvent mouse)
+        {
+            _mouseQueue.Enqueue(mouse);
+        }
+
+        /// <summary>
         ///     Removes the last character from input buffer if greater than zero.
         /// </summary>
         public void RemoveLastCharOfInputBuffer()
@@ -434,6 +486,7 @@ namespace WolfCurses.Core
 
             // Key presses go too, for the same reason: one typed at the old session has nothing to say to the new one.
             _keyQueue.Clear();
+            _mouseQueue.Clear();
         }
     }
 }

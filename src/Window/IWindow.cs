@@ -111,6 +111,16 @@ namespace WolfCurses.Window
             OnKeyPressed(keyInfo.Key);
         }
 
+        /// <summary>
+        ///     Fired when a mouse button goes down somewhere on the terminal, if the host asked for the mouse at all
+        ///     with <see cref="Graphics.AnsiConsole.EnableMouse" />. Does nothing unless overridden, so every window
+        ///     written before the mouse existed compiles and behaves exactly as it did.
+        /// </summary>
+        /// <param name="mouse">Where the press landed and which button it was.</param>
+        void OnMousePressed(MouseEvent mouse)
+        {
+        }
+
         /// <summary>Creates and adds the specified type of state to currently active game Windows.</summary>
         /// <param name="stateType">The state Type.</param>
         void SetForm(Type stateType);
