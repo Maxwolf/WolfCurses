@@ -1,7 +1,10 @@
 name: Release Demos
 
 # Manual release of the two example apps: WolfCurses.Example (the image/widget tour) and
-# WolfCurses.Games (Snake and Minesweeper). This is a showcase, not a distribution channel -
+# WolfCurses.Games (the arcade). Both ship inside a SINGLE archive per platform - one
+# download is the whole showcase - with each app in its own folder, so every executable sits
+# beside its own assets (images/ for Example, chess/ and cards/ for Games) and two apps can
+# never collide over a shared folder name. This is a showcase, not a distribution channel -
 # it exists so somebody can download a demo and run it without a toolchain, a clone or a
 # .NET install. Anyone actually building against the library takes it from NuGet instead,
 # which is what publish.yml does; the two are deliberately separate and their version
@@ -74,11 +77,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts
+          # One archive holding both demos, each in its own folder - see the header note.
           for proj in WolfCurses.Example WolfCurses.Games; do
-            out="publish/$proj-portable"
-            dotnet publish "example/$proj/$proj.csproj" -c Release -p:Version="$VERSION" -o "$out"
-            (cd "$out" && zip -qr "../../artifacts/$proj-v$VERSION-portable.zip" .)
+            dotnet publish "example/$proj/$proj.csproj" -c Release -p:Version="$VERSION" \
+              -o "publish/portable/$proj"
           done
+          (cd publish/portable && zip -qr "../../artifacts/WolfCurses-demos-v$VERSION-portable.zip" .)
           ls -lh artifacts
 
       - uses: actions/upload-artifact@v7
@@ -126,8 +130,9 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      # Single-file so a download is one executable plus the images/ folder the demos read
-      # (AppContext.BaseDirectory, the one path property single-file keeps honest).
+      # Single-file so each app is one executable beside its own asset folder, resolved
+      # through AppContext.BaseDirectory - the one path property single-file keeps honest,
+      # and the reason each app gets its own directory inside the shared archive.
       # Trimming is deliberately OFF: window and form discovery is reflection over the
       # loaded assemblies, and a trimmer has no way to see those types are used.
       - name: Publish ${{ matrix.rid }}
@@ -137,24 +142,28 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts
+          # Both apps publish into one staging folder, each under its own name, and that
+          # folder is archived once. Archiving after the loop rather than inside it is what
+          # makes a single download hold both demos.
           for proj in WolfCurses.Example WolfCurses.Games; do
-            out="publish/$proj-$RID"
             dotnet publish "example/$proj/$proj.csproj" \
               -c Release -r "$RID" --self-contained true \
               -p:PublishSingleFile=true -p:PublishTrimmed=false \
-              -p:Version="$VERSION" -o "$out"
-            case "$RID" in
-              win-*)
-                (cd "$out" && zip -qr "../../artifacts/$proj-v$VERSION-$RID.zip" .)
-                ;;
-              *)
-                # tar, not zip, so the executable bit survives the round trip - and set it
-                # explicitly first, since a cross-published apphost does not always carry one.
-                chmod +x "$out/$proj"
-                tar -czf "artifacts/$proj-v$VERSION-$RID.tar.gz" -C "$out" .
-                ;;
-            esac
+              -p:Version="$VERSION" -o "publish/$RID/$proj"
           done
+          case "$RID" in
+            win-*)
+              (cd "publish/$RID" && zip -qr "../../artifacts/WolfCurses-demos-v$VERSION-$RID.zip" .)
+              ;;
+            *)
+              # tar, not zip, so the executable bit survives the round trip - and set it
+              # explicitly first, since a cross-published apphost does not always carry one.
+              for proj in WolfCurses.Example WolfCurses.Games; do
+                chmod +x "publish/$RID/$proj/$proj"
+              done
+              tar -czf "artifacts/WolfCurses-demos-v$VERSION-$RID.tar.gz" -C "publish/$RID" .
+              ;;
+          esac
           ls -lh artifacts
 
       - uses: actions/upload-artifact@v7
@@ -187,14 +196,18 @@ jobs:
         run: |
           set -euo pipefail
           cat > release-notes.md <<EOF
-          Two demo apps built on WolfCurses. Every per-platform download is **self-contained** -
-          unpack and run, no .NET install needed. Both are terminal UIs, so start them from a
-          real terminal window rather than by double-clicking, and give the window some room.
+          Two demo apps built on WolfCurses, and **one download gives you both**. Every
+          per-platform archive is **self-contained** - unpack and run, no .NET install needed. Both
+          are terminal UIs, so start them from a real terminal window rather than by double-clicking,
+          and give the window some room.
+
+          Each archive unpacks to two folders, \`WolfCurses.Example/\` and \`WolfCurses.Games/\`, each
+          holding its app and that app's own artwork.
 
           | App | What it is |
           | --- | --- |
           | \`WolfCurses.Example\` | The library tour: image rendering (kitty/sixel/half blocks), sprites, progress bars and graphs, colored widgets, file and list dialogs. |
-          | \`WolfCurses.Games\` | A small arcade built on the library - Snake and Minesweeper, characters only. |
+          | \`WolfCurses.Games\` | A small arcade: Snake, Minesweeper, Tetris, WolfChess 5000, Missile Command, Labyrinth, Pac-Man, blackjack, poker and Battlezone. |
 
           | Platform | Download |
           | --- | --- |
@@ -202,14 +215,18 @@ jobs:
           | macOS | \`osx-arm64\` (Apple silicon), \`osx-x64\` (Intel) (.tar.gz) |
           | Linux (glibc) | \`linux-x64\`, \`linux-arm64\`, \`linux-arm\` (.tar.gz) |
           | Linux (musl / Alpine) | \`linux-musl-x64\`, \`linux-musl-arm64\`, \`linux-musl-arm\` (.tar.gz) |
-          | Anything else | \`portable\` (.zip) - needs .NET 10 installed, run with \`dotnet WolfCurses.Example.dll\` |
+          | Anything else | \`portable\` (.zip) - needs .NET 10 installed |
 
-          On macOS and Linux, unpack with \`tar -xzf <file>\` and run \`./WolfCurses.Example\`.
-          macOS quarantines unsigned downloads, so if Gatekeeper objects:
-          \`xattr -d com.apple.quarantine ./WolfCurses.Example\`.
+          Every file is named \`WolfCurses-demos-v$VERSION-<platform>\`.
 
-          The \`portable\` build covers architectures that have no self-contained runtime pack
-          to build against, such as loongarch64 and riscv64.
+          On macOS and Linux, unpack with \`tar -xzf <file>\`, then run
+          \`./WolfCurses.Example/WolfCurses.Example\` or \`./WolfCurses.Games/WolfCurses.Games\`.
+          macOS quarantines unsigned downloads, so if Gatekeeper objects, clear it for the whole
+          folder: \`xattr -dr com.apple.quarantine .\`
+
+          The \`portable\` build covers architectures that have no self-contained runtime pack to build
+          against, such as loongarch64 and riscv64. Run it with
+          \`dotnet WolfCurses.Example/WolfCurses.Example.dll\`.
 
           ---
 

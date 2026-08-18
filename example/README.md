@@ -1,0 +1,17 @@
+# WolfCurses examples
+
+Two runnable console applications built on [WolfCurses](../README.md). Each is its own project, referencing the library directly.
+
+| | | |
+| --- | --- | --- |
+| **[WolfCurses.Example](WolfCurses.Example/README.md)** | The library tour | Images, sprites, widgets, colour, and every dialog |
+| **[WolfCurses.Games](WolfCurses.Games/README.md)** | The arcade | Ten games, each built on a different part of the library |
+
+```cmd
+dotnet run --project example/WolfCurses.Example
+dotnet run --project example/WolfCurses.Games
+```
+
+Both are terminal UIs, so run them from a real terminal window rather than by double-clicking, and give the window some room.
+
+Prebuilt, self-contained downloads for Windows, macOS and Linux are on the [releases page](https://github.com/Maxwolf/WolfCurses/releases), with both apps in a single archive and no .NET install needed.

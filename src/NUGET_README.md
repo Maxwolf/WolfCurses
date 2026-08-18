@@ -1,174 +1,133 @@
 # Wolf Curses
 
-A text user interface (TUI) library for .NET console applications. You describe how the screen should look as plain text, and Wolf Curses tracks a back buffer and only pushes updates to the terminal when something actually changed. It also handles keyboard input buffering, stackable windows, menus built from enums, and modal forms/dialogs.
+**Build text user interfaces in C#.** You describe what the screen should look like; the library works out the smallest set of changes and draws it, flicker-free.
 
-## Installation
+Windows and forms, menus, dialogs, file pickers, progress bars and graphs, plus images, sprites and animation, drawn in the terminal with real pixels where the terminal supports them.
+
+**Zero dependencies.** PNG, JPEG and GIF decoding included.
+
+![The DVD logo bouncing over a photograph drawn as real sixel pixels, with a live fps readout](https://raw.githubusercontent.com/Maxwolf/WolfCurses/master/docs/demo-sprite-basic.gif)
+
+*Yes, that is a photograph in a terminal, at ~30 fps. Sixel where the terminal speaks it, half blocks everywhere else, detected automatically.*
+
+## Install
 
 ```
 dotnet add package WolfCurses
 ```
 
-## Usage
+## Quick start
 
-Subclass `SimulationApp` and pump ticks from your main loop. Window types are discovered automatically: every concrete `IWindow` in your app's assembly (and the built-in controls in the library) is available with no registration; override `AllowedWindows` only to curate the list explicitly:
+A complete program with a menu, a dialog, and the loop that drives it:
 
 ```csharp
-public class ExampleApp : SimulationApp
+using System.Threading;
+using WolfCurses;
+using WolfCurses.Controls;
+using WolfCurses.Utility;
+using WolfCurses.Window;
+
+// Each enum value becomes a numbered menu choice; the description is the line the user reads.
+public enum MainMenu
 {
-    protected override void OnFirstTick()
+    [Description("Say hello")] Hello = 1,
+    [Description("Quit")] Quit = 2
+}
+
+// Per-window state, yours to fill in.
+public sealed class MainData : WindowData { }
+
+// A window is a screen. Commands are wired to methods.
+public sealed class MainWindow : Window<MainMenu, MainData>
+{
+    public MainWindow(SimulationApp simUnit) : base(simUnit) { }
+
+    public override void OnWindowPostCreate()
     {
-        Restart();
-        WindowManager.Add(typeof(MainMenuWindow));
+        AddCommand(() => MessageBox.Show(SimUnit, "Hello from WolfCurses!"), MainMenu.Hello);
+        AddCommand(() => SimUnit.Destroy(), MainMenu.Quit);
     }
-
-    public override string OnPreRender() => string.Empty;
-    protected override void OnPreDestroy() { }
 }
-```
 
-```csharp
-var app = new ExampleApp();
-
-// That's the whole set-up. Frames draw themselves: whenever one changes, the scene graph presents it to
-// the console without flicker: rows overwritten in place (never cleared first), only changed rows
-// rewritten, the whole update as one write. To draw frames your own way instead, subscribe
-// app.SceneGraph.ScreenBufferDirtyEvent; while any handler is attached, the built-in presenter stands down.
-
-while (!app.IsClosing)
+public sealed class MyApp : SimulationApp
 {
-    // Keys are read and routed automatically too, at the start of every tick: ENTER submits the typed
-    // command, BACKSPACE edits it, and every other key both fills the prompt and reaches the focused
-    // form. To own key reading yourself, set app.InputManager.ReadsConsoleInput = false and hand keys
-    // to app.InputManager.SendConsoleKey(key), the identical routing, from wherever you get them.
-    app.OnTick(true);
-    Thread.Sleep(1);
+    public static MyApp Instance { get; private set; }
+    public static void Create() => Instance = new MyApp();
+
+    protected override void OnFirstTick() => Restart();
+    protected override void OnPreDestroy() => Instance = null;
+    public override string OnPreRender() => "My App";
+
+    public override void Restart()
+    {
+        base.Restart();
+        WindowManager.Add(typeof(MainWindow));
+    }
+}
+
+internal static class Program
+{
+    private static void Main()
+    {
+        MyApp.Create();
+        while (MyApp.Instance != null)
+        {
+            MyApp.Instance.OnTick(true);   // reads input, ticks logic, redraws what changed
+            Thread.Sleep(1);
+        }
+    }
 }
 ```
 
-Windows derive from `Window<TCommands, TData>`, where each value of the `TCommands` enum becomes a menu choice. Forms (dialogs, prompts) derive from `Form<TData>` and attach to their parent window with a `[ParentWindow(typeof(MainMenuWindow))]` attribute, with no manual registration needed.
+That is the whole setup. Three things you might expect to write are already done for you:
 
-## ANSI graphics
+- **Windows are discovered.** Every concrete `IWindow` in your assembly, plus the built-in control windows, with no registration.
+- **Keys are read and routed**, at the start of every tick. ENTER submits the typed command, BACKSPACE edits it, every other key both fills the prompt and reaches the focused form.
+- **Frames present themselves**, without flicker: rows overwritten in place rather than cleared first, only changed rows rewritten, the whole update as one write.
 
-Display images right in the terminal: PNG (with transparency), baseline and progressive JPEG, and GIF, all decoded by this package with no set-up and no dependencies. An image becomes a string of block characters and ANSI color escapes that you embed in your window's rendered text.
+Forms (dialogs, prompts) derive from `Form<TData>` and attach to their parent window with a `[ParentWindow(typeof(MainWindow))]` attribute, again with no manual registration. Menus are steerable with the arrow keys as well as by typing a number, and typed input always wins.
+
+## What else is in the box
+
+Each of these has a fuller write-up with code in the [main README](https://github.com/Maxwolf/WolfCurses).
+
+**[Images in the terminal](https://github.com/Maxwolf/WolfCurses#images-in-the-terminal).** Decode a PNG, JPEG or GIF and drop it into your window's output like any other string:
 
 ```csharp
-using WolfCurses.Graphics;
-
-// Enables VT processing + UTF-8 output so the escapes/glyphs render (Windows). Already done for you
-// when a real terminal is attached (at start-up and again by the built-in frame presenter), so only
-// hosts writing to the console entirely on their own ever call it.
-AnsiConsole.Enable();
-
-// Decode + render ONCE and cache it; OnRenderWindow runs every tick, so never render there.
+// Decode and render ONCE, then cache. A window renders every tick.
 private readonly string _logo = AnsiImage.RenderFile("media/logo.png");
 public override string OnRenderWindow() => _logo;
 ```
 
-By default the image is scaled to fit the console window while keeping its aspect ratio (no terminal resizing needed), transparent pixels let the background show through, and true color degrades gracefully to 256-color/grayscale/ASCII. Set `AnsiImageOptions.Fit` to `Cover`, `Stretch`, or `ScaleDown` to fill a scene instead of letterboxing, and composite a transparent image onto another with `background.Overlay(foreground)`.
+Scaled to fit with the CSS `object-fit` modes, transparency preserved, colour degrading from true colour through 256 and grayscale to plain ASCII, honouring `NO_COLOR`. Sixel and kitty are detected and used automatically, half blocks everywhere else. A file that cannot be loaded becomes the magenta-and-black checkerboard familiar from game engines instead of throwing, because in a text UI a stack trace lands on top of your interface. The decoders are written from spec in pure managed code, which is how this has zero dependencies, and `IImageDecoder` swaps in your own.
 
-**Decoders included, and replaceable.** PNG, JPEG and GIF are decoded by the package itself, written from their specifications in pure managed code, so images work out of the box and this still has **zero dependencies**. PNG covers every colour type, bit depth and Adam7; JPEG covers baseline *and* progressive at any chroma subsampling; GIF covers 87a/89a, interlacing and transparency, and `GifDecoder.DecodeFrames` walks an animation frame by frame with its delays. They aim at correctness rather than speed, which is the right trade when the picture is about to be scaled down to fit a terminal anyway. Need another format, or more speed, or just to reuse the imaging library you already have? Implement `IImageDecoder` (a single method) and assign `ImageDecoders.Default` once at start-up; the example app has a [StbImageSharp](https://github.com/StbSharp/StbImageSharp) adapter to copy. `AnsiImage.FromPixels` needs no decoder at all.
+**[Sprites, animation and collision](https://github.com/Maxwolf/WolfCurses#sprites-animation-and-collision).** A `SpriteScene` holds the background as pixels and recomposes it as often as you like. Set `sprite.Image` to animate one, and `scene.SpritesTouching(sprite)` reports what it ran into.
 
-## Laying out styled text
+**[Widgets](https://github.com/Maxwolf/WolfCurses#widgets).** `ProgressBar`, `Sparkline`, `BarChart` and `LineGraph` turn data into text you return from a render, with no windows to register. `TextGrid` is a rectangle of styled cells for boards and maps, with a viewport so a world larger than the screen just scrolls, and `BoxDrawing` picks the character that joins lines running in any set of directions.
 
-An escape sequence has length but no width, so `string.Length` is the wrong number for anything you want to pad, centre, or place beside something else — a colored row twenty columns wide can be hundreds of characters long. `AnsiText.VisibleLength` and `AnsiText.StripEscapes` are the library's own escape walk, made public for exactly this; they share one parser, so `StripEscapes(x).Length == VisibleLength(x)` always holds. `TextColumns.Join` puts blocks of text beside each other using that measurement — a panel next to content, two boxes on one row:
+![A progress bar, marquee, sparkline, bar chart and scrolling line graph all animating together](https://raw.githubusercontent.com/Maxwolf/WolfCurses/master/docs/demo-progress-graphs.gif)
 
-```csharp
-string screen = TextColumns.Join(2, board, sidePanel);
-``` `AnsiConsole.SafeWindowWidth()` / `SafeWindowHeight()` report the terminal size, or 80x24 when there is no terminal to ask (each call is a syscall — read it into a local rather than per row).
+Every widget takes colours and ramps, and colour is entirely opt-in: with styles left at their defaults a widget emits byte-for-byte what it did before colour existed, not even a reset.
 
-## Real-time screens
+**[Dialogs, panels and pickers](https://github.com/Maxwolf/WolfCurses#dialogs-panels-and-pickers).** `MessageBox`, `SelectList`, `TextInputDialog` and `FileDialog` push themselves on top of the current screen, take over input, and call you back with the result before closing themselves. `Box` borders any text, measuring width past ANSI escapes.
 
-Anything that moves on its own — an animation, a game, a progress display that is not driven by input — paces itself with `IntervalTimer`, off the system tick rather than the once-a-second simulation tick:
+**[Input](https://github.com/Maxwolf/WolfCurses#input).** Mouse support is opt-in through `AnsiConsole.EnableMouse()` and Windows-only for now. `HeldAxis` recovers a held direction from the burst of presses a terminal actually delivers, since a terminal never reports a key being let go.
 
-```csharp
-private readonly IntervalTimer _step = new(TimeSpan.FromMilliseconds(120));
+**Real-time screens.** `IntervalTimer` paces anything that moves on its own, off the system tick rather than the once-a-second simulation tick. A late period is dropped rather than banked, so a slow frame is never repaid as a burst of instant ones.
 
-public override void OnTick(bool systemTick, bool skipDay)
-{
-    base.OnTick(systemTick, skipDay);
-    if (_step.TryConsume())
-        Advance();
-}
-```
+**Measuring styled text.** An escape sequence has length but no width, so `string.Length` is the wrong number for anything you want to pad or place beside something else. `AnsiText.VisibleLength` and `AnsiText.StripEscapes` share one parser, and `TextColumns.Join` puts blocks of text side by side using that measurement.
 
-A late period is dropped rather than banked, so a slow frame is never repaid as a burst of instant ones. The companion is `Form<TData>.RestartOnActivate(_step)`: a form stops ticking while a dialog is on top of it, but its clock does not stop measuring, so without this it comes back owing every step that fell due while it was away and takes them all at once.
+## See it running
 
-**Missing textures look missing.** An image that can't be loaded (wrong path, corrupt file, unsupported format) becomes the magenta-and-black checkerboard familiar from game engines rather than throwing, because the documented usage is a field initializer (where an exception becomes a confusing `TypeInitializationException`) and because in a text UI a stack trace lands on top of your interface. The reason stays in `AnsiImage.Error`; `ImageDecoders.Default.Decode(stream)` still throws if you want to handle it yourself.
+Two example apps ship in the repository, each with its own guide:
 
-### Real pixels: sixel and kitty
+- **[The library tour](https://github.com/Maxwolf/WolfCurses/blob/master/example/WolfCurses.Example/README.md)**: images, sprites, widgets, colour, and every dialog.
+- **[The arcade](https://github.com/Maxwolf/WolfCurses/blob/master/example/WolfCurses.Games/README.md)**: ten games, each built on a different part of the library.
 
-Half blocks get two pixels per character cell and work anywhere. Terminals speaking a true-pixel protocol can do roughly two hundred times better, and WolfCurses uses the best one available **automatically**: creating your simulation asks the terminal, once, which protocol it understands and routes every image through the answer. How pixels become output is still a seam, so overruling the terminal is one line: a renderer you assign always wins, before or after the simulation exists:
-
-```csharp
-ImageRenderers.Default = new SixelImageRenderer();
-```
-
-`SixelImageRenderer` (xterm with sixel, foot, WezTerm, mlterm, contour, recent Konsole/VTE, iTerm2, Windows Terminal 1.22+) reduces the picture to a per-image palette chosen by median cut. `KittyImageRenderer` (kitty, WezTerm, Ghostty) sends full 24-bit color with a real alpha channel. Anything unproven (including tmux/screen and anything with output redirected) falls back to `HalfBlockImageRenderer`, because guessing wrong the safe way costs quality while guessing wrong the other way prints escape sequences as garbage.
-
-Detection (`ImageRenderers.AutoDetect()`) probes the terminal over standard input (the only way to settle xterm and Windows Terminal, which advertise nothing), so it must run **before your input loop starts**, which constructing the simulation naturally is; it never throws, is bounded by a timeout, and falls back to the environment's guess (`TERM`, `KITTY_WINDOW_ID`, `VTE_VERSION`, ...). It runs once per process, and drawing images *before* the simulation exists just means calling it yourself first. Everything is pure managed code: no native binaries, and no package dependencies at all.
-
-## Progress bars & graphs
-
-Drop-in display widgets in `WolfCurses.Window.Control` turn data into text you return from a window/form's render, with no windows to register.
-
-```csharp
-using WolfCurses.Window.Control;
-
-new ProgressBar { Label = "Download", Width = 24 }.Render(done, total); // determinate bar + percentage
-new Sparkline().Render(samples);                                       // inline ▁▂▄▅▇█ trend of a series
-new BarChart { Width = 20 }.Render(new[] { new BarChartValue("Wood", 12), new BarChartValue("Iron", 5) });
-new LineGraph { Width = 40, Height = 10 }.Render(samples);             // 2-D plot over time
-```
-
-`ProgressBar` (determinate), `Sparkline`, `BarChart`, and `LineGraph` are pure string producers with robust clamping and edge-case handling (empty/flat/negative/non-finite input); `MarqueeBar`/`SpinningPixel` cover the indeterminate cases (`MarqueeBar.Render()` and `SpinningPixel.Step()` return a frame with no trailing newline, so they drop inline; `MarqueeBar.Step()` adds one, for callers that relied on it). Every one of these is just a string, so they compose into your own rendered output with no scene graph; the example app's **Progress bars & graphs** screen animates them all off the simulation tick, but a plain console app can print them just as well.
-
-They also colour. Each field of a widget takes a `TextStyle` (a `ConsoleColor` your theme still gets an opinion about, or an exact `Rgb24`, plus a background and bold), and the data widgets take a `ColorRamp`, read across the drawn extent (`Spread`) or against the datum's own value (`Level`):
-
-```csharp
-using WolfCurses.Graphics;
-
-// A traffic-light gauge: the whole filled run takes one colour, picked by how full it is.
-new ProgressBar { Width = 24, FillRamp = ColorRamp.Traffic, RampMode = ColorRampModeEnum.Level }.Render(0.9);
-
-// A rainbow flag: equal values, no labels, no separator; Spread over a stepped ramp is stripes.
-new BarChart { Width = 30, ShowValues = false, Separator = "", Ramp = ColorRamp.PrideRainbow }.Render(rows);
-```
-
-Colour is entirely opt-in and costs nothing when it is off: with the style properties left at their defaults every widget emits **byte-for-byte** what it emitted before colour existed: no escape, not even a reset. `NO_COLOR` (or any terminal that reports no colour support) suppresses every escape even from explicitly-set styles, and each widget carries its own `ColorMode` if you would rather pin one than have the environment asked.
-
-## File & folder browser
-
-A ready-made picker so you don't build directory navigation yourself. From inside a window the simulation is available as `SimUnit`:
-
-```csharp
-using WolfCurses.Controls;
-
-FileDialog.OpenFile(SimUnit, "C:\\", new[] { ".jpg", ".png" }, onFileSelected: path => { /* ... */ });
-FileDialog.SelectFolder(SimUnit, "C:\\", onFolderSelected: path => { /* ... */ });
-```
-
-The dialog's window and form ship in the library and are discovered automatically; if your app overrides `AllowedWindows`, include `typeof(FileDialogWindow)` in the list.
-
-## Dialogs & panels
-
-Ready-made modal dialogs and a panel widget for common interactions. The dialogs call you back with the result and close themselves.
-
-```csharp
-using WolfCurses.Controls;
-using WolfCurses.Window.Control;
-
-new Box { Title = "Status", Border = BoxBorderEnum.Double, Padding = 1 }.Render("All good."); // bordered panel
-
-SelectList.Choose(SimUnit, "Pick", new[] { "A", "B", "C" }, index => { /* ... */ }); // or ChooseMany for multi-select
-MessageBox.Show(SimUnit, "Proceed?", MessageBoxButtonsEnum.YesNoCancel, result => { /* Yes/No/Cancel */ });
-TextInputDialog.Prompt(SimUnit, "Name?", name => { /* ... */ }, defaultValue: "Traveler",
-    validator: v => v.Length < 2 ? "Too short" : null); // add masked: true for passwords
-```
-
-`Box` (a pure widget) borders any text with an optional title, measuring width past ANSI color escapes. `SelectList`, `MessageBox`, and `TextInputDialog` are windows shipped in the library, so they are discovered automatically; an app that overrides `AllowedWindows` must include `typeof(SelectListWindow)` / `typeof(MessageBoxWindow)` / `typeof(TextInputWindow)` in its list.
+Prebuilt, self-contained downloads for Windows, macOS and Linux are on the [releases page](https://github.com/Maxwolf/WolfCurses/releases), both apps in a single archive with no .NET install needed.
 
 ## Links
 
-- [Source code](https://github.com/Maxwolf/WolfCurses)
-- [Complete example application](https://github.com/Maxwolf/WolfCurses/tree/master/example/WolfCurses.Example)
+- [Source code and full documentation](https://github.com/Maxwolf/WolfCurses)
+- [Example applications](https://github.com/Maxwolf/WolfCurses/tree/master/example)
 - [MIT license](https://github.com/Maxwolf/WolfCurses/blob/master/LICENSE)

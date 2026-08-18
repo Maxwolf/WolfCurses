@@ -1,255 +1,283 @@
-﻿# Wolf Curses
+# Wolf Curses
 
-Provides an abstraction of one or more windows that maps onto the console. Each window is represented by a character matrix. The programmer sets up each window to look as they want the display to look, and then tells wolf curses to update the screen. The library determines a minimal set of changes needed to update the display and then executes these using the terminal's specific capabilities and control sequences.
-
-In short, this means that the programmer simply creates a character matrix of how the screen should look and lets wolf curses handle the work.
-
-Contains example implementation of a console application using the Wolf curses library. A menu is displayed with a list of choices the user can make.
-
-Fork this repository and use it as the base for your next application or just look at the code and cherry pick from it as you please.
+**Build text user interfaces in C#.** You describe what the screen should look like; the library works out the smallest set of changes and draws it, flicker-free.
 
 ![A cursing wolf.](https://raw.githubusercontent.com/Maxwolf/WolfCurses/master/media/logo.gif)
 
-## NuGet Package ##
+Windows and forms, menus, dialogs, file pickers, progress bars and graphs, plus images, sprites and animation, drawn in the terminal with real pixels where the terminal supports them.
 
-To install Wolf Curses, run the following command in the [Package Manager Console](https://docs.nuget.org/docs/start-here/using-the-package-manager-console). If you would like to see the NuGet gallery page you can [find it here](https://www.nuget.org/packages/WolfCurses/).
-
-```cmd
-PM> Install-Package WolfCurses
-```
-
-## Cloning Instructions ##
-
-```cmd
-git clone https://github.com/Maxwolf/WolfCurses.git
-```
-
-## Compilation Instructions ##
-
-Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download). From the repository root:
-
-```cmd
-dotnet build WolfCurses.sln
-```
-
-## Example Implementation ##
-
-A runnable example console application lives in this repository at [`example/WolfCurses.Example`](example/WolfCurses.Example). It is its own project (referencing the library directly) and shows a few different menus, windows, and forms, plus an ASCII-art WolfCurses wordmark on startup with a rainbow sliding through it, **Slideshow** / **Compositing** menu items that display the `media/` photographs (and a transparent penguin composited over them), a **Show animated GIF** item that plays an animated GIF on loop at the speed the file asks for, and three **Sprite Test** items. **(Basic)** bounces the DVD logo around a photograph like the screensaver did, **(Advanced)** flies five animated GIFs at random sizes through one another while adding and removing them from the scene on a loop, and **(Collision)** lets you walk one penguin into another with the arrow keys, all with a live fps readout. A **Force render type** item overrides the whole graphics stack — a terminal's real pixels (kitty or sixel), colored half blocks at true color, 256 colors or grayscale, colorless ASCII, or *Auto* to hand it back to the startup probe — then snaps back to the menu, so whichever demo you open next is drawn that way. The color modes reach further than the pictures: widgets and styled prose resolve through the same setting, so forcing grayscale greys the graphs and the pride flags too. **File/folder browser** menu items pick an image to display or a folder to report. Run it with:
-
-```cmd
-dotnet run --project example/WolfCurses.Example
-```
-
-A second example, [`example/WolfCurses.Games`](example/WolfCurses.Games), is a small arcade: **Snake**, **Minesweeper**, **Tetris**, **WolfChess 5000**, **Missile Command**, **Labyrinth**, **Pac-Man**, **Blackjack**, **Poker** and **Battlezone**. Each is deliberately built on a different part of the library — Snake is steered with the arrow keys and paced by a stopwatch off the system tick, Minesweeper is played by typing squares into the command buffer **or by clicking them** — left to open, right to flag, and the face for a new board — on a panel drawn the way Windows 95 drew it, red counters, smiley and all, with every unopened square a real four-sided box (a shared-edge lattice through `BoxDrawing.Junction`, which is why each tile takes two rows — a box needs a line above its contents and one below, and a character cell holds one), sized to the largest board your terminal has room for, Tetris puts a score panel *beside* the well (which needs a width measured in visible columns rather than characters once the rows are full of color escapes), and the chess game draws its board as **real piece artwork composited into one image** and rendered through the graphics stack, with a built-in bot that searches in slices so the screen keeps moving while it thinks, and Missile Command animates a whole field of ballistics at thirty frames a second on a picture the program **draws rather than decodes** — no artwork on disk, just lines and circles into a `PixelBuffer` — which is also the one screen where a terminal's missing key-up event becomes the design problem rather than a curiosity, Labyrinth — a randomly generated maze you escape through an actual gap in the outer wall, lit only as far as a torch reaches down each corridor — is the only one whose world is **bigger than the terminal** — so it needs a camera, and needs the frame around that camera to stay exactly one size however far off the edge of the maze it hangs, and Pac-Man draws its walls as a **connected network of lines** rather than blocks and gives its four ghosts one line of targeting logic each — no path-finding anywhere in it, which is the whole demonstration. Blackjack and Poker are a **pair sharing one deck**: everything about a card, a shuffle and how a hand is drawn lives in one `Cards/` folder — split, like every game here, into `Rules/` for what a deck *is* and `Rendering/` for how a table *looks* — and each game's own folder holds nothing but its rules, so a third card game would need no new card code at all. Battlezone is the only one that is a **view rather than a map** — a first-person wireframe world with a camera, a horizon and a radar, where what you cannot see is the whole of the difficulty; it has no artwork and no shapes either, only a world it works out the lines of from wherever the tank happens to be standing, and the same scene walk feeds a `PixelBuffer` and a `TextGrid` so the picture and the character view cannot disagree. It is also where a second fact about terminal input stops being a curiosity: an operating system repeats only the **last key pressed**, so a tank steered by two held axes stops dead every time the player turns — hence a throttle that is a *gear* and stays where it is put, and steering bought a fixed nudge at a time so that a tap is precise and a held key runs smoothly instead of lurching through the repeat delay. Between them they cover both input styles, all three pacing models (clocked, typed, and steered-but-untimed), styled output, generated and decoded true-pixel graphics, scrolling a world larger than the screen, and graceful degradation to characters where a terminal cannot show a picture. Every game's rules live in a plain class with no console attached, next to the form that draws it.
-
-The chess rules are checked against published perft node counts rather than by hand-written examples, which is the only test of a move generator worth having:
-
-```cmd
-dotnet run --project example/WolfCurses.Games -- perft 4   # move generation vs. published counts
-dotnet run --project example/WolfCurses.Games -- rules      # notation, results, the draw rules
-dotnet run --project example/WolfCurses.Games -- bot        # tactics and thinking time
-dotnet run --project example/WolfCurses.Games -- board      # the render pipeline, as ASCII
-```
-
-```cmd
-dotnet run --project example/WolfCurses.Games
-```
+**Zero dependencies.** PNG, JPEG and GIF decoding included.
 
 ![The example's basic sprite test: the DVD logo bouncing over a photograph drawn as real sixel pixels, with a live fps readout](docs/demo-sprite-basic.gif)
 
-*Real frames from the example app: the DVD logo bouncing over a photograph at ~30 fps, drawn with the sixel protocol the startup probe detects on Windows Terminal 1.22+ (and half blocks anywhere it can't).*
+*Yes, that is a photograph in a terminal, at ~30 fps. Sixel where the terminal speaks it, half blocks everywhere else, detected automatically.*
 
-## ANSI Graphics ##
+## Install
 
-Wolf Curses can display images directly in the terminal. PNG, JPEG (baseline *and* progressive) and GIF work out of the box, with no set-up and no dependencies. Images are converted to a block of text and ANSI color escape sequences that you drop into your window's rendered text like any other string, so the scene graph draws them along with everything else.
+```cmd
+dotnet add package WolfCurses
+```
+
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download). [NuGet gallery page.](https://www.nuget.org/packages/WolfCurses/)
+
+## Quick start
+
+A complete program with a menu, a dialog, and the loop that drives it:
+
+```csharp
+using System.Threading;
+using WolfCurses;
+using WolfCurses.Controls;
+using WolfCurses.Utility;
+using WolfCurses.Window;
+
+// Each enum value becomes a numbered menu choice; the description is the line the user reads.
+public enum MainMenu
+{
+    [Description("Say hello")] Hello = 1,
+    [Description("Quit")] Quit = 2
+}
+
+// Per-window state, yours to fill in.
+public sealed class MainData : WindowData { }
+
+// A window is a screen. Commands are wired to methods.
+public sealed class MainWindow : Window<MainMenu, MainData>
+{
+    public MainWindow(SimulationApp simUnit) : base(simUnit) { }
+
+    public override void OnWindowPostCreate()
+    {
+        AddCommand(() => MessageBox.Show(SimUnit, "Hello from WolfCurses!"), MainMenu.Hello);
+        AddCommand(() => SimUnit.Destroy(), MainMenu.Quit);
+    }
+}
+
+public sealed class MyApp : SimulationApp
+{
+    public static MyApp Instance { get; private set; }
+    public static void Create() => Instance = new MyApp();
+
+    protected override void OnFirstTick() => Restart();
+    protected override void OnPreDestroy() => Instance = null;
+    public override string OnPreRender() => "My App";
+
+    public override void Restart()
+    {
+        base.Restart();
+        WindowManager.Add(typeof(MainWindow));
+    }
+}
+
+internal static class Program
+{
+    private static void Main()
+    {
+        MyApp.Create();
+        while (MyApp.Instance != null)
+        {
+            MyApp.Instance.OnTick(true);   // reads input, ticks logic, redraws what changed
+            Thread.Sleep(1);
+        }
+    }
+}
+```
+
+That is the whole setup. You don't register windows, read keys, or draw frames. The library discovers `MainWindow`, drains the keyboard each tick, and presents changed rows itself.
+
+Menus are steerable with the arrow keys as well as by typing a number, and typed input always wins.
+
+## See it running
+
+Two example apps live in this repo, each with its own README:
+
+- **[The library tour](example/WolfCurses.Example/README.md)**: images, sprites, widgets, colour, and every dialog.
+- **[The arcade](example/WolfCurses.Games/README.md)**: ten games, each built on a different part of the library. Snake, Minesweeper, Tetris, WolfChess 5000, Missile Command, Labyrinth, Pac-Man, Blackjack, Poker and Battlezone.
+
+```cmd
+dotnet run --project example/WolfCurses.Example
+dotnet run --project example/WolfCurses.Games
+```
+
+Both are terminal UIs, so run them from a real terminal window and give it some room. Between them they cover both input styles, every pacing model, styled output, generated and decoded graphics, scrolling, and falling back to characters where a terminal can't show a picture.
+
+Prebuilt, self-contained downloads for Windows, macOS and Linux are on the [releases page](https://github.com/Maxwolf/WolfCurses/releases), both apps in a single archive with no .NET install needed.
+
+## Images in the terminal
+
+Images become a block of text and color escapes that you drop into your window's output like any other string.
 
 ![The example's animated GIF demo: a progress bar fills while every frame is pre-rendered, then the animation plays on loop with fps and ms/frame readouts](docs/demo-animated-gif.gif)
 
-*The **Show animated GIF** demo: the library's own GIF decoder walks all 91 frames, a `ProgressBar` fills while they are pre-rendered into sixel, then playback is an array lookup: 0.00 ms/frame at the speed the file asks for.*
+*An animated GIF playing on loop: decoded, pre-rendered, then played back at the speed the file asks for.*
 
 ```csharp
 using WolfCurses.Graphics;
 
-// Once, so the terminal interprets the escapes and shows the block glyphs
-// (enables virtual-terminal processing + a UTF-8 output encoding on Windows):
+// Once at startup, so the terminal interprets escapes and shows block glyphs:
 AnsiConsole.Enable();
 
-// Decode + render ONCE and cache the string; the escapes never change, and a window's
-// OnRenderWindow runs every tick, so rendering there would re-decode the image constantly:
+// Decode and render ONCE, then cache. A window renders every tick, and you
+// don't want to re-decode a picture a thousand times a second:
 private readonly string _logo = AnsiImage.RenderFile("media/logo.png");
 
-// ...then just return the cached text from your window/form:
 public override string OnRenderWindow() => _logo;
 ```
 
-- **Sized to fit.** By default the image is scaled to fit the current console window while preserving its aspect ratio, so it is fully visible without resizing the terminal. Pass `new AnsiImageOptions { MaxColumns = …, MaxRows = … }` to bound it yourself.
-- **Fit modes.** `AnsiImageOptions.Fit` controls how the image fills the area, mirroring CSS `object-fit`: `Contain` (default, shows all of the image, letterboxed), `Cover` (fill the whole scene, cropping the overflow), `Stretch` (fill exactly, ignoring aspect ratio), or `ScaleDown` (like Contain but never enlarge past native size). `HorizontalAlignment`/`VerticalAlignment` choose which part `Cover` keeps.
-- **Compositing.** Overlay a transparent image on top of another and see both: `background.Overlay(foreground)` (centered) or `background.Overlay(foreground, x, y)` alpha-composites them into one image, with the overlay's own transparency preserved. Use `.Resize(w, h)` to size an overlay first.
-- **Mouse.** Opt-in and off by default: call `AnsiConsole.EnableMouse()` and button presses start arriving as `OnMousePressed(MouseEvent)` on the focused window and its form, carrying the character cell that was clicked and any modifiers held. `DisableMouse()` hands the terminal back, and the library also restores it on process exit and on an unhandled exception — forgetting would not break your program, it would break the user's console window. Presses only: no motion, no drag, no wheel, and the wheel is *unrepresentable* rather than merely unreported, because every mouse protocol encodes a wheel notch as a button press and a fire-on-click handler would otherwise fire on every scroll. **Windows only for now** — everywhere else `EnableMouse()` returns false having written nothing at all, so a terminal with no mouse is unaffected and keyboard control is untouched. Two games in the arcade use it, and they use it differently: Missile Command *aims* with it (click to fire, or keep using the arrow keys), and Minesweeper *picks a cell* with it — left to open, right to flag. The second is the easier problem and the more broadly useful one: a board drawn as characters occupies an exact, known rectangle of cells, so turning a click back into a square is a division. A picture does not, which is why Missile Command has to fall back to half blocks the moment its mouse is switched on.
-- **Drawing.** A `PixelBuffer` is not only something you decode into — you can draw on it. `Fill` paints a rectangle (or the whole buffer, which is how you clear it), `DrawLine` draws a line of any thickness and `DrawDisc` a filled circle, both clipped to the image rather than refused by it. The rule worth remembering is that **`Fill` paints and every `Draw` composites**: `Fill` has to *set* pixels because compositing provably cannot clear a canvas, and everything else composites so a translucent colour blends — pass an opaque one and you get a replace for free. Each shape blends every pixel inside it exactly once, which sounds like an implementation detail until you draw a fading explosion and the textbook constructions paint a dark seam through it. `Rgb24.WithAlpha` is the bridge from a `ColorRamp` sample to something you can draw with. Missile Command in the games example is built entirely out of these and loads no artwork at all.
-- **Sprites.** When the thing on top *moves*, a `SpriteScene` keeps the background as pixels and recomposes it as often as you like: `scene.Sprites.Add(new Sprite(pixels, x, y))`, then `scene.ToAnsi(options)` each frame. Sprites draw in order (last is nearest), are clipped rather than refused so they can walk in from off-screen, and honour their own transparency. Set `sprite.Image` to animate one; an animated sprite needs nothing else. The scene is the size of its background, which is the knob worth knowing: resize the background once to something near what the terminal can show and a frame costs a fraction of what it costs at a photograph's native resolution.
-- **Collision.** `scene.SpritesTouching(sprite)` reports *which* sprites a given one has run into, and `a.Intersects(b)` is the bare bounding-box test behind it. The three **Sprite Test** demos cover the lot: the DVD logo bouncing, five animated GIFs flying through one another while being added and removed, and two penguins you steer into each other with the arrow keys.
-
-  ![The example's advanced sprite test: five animated GIF sprites at random sizes flying over a photograph, blending and bouncing](docs/demo-sprite-advanced.gif)
-
-  *The advanced sprite test: five animated GIF sprites at random sizes bouncing over a photograph: alpha blending, per-sprite animation clocks, and live scene mutation, composed and sixel-rendered fresh every frame at 30 fps.*
-- **Two pixels per character.** It uses the Unicode half-block (`▀`) trick, with foreground color for the top pixel and background color for the bottom, to double the vertical resolution and keep pixels square.
-- **Transparency.** Transparent PNG pixels let the terminal background show through; set `AnsiImageOptions.BackgroundColor` to composite the image onto a solid color instead.
-- **Graceful color downgrade.** True color by default, with automatic fallback to the 256-color palette, grayscale, or shaded ASCII on terminals that cannot do better (honoring `NO_COLOR`). Force a mode with `AnsiImageOptions.ColorMode`.
-- **Decoders included, and replaceable.** PNG, JPEG and GIF are decoded by the package itself, written from their specifications in pure managed code, so images work with no set-up and the package still has **zero dependencies**. A decoder is the one part of an image pipeline everybody needs and nobody wants to choose; owning the formats outright is what avoids making every consumer of a terminal UI library take a transitive dependency on an imaging library just to show a logo. What they are *not* is the fastest available, and they don't try to be, since a picture bound for a terminal is about to be scaled down to a few thousand pixels anyway. Need a format outside those three, or speed, or just to not decode images two different ways in one process? Implement `IImageDecoder` (one method) and assign `ImageDecoders.Default` once at start-up. The example has a ready-made [StbImageSharp](https://github.com/StbSharp/StbImageSharp) adapter at [`Graphics/StbImageDecoder.cs`](example/WolfCurses.Example/Graphics/StbImageDecoder.cs) to copy. Pixels you decoded yourself (`AnsiImage.FromPixels`) never touch a decoder at all.
-- **Missing textures look missing.** An image that can't be loaded (wrong path, corrupt file, a format nothing installed can decode) becomes the magenta-and-black checkerboard you already know from a game engine, instead of throwing. Nothing real is that colour, so you spot it across the room without reading anything. This matters more than it sounds: the recommended usage above is a field initializer, where an exception surfaces as a `TypeInitializationException` from a stack that no longer mentions the image; and in a text UI the console *is* the screen, so a stack trace lands on top of your interface. The reason is still in `AnsiImage.Error` (and goes to `Trace`), and `ImageDecoders.Default.Decode(stream)` still throws if you'd rather handle it yourself; the seam's contract is unchanged, only the convenience layer is forgiving.
-- **Ask before you draw.** `AnsiConsole.SupportsPictures()` answers whether a real-pixel picture would survive the trip to this terminal at all — virtual-terminal processing can be turned on, *and* the resolved color mode is not `None`. Both halves matter and the first is easy to miss: where VT cannot be enabled the presenter strips every escape from a row before writing it (correctly — the console would print them as literal garbage), which means a true-pixel payload row goes out **blank**. An application that only knew how to draw pictures shows an empty rectangle and says nothing about why. Whether a picture is *worth* looking at at a given size is still yours to decide — ask `ImageRenderers.Default.DrawsTruePixels` and compare against your own row threshold, since a chessboard, a playing card and a photograph all want different answers.
-- **Pluggable drawing.** How pixels become screen output is a seam too (see below).
+- **Fits automatically.** Scaled to the console window, aspect preserved. `AnsiImageOptions.Fit` gives you the CSS `object-fit` modes (`Contain`, `Cover`, `Stretch`, `ScaleDown`).
+- **Real pixels where possible.** Sixel and kitty are detected and used automatically; half blocks (`▀`, two pixels per cell) everywhere else.
+- **Color degrades gracefully.** True color → 256 colors → grayscale → shaded ASCII, honoring `NO_COLOR`.
+- **Transparency works**, and `background.Overlay(foreground)` alpha-composites two images into one.
+- **Missing textures look missing.** A broken path or corrupt file becomes the magenta-and-black checkerboard you know from game engines instead of throwing, because in a text UI a stack trace lands on top of your interface. The reason is in `AnsiImage.Error`.
+- **Draw your own.** `Fill`, `DrawLine` and `DrawDisc` on a `PixelBuffer`. The rule: **`Fill` paints, every `Draw` composites.**
+- **Decoders are swappable.** Implement `IImageDecoder` (one method) and assign `ImageDecoders.Default`.
 
 <details>
 <summary>What the built-in decoders cover</summary>
 
 | | Covered | Not covered |
 |---|---|---|
-| **PNG** | Every colour type (greyscale, truecolour, palette, both alpha variants), every bit depth 1–16, transparency in all three forms, Adam7 interlacing | None |
-| **JPEG** | Baseline, extended sequential, and **progressive**; 4:4:4 / 4:2:2 / 4:2:0 and any other sampling factors; restart markers; greyscale | Arithmetic coding, lossless and hierarchical modes, CMYK/YCCK |
+| **PNG** | Every colour type, every bit depth 1 to 16, transparency in all three forms, Adam7 interlacing | None |
+| **JPEG** | Baseline, extended sequential, and **progressive**; any sampling factors; restart markers; greyscale | Arithmetic coding, lossless and hierarchical modes, CMYK/YCCK |
 | **GIF** | 87a and 89a, interlacing, transparency, local colour tables, animation (`GifDecoder.DecodeFrames`) | None |
 
-Anything unsupported fails with a message naming the format and the seam, not with garbage pixels. The decoders are checked against [StbImageSharp](https://github.com/StbSharp/StbImageSharp) on real files as part of the test suite, an independent implementation reading the same bytes, which is the only cheap way to catch a misread spec.
+Unsupported input fails with a message naming the format and the seam, not with garbage pixels. The decoders are checked against [StbImageSharp](https://github.com/StbSharp/StbImageSharp) on real files in the test suite. That is an independent implementation reading the same bytes, and the cheap way to catch a misread spec.
 
 </details>
 
-### Real pixels: sixel and kitty ###
+<details>
+<summary>Choosing the renderer yourself</summary>
 
-Half blocks work everywhere, but they only get two pixels per character cell. Terminals that speak a true-pixel protocol can do far better (on a typical 10x20 cell that is about two hundred pixels per cell instead of two), and WolfCurses drives them **automatically**: creating your simulation asks the terminal, once, which protocol it can draw with and routes every image through the best answer, falling back to half blocks when the answer is nothing special. There is nothing to call. Drawing is a seam mirroring the decoder one, so overriding what the terminal said is one line:
+Detection runs once, when your `SimulationApp` is constructed. It asks the terminal directly and falls back to environment variables when there's nothing to ask. It is deliberately biased toward half blocks: **guessing wrong the safe way costs picture quality; guessing wrong the other way fills the screen with escape sequences.** tmux and screen report as half blocks, since they rewrite escapes.
 
 ```csharp
-// Only to overrule detection; a renderer you assign always wins, before or after the simulation exists:
+// Overrule detection. A renderer you assign always wins:
 ImageRenderers.Default = new SixelImageRenderer();
 
-// ...or draw one picture differently without disturbing the global default:
+// ...or draw one picture differently, without touching the global default:
 var photo = image.ToAnsi(options, new KittyImageRenderer());
 ```
 
-- **`HalfBlockImageRenderer`**: the fallback, and what detection leaves in place when the terminal offers nothing better. Colored `▀` characters; works in any terminal that can do color at all, and degrades further on its own to 256-color, grayscale, or plain ASCII.
-- **`SixelImageRenderer`**: real pixels via the DEC sixel protocol, supported by xterm (built with sixel), foot, WezTerm, mlterm, contour, recent Konsole and VTE, iTerm2, and Windows Terminal 1.22+. Sixel is indexed, so the picture is reduced to a palette (256 colors by default) chosen per-image by median cut: entries are spent where the picture actually has detail rather than on a fixed grid.
-- **`KittyImageRenderer`**: real pixels via the kitty graphics protocol, supported by kitty, WezTerm, and Ghostty. It transmits the pixels as they are (full 24-bit color and a real alpha channel, no palette), so it is preferred wherever both are available.
+- **`HalfBlockImageRenderer`**: the fallback; works in any terminal that can do color.
+- **`SixelImageRenderer`**: xterm (built with sixel), foot, WezTerm, mlterm, contour, recent Konsole and VTE, iTerm2, Windows Terminal 1.22+.
+- **`KittyImageRenderer`**: kitty, WezTerm, Ghostty. Full 24-bit color and real alpha, so it wins where both are available.
 
-Both take the terminal's cell size in pixels (`new SixelImageRenderer(cellPixelWidth: 10, cellPixelHeight: 20)`), which is what converts between the pixels they draw in and the character cells the rest of the library speaks in. The defaults suit most terminals; raise them if pictures come out smaller than expected.
+The example app's **Force render type** menu item redraws everything with each one in turn, so you can see what your terminal actually does.
 
-#### Detecting what the terminal can do ####
+</details>
 
-Detection happens when your `SimulationApp` is constructed, via `ImageRenderers.AutoDetect()`. It asks the terminal directly (`AnsiConsole.ProbeGraphicsProtocol()` writes a query and reads the reply off standard input, the only way to settle xterm, which has sixel only when built and started for it, and Windows Terminal, which publishes no version to say whether it is 1.22 or later), and falls back to the environment the terminal advertises itself through (`TERM`, `KITTY_WINDOW_ID`, `TERM_PROGRAM`, `VTE_VERSION`, and so on) when there is no terminal to ask. It is deliberately biased towards half blocks: **guessing wrong the safe way costs picture quality, guessing wrong the other way fills the screen with raw escape sequences.** Multiplexers (tmux, screen) report as half blocks too, since they rewrite escape sequences and need per-user passthrough configuration to let graphics past.
+## Sprites, animation and collision
 
-Because the terminal answers on standard input, the probe must run before anything else reads keys, and it does, by construction: it runs while the simulation is being created, and the library's own key reading starts on the first tick, which cannot come earlier. It never throws, and it is bounded by a timeout. Detection runs once per process and never overrules you: assign `ImageRenderers.Default` before creating the simulation and detection stands down entirely; assign it after and your choice replaces the answer. If you render images *before* creating the simulation, call `ImageRenderers.AutoDetect()` yourself at the top of `Main`; it is the same once-only detection, just earlier, and the constructor's later call becomes a no-op.
-
-To see what any of this looks like on your own terminal, the example's **Force slideshow render type** menu item redraws the same photos with each render type in turn (kitty, sixel, half blocks in true color / 256 colors / grayscale, and the colorless ASCII fallback) alongside an *Auto* choice that reports whichever one the probe settled on. Forcing a protocol the terminal does not speak is instructive rather than harmful: you get the screenful of escape-sequence garbage that detection exists to avoid.
-
-Frames present themselves through a built-in `ConsolePresenter` (flicker-free: changed rows only, overwritten in place, one write per update). Subscribing your own handler to `ScreenBufferDirtyEvent` takes presentation over (the built-in presenter stands down), and a handler that writes frames itself instead of handing them to a `ConsolePresenter` must call `AnsiGraphics.StripMarkers(frame)` first: true-pixel renderers mark the rows a picture covers so the presenter knows not to erase through them, and those markers must not reach the terminal. Frames without images pass through untouched.
-
-## File & folder browser ##
-
-WolfCurses ships a ready-made file/folder picker so an application doesn't have to build directory navigation itself. From inside a window the running simulation is available as `SimUnit`:
+When the thing on top *moves*, a `SpriteScene` holds the background as pixels and recomposes as often as you like.
 
 ```csharp
-using WolfCurses.Controls;
+var scene = new SpriteScene(background);
+scene.Sprites.Add(new Sprite(pixels, x, y));
 
-// Let the user pick an image file (only these extensions are shown):
-FileDialog.OpenFile(SimUnit, startDirectory: "C:\\", extensions: new[] { ".jpg", ".png" },
-    onFileSelected: path => { /* do something with the chosen file */ });
-
-// ...or pick a folder:
-FileDialog.SelectFolder(SimUnit, startDirectory: "C:\\",
-    onFolderSelected: path => { /* do something with the chosen folder */ });
+string frame = scene.ToAnsi(options);        // each frame
+sprite.Image = nextGifFrame;                 // that's all animation takes
+var hits = scene.SpritesTouching(sprite);    // which sprites it ran into
 ```
 
-The dialog pushes itself on top of the current screen and lets the user navigate drives and folders: type a number to open an entry, `U` to go up, `D` to list drives, `N`/`P` to page through a long folder, and `C` to cancel (plus `S` to confirm the current folder when picking a folder). When the user chooses, your callback runs with the full path and the dialog closes itself. An empty extension filter shows every file.
+Sprites draw in order (last is nearest), are clipped rather than refused so they can walk in from off-screen, and honor their own transparency.
 
-The dialog's window and form ship inside the library and are discovered automatically; nothing to register. An app that overrides `AllowedWindows` to curate its window list must include `typeof(FileDialogWindow)`.
+> **The one knob worth knowing:** the scene is the size of its background. Resize the background once to roughly what the terminal can show and a frame costs a fraction of what it costs at a photograph's native resolution.
 
-## Progress bars & graphs ##
+The [three sprite demos](example/WolfCurses.Example/README.md#sprites) cover the lot: a bouncing logo, five animated GIFs flying through one another while being added and removed, and two penguins you steer together to watch collision fire.
 
-WolfCurses ships a set of drop-in **display widgets** (in `WolfCurses.Window.Control`) that turn data into a block of text you return from your window or form's render, with no extra windows to register. They are pure string producers, so they compose with everything else (including ANSI images) and update in place as your data changes.
+## Widgets
+
+Drop-in display widgets that turn data into text you return from your render. No windows to register: they're pure string producers, so they compose with everything else.
+
+![The example's progress bars and graphs demo: a progress bar, marquee, sparkline, bar chart and scrolling line graph all animating together](docs/demo-progress-graphs.gif)
+
+*`ProgressBar`, `MarqueeBar`, `Sparkline`, `BarChart` and `LineGraph` animating together. Every one of them is just a string returned from the form's render.*
 
 ```csharp
 using WolfCurses.Window.Control;
 
-// Determinate progress bar: value against a maximum, or a 0..1 fraction.
 var bar = new ProgressBar { Width = 24, Label = "Download" };
-string line = bar.Render(bytesDone, bytesTotal);      // Download [██████████░░░░░░░░░░░░░░]  42%
+string line = bar.Render(bytesDone, bytesTotal);   // Download [██████████░░░░░░]  42%
 
-// Inline sparkline of a whole series.
-string trend = new Sparkline().Render(samples);        // ▁▂▄▅▇█▆▄▂  (one glyph per point)
-
-// Horizontal bar chart of labelled values.
+string trend = new Sparkline().Render(samples);    // ▁▂▄▅▇█▆▄▂
+string graph = new LineGraph { Width = 40, Height = 10 }.Render(samples);
 string chart = new BarChart { Width = 20 }.Render(new[]
 {
     new BarChartValue("Wood", 12),
     new BarChartValue("Iron", 5),
 });
-
-// 2-D line graph of a series over time (optional axis, scale labels, and area fill).
-string graph = new LineGraph { Width = 40, Height = 10 }.Render(samples);
 ```
 
-- **`ProgressBar`**: determinate bar with configurable width, filled/empty glyphs, optional brackets, percentage, and a leading label. Clamps out-of-range and non-finite input (a non-positive maximum renders empty rather than throwing). For a quick one-off, the older static `TextProgress.DrawProgressBar(value, max, size)` is still there; `MarqueeBar` gives you an indeterminate ping-pong bar and `SpinningPixel` a spinner.
-- **`Sparkline`**: a series drawn as one line of block glyphs (`▁▂▃▄▅▆▇█`), auto-scaled between the series min/max or a range you pin with `Minimum`/`Maximum`. Handy next to a label.
-- **`BarChart`**: one row per `BarChartValue`, labels aligned to a common width, bars scaled to the largest value, with an optional aligned "track" and printed values.
-- **`BoxDrawing`**: picks the box-drawing character that joins lines running in a given set of directions — `BoxDrawing.Junction(up, down, left, right, border)` returns the corner, tee, cross or straight run for those four neighbours, in any of the `BoxBorderEnum` styles. `Box` knows a rectangle's six glyphs up front because a rectangle's shape is fixed; anything drawing a *network* of lines (a maze, a table with interior rules, a tree, a wiring diagram) has to decide each cell from its neighbours instead, and there are sixteen answers rather than six. The same connections give the same shape in every style, so switching a drawing from single to double lines cannot change its topology. Pac-Man's maze in the games example is drawn entirely with it.
-- **`TextGrid`**: a rectangle of characters, each with its own style, that draws itself as text — for anything made of cells rather than of sentences: a board, a map, a playfield. Set cells with `Set(x, y, glyph, style)`, paint rectangles with `Fill`, and give it a `CellWidth` of 2 so a square cell comes out square on a terminal whose characters are twice as tall as they are wide. Writes that land off the grid are dropped rather than thrown, because callers plot from world coordinates. It handles the two things that are easy to get wrong: runs are coalesced on the **escape sequence that actually reaches the terminal** rather than on the style that produced it (colours quantize on the way out, so two different styles often arrive identical), and no escape is emitted at all — not even a reset — for a grid nobody coloured. `Render(originX, originY, columns, rows)` is a **window onto the grid**, so a world larger than the screen just scrolls; `TextGrid.CenterOrigin` is the camera, following a focus and clamping at the edges instead of scrolling past the end of the world. A window may hang off any edge and still comes back exactly the size it asked for, which is what keeps the frame around it from resizing on every step. `DrawText` writes a string across a row for a caption or a score, and `DrawLine` draws a straight run of cells between two points — the cell counterpart of `PixelBuffer.DrawLine`, keeping that method's two useful properties: the *loop range* is clipped rather than each cell, so a line drawn between coordinates a million cells apart costs the width of the grid and not a million iterations, and each step's position is recomputed from the original endpoints so a shape does not change as it crosses an edge. (Both matter the moment you project a three-dimensional scene onto a grid, where a vertex just in front of the eye lands enormously far off the side of the screen — Battlezone in the games example draws its entire wireframe world with it.) Snake in the games example was rewritten onto it: fifty-five lines of hand-rolled grid and run coalescing became eight, emitting byte-for-byte the same output.
-- **`HeldAxis`**: not a widget, but the same kind of thing — the small piece every real-time screen was writing for itself. A terminal never reports a key being *let go*, and `InputManager` drains the console buffer in one go, so a key being **held** arrives as a burst of eight or ten presses with no time between them. For a grid game that is exactly right (one press, one step); for anything moving continuously it makes speed a function of the player's key-repeat setting. `axis.Press(-1)` in `OnKeyPressed`, then `axis.Direction` in `OnTick` multiplied by real elapsed time — the axis infers the key-up from silence. `HeldFor` is the other half, for ramping a speed up while a key is held, and it exists because the obvious version is written wrong: the "were we standing still?" test gets asked *after* the new direction has been assigned, by which point something always is, so the ramp silently pins itself to full speed forever. Missile Command and Battlezone both steer with it.
-- **`LineGraph`**: plots a series across a `Width`×`Height` grid (top = max, bottom = min) with optional connecting segments, area fill, a left Y-axis with min/max scale labels, and a bottom X-axis, good for a rolling metric over time.
+- **`ProgressBar`**: determinate, with configurable glyphs, brackets, percentage and label. `MarqueeBar` and `SpinningPixel` cover the indeterminate case.
+- **`Sparkline`**: a series as one line of block glyphs, auto-scaled.
+- **`BarChart`**: labelled horizontal bars, aligned to a common width.
+- **`LineGraph`**: a 2-D plot with optional axes, scale labels and area fill.
+- **`TextGrid`**: a rectangle of characters, each with its own style: boards, maps, playfields. `Render(x, y, columns, rows)` is a **window onto the grid**, so a world larger than the screen just scrolls, and `CenterOrigin` is the camera.
+- **`BoxDrawing`**: picks the box-drawing character joining lines in a given set of directions. A rectangle knows its six glyphs up front; a *network* of lines (a maze, a table with interior rules, a wiring diagram) has sixteen answers and has to decide each cell from its neighbours.
 
-The multi-line widgets join their rows with the platform newline and emit no trailing newline, so they slot cleanly into surrounding text. The example app's **Progress bars & graphs** menu item shows all of them animating together off the simulation tick:
+Every widget takes colors and ramps, and anything you leave alone emits no escapes at all, so a plain build stays byte-for-byte plain.
 
-![The example's progress bars and graphs demo: a progress bar, marquee, sparkline, bar chart and scrolling line graph all animating together](docs/demo-progress-graphs.gif)
+## Dialogs, panels and pickers
 
-*`ProgressBar`, `MarqueeBar`, `Sparkline`, `BarChart` and `LineGraph` animating together, every one of them just a string returned from the form's render.*
-
-## Dialogs & panels ##
-
-Beyond the file browser, WolfCurses ships ready-made **modal dialogs** and a **panel** widget so common interactions don't have to be built from scratch. The dialogs push themselves on top of the current screen, take over input, and call you back with the result before closing themselves, the same pattern as `FileDialog`. From inside a window the simulation is available as `SimUnit`.
+Ready-made modals that push themselves on top of the current screen, take over input, and call you back before closing themselves.
 
 ```csharp
 using WolfCurses.Controls;
 using WolfCurses.Window.Control;
 
 // A bordered panel (a pure string widget, no window needed):
-string panel = new Box { Title = "Status", Border = BoxBorderEnum.Double, Padding = 1 }.Render("All systems nominal.");
+string panel = new Box { Title = "Status", Border = BoxBorderEnum.Double, Padding = 1 }
+    .Render("All systems nominal.");
 
-// Pick one option from a list (or ChooseMany for multi-select, returning several):
 SelectList.Choose(SimUnit, "Pick a color", new[] { "Crimson", "Emerald", "Sapphire" },
-    onChosen: index => { /* the chosen index */ });
+    onChosen: index => { /* ... */ });
 
-// A yes/no/cancel message box (or MessageBox.Show(...) for a simple OK, MessageBox.Confirm(...) for yes/no):
-MessageBox.Show(SimUnit, "Enable hard mode?", MessageBoxButtonsEnum.YesNoCancel,
-    result => { /* result is Yes / No / Cancel */ });
+MessageBox.Confirm(SimUnit, "Enable hard mode?", onYes: () => { /* ... */ });
 
-// A text prompt with a default value, validation, and optional password masking:
 TextInputDialog.Prompt(SimUnit, "What is your name?",
-    onSubmit: name => { /* the entered value */ },
+    onSubmit: name => { /* ... */ },
     defaultValue: "Traveler",
     validator: v => v.Length < 2 ? "Name must be at least 2 characters." : null);
+
+FileDialog.OpenFile(SimUnit, startDirectory: "C:\\", extensions: new[] { ".jpg", ".png" },
+    onFileSelected: path => { /* ... */ });
 ```
 
-- **`Box`**: draws a border (single, double, rounded, ASCII, or none) around any text, with an optional aligned title and interior padding. Widths are measured ignoring ANSI color escapes, so it frames colored text and even ANSI images correctly. The dialogs use it for their own framing.
-- **`SelectList`**: a paginated picker. `Choose` returns the chosen option (by index, or by item with the generic overload); `ChooseMany` lets the user check several and returns them all. Numbers pick/toggle, `S` confirms a multi-select, `A`/`X` select all/none, `N`/`P` page, `C` cancels.
-- **`MessageBox`**: `Show` for a simple acknowledgement, `Confirm` for a yes/no question, or the buttons overload for yes/no/cancel; the callback receives the `MessageBoxResultEnum`.
-- **`TextInputDialog`**: `Prompt` for a line of text, optionally pre-filled with a default, validated (a returned message rejects and keeps the dialog open), and/or masked so typed characters echo as asterisks. Submitting a blank line cancels.
+- **`Box`**: a border (single, double, rounded, ASCII or none) around any text, with optional title and padding. Widths ignore ANSI escapes, so it frames colored text and even images correctly.
+- **`SelectList`**: a paginated picker; `Choose` for one, `ChooseMany` for several.
+- **`MessageBox`**: `Show`, `Confirm`, or yes/no/cancel.
+- **`TextInputDialog`**: a line of text, with a default, validation and optional password masking.
+- **`FileDialog`**: browse drives and folders to pick a file or a directory.
 
-Each dialog is a window shipped in the library, so it is discovered automatically; nothing to register. An app that overrides `AllowedWindows` must include the window types it uses (`typeof(SelectListWindow)`, `typeof(MessageBoxWindow)`, `typeof(TextInputWindow)`). The example app demonstrates all four.
+All of them ship inside the library and are discovered automatically. (If you override `AllowedWindows` to curate your window list, include the ones you use.)
 
-## Purpose ##
+## Input
 
-The purpose of this project was to replicate the concept of the curses library created by Ken Arnold and originally released with BSD UNIX, where it was used for several games, most notably [Rogue](https://en.wikipedia.org/wiki/Rogue_(video_game) "Rogue (video game)").
+- **Keys arrive as you'd expect.** ENTER submits the typed command, BACKSPACE edits it, everything else both fills the prompt and reaches the focused form.
+- **Mouse is opt-in.** `AnsiConsole.EnableMouse()` and presses start arriving as `OnMousePressed(MouseEvent)` with the cell that was clicked. Presses only: no motion, drag or wheel. **Windows only for now**; elsewhere it returns false having written nothing, so nothing changes.
+- **`HeldAxis`** solves a problem every real-time terminal app hits: a terminal never reports a key being *let go*, so a held key arrives as a burst of presses. Feed it `Press(-1)` and read `Direction`; it infers the key-up from silence.
 
-## Curses-based software ##
+## Building from source
 
-The original curses project was designed to facilitate GUI-like functionality on a text-only device, such as a PC running in console mode, a hardware ANSI terminal, a [Telnet](https://en.wikipedia.org/wiki/Telnet "Telnet") or [SSH](https://en.wikipedia.org/wiki/Secure_Shell "Secure Shell") client, or similar.
+```cmd
+git clone https://github.com/Maxwolf/WolfCurses.git
+dotnet build WolfCurses.sln
+dotnet test
+```
 
-Curses-based programs often have a [user interface](https://en.wikipedia.org/wiki/User_interface "User interface") that resembles a traditional graphical user interface, including '[widgets](https://en.wikipedia.org/wiki/Widget_(computing) "Widget (GUI)")' such as text boxes and scrollable lists, rather than the [command line interface](https://en.wikipedia.org/wiki/Command-line_interface "Command-line interface") (CLI) most commonly found on text-only devices. This can make them more user-friendly than a CLI-based program, while still being able to run on text-only devices. Curses-based software can also have a lighter resource footprint and operate on a wider range of systems (both in terms of hardware and software) than their GUI-based counterparts. This includes old pre-1990 machines along with modern embedded systems using text-only displays.
+Fork it and use it as the base for your next application, or just cherry-pick from it.
 
-However, not all Curses-based software employs a [text user interface](https://en.wikipedia.org/wiki/Text-based_user_interface "Text-based user interface") which resembles a graphical user interface. One counterexample would be the popular vi text editor, which while not being CLI-based, uses memorized keyboard commands almost exclusively, rather than the prompting TUI/GUI style, which relies more on recognition than recall.
+## Where it came from
 
-Curses is most commonly associated with Unix-like operating systems, although implementations for Microsoft Windows also exist.
+This project re-creates the idea behind [curses](https://en.wikipedia.org/wiki/Curses_(programming_library)), the library Ken Arnold originally released with BSD UNIX and which [Rogue](https://en.wikipedia.org/wiki/Rogue_(video_game)) made famous, for a modern object-oriented language and without wrapping a native library.
 
-## History ##
+<details>
+<summary>A little more about curses</summary>
 
-There are several other projects that have come after curses such as pcurses, PDCurses, and more recently ncurses which is used by most Linux text-mode installers to this day (2016 time of writing).
+Curses was designed to give GUI-like functionality on a text-only device: a PC in console mode, a hardware ANSI terminal, a Telnet or SSH session. Curses-based programs often have an interface resembling a graphical one, with widgets like text boxes and scrollable lists, rather than the command-line style usually found on text-only devices. That can make them friendlier than a CLI while still running anywhere, including pre-1990 machines and modern embedded systems with text-only displays.
 
-I am not affiliated with these other projects at all. I wanted to re-imagine these libraries for modern object-oriented languages without using a wrapper.
+Not all of it looks like a GUI, though. vi is the counterexample: not command-line based, but driven almost entirely by memorized keystrokes rather than the prompting style that relies on recognition over recall.
+
+Several projects followed the original: pcurses, PDCurses, and more recently ncurses, still used by most Linux text-mode installers. This project isn't affiliated with any of them.
+
+</details>
