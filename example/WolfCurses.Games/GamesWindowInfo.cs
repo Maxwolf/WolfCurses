@@ -38,5 +38,8 @@ namespace WolfCurses.Games
 
         /// <summary>Biggest pile of chips the player has held at the poker table this session.</summary>
         public int PokerBestChips { get; set; }
+
+        /// <summary>The most the player has ever scored on the plain.</summary>
+        public int BattlezoneBestScore { get; set; }
     }
 }

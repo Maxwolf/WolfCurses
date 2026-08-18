@@ -111,7 +111,11 @@ namespace WolfCurses.Games.Chess
         /// </summary>
         private bool PictureIsLegible()
         {
-            if (AnsiConsole.DetectColorMode() == AnsiColorModeEnum.None)
+            // Asked of the library rather than written out here: the colour mode matters because a picture is
+            // nothing but colour, and virtual-terminal processing matters because without it the presenter writes a
+            // payload row BLANK. This screen had only ever checked the first of the two, so on a console where VT
+            // could not be enabled it drew an empty board and said nothing about why.
+            if (!AnsiConsole.SupportsPictures())
                 return false;
 
             // Asked of the renderer rather than type-tested against the built-in classes, which is what this line

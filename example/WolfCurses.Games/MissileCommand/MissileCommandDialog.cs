@@ -36,13 +36,6 @@ namespace WolfCurses.Games.MissileCommand
         /// <summary>The shortest gap between two shells, so one long press of SPACE is not the whole magazine.</summary>
         private static readonly TimeSpan _shotPace = TimeSpan.FromMilliseconds(110);
 
-        /// <summary>
-        ///     How long an arrow may go unheard before the crosshair is treated as having stopped. Comfortably longer
-        ///     than the operating system's key-repeat interval, which is about a thirtieth of a second, and
-        ///     comfortably shorter than a human tapping a key on purpose.
-        /// </summary>
-        private static readonly TimeSpan _keyUpAfter = TimeSpan.FromMilliseconds(180);
-
         /// <summary>How long the crosshair takes to work up from its opening nudge to full speed.</summary>
         private static readonly TimeSpan _rampOver = TimeSpan.FromMilliseconds(420);
 
@@ -81,13 +74,21 @@ namespace WolfCurses.Games.MissileCommand
         private double _aimX = MissileField.Aspect/2.0;
         private double _aimY = 0.62;
 
-        private int _driftX;
-        private int _driftY;
-        private TimeSpan _driftXAt;
-        private TimeSpan _driftYAt;
-        private TimeSpan _movingSince;
+        /// <summary>
+        ///     Which way the player is holding the crosshair, one axis each way.
+        ///     <para>
+        ///         This used to be five fields and a pair of timestamp comparisons written out here; it is now
+        ///         <see cref="HeldAxis" />, which is where the library keeps the trap. The extraction also fixed a
+        ///         real bug in this file: the speed ramp asked "were we standing still?" <i>after</i> assigning the
+        ///         new direction, by which point something always was, so the answer was never yes, the ramp start
+        ///         stayed at zero forever and every aim was at full speed from about half a second into the
+        ///         program. The gentle first tap this screen advertises had simply never worked.
+        ///     </para>
+        /// </summary>
+        private readonly HeldAxis _driftX = new();
 
-        private bool _vtReady;
+        private readonly HeldAxis _driftY = new();
+
         private bool _forceText;
         private bool _scoreRecorded;
 
@@ -137,10 +138,6 @@ namespace WolfCurses.Games.MissileCommand
                 ? "Click to fire, or arrows/WASD aim and SPACE fires; Z/X/C picks a battery, TAB switches board, ENTER quits"
                 : "Arrows or WASD aim, SPACE fires, Z/X/C picks a battery, TAB switches board, ENTER or ESC quits";
 
-            // Asked once, not per frame. Enable does real work - it sets the output encoding and, on Windows, calls
-            // into the console API - and the answer cannot change under a running process.
-            _vtReady = AnsiConsole.Enable();
-
             RestartOnActivate(_frame);
             NewGame();
         }
@@ -157,9 +154,9 @@ namespace WolfCurses.Games.MissileCommand
         ///         behind the tick loop has fallen, and the harder the machine is working the faster the crosshair
         ///         flies. In Snake, Tetris and chess a key press is one discrete action and a burst of repeats is
         ///         exactly right; here it is a direction being held, and the only thing a terminal will never tell
-        ///         you is when it was let go. So this records a heading and a timestamp, and
-        ///         <see cref="OnTick" /> integrates real elapsed time against it — treating silence longer than
-        ///         <see cref="_keyUpAfter" /> as the key-up event that is never coming.
+        ///         you is when it was let go. So this records a heading on a <see cref="HeldAxis" />, and
+        ///         <see cref="OnTick" /> integrates real elapsed time against it — the axis treating silence longer
+        ///         than <see cref="HeldAxis.ReleaseAfter" /> as the key-up event that is never coming.
         ///     </para>
         /// </summary>
         /// <param name="key">The key that was pressed.</param>
@@ -167,28 +164,19 @@ namespace WolfCurses.Games.MissileCommand
         {
             base.OnKeyPressed(key);
 
-            // TotalElapsed, deliberately: it is the one reading RestartOnActivate does not reset, so coming back
-            // from a modal dialog leaves these stamps correctly stale and the crosshair stops rather than lurching
-            // off in whatever direction was last held before the interruption.
-            var now = _frame.TotalElapsed;
-
             switch (key)
             {
                 case ConsoleKey.LeftArrow or ConsoleKey.A:
-                    _driftX = -1;
-                    _driftXAt = now;
+                    _driftX.Press(-1);
                     break;
                 case ConsoleKey.RightArrow or ConsoleKey.D:
-                    _driftX = 1;
-                    _driftXAt = now;
+                    _driftX.Press(1);
                     break;
                 case ConsoleKey.UpArrow or ConsoleKey.W:
-                    _driftY = 1;
-                    _driftYAt = now;
+                    _driftY.Press(1);
                     break;
                 case ConsoleKey.DownArrow or ConsoleKey.S:
-                    _driftY = -1;
-                    _driftYAt = now;
+                    _driftY.Press(-1);
                     break;
                 case ConsoleKey.Spacebar:
                     FireAt(_field.BestSilo(_aimX, _aimY));
@@ -215,11 +203,6 @@ namespace WolfCurses.Games.MissileCommand
                 default:
                     return;
             }
-
-            // The ramp starts when the crosshair starts moving, not when a key arrives, so a held sweep accelerates
-            // once rather than restarting every time the operating system repeats.
-            if (_driftX == 0 && _driftY == 0)
-                _movingSince = now;
         }
 
         /// <inheritdoc />
@@ -294,8 +277,8 @@ namespace WolfCurses.Games.MissileCommand
                 return;
 
             SetAim(worldX, worldY);
-            _driftX = 0;
-            _driftY = 0;
+            _driftX.Release();
+            _driftY.Release();
 
             FireAt(_field.BestSilo(_aimX, _aimY));
 
@@ -326,27 +309,27 @@ namespace WolfCurses.Games.MissileCommand
         /// <param name="elapsed">How long the frame lasted.</param>
         private void SteerCrosshair(TimeSpan elapsed)
         {
-            var now = _frame.TotalElapsed;
+            // Read once each: the key-up a terminal never sends is inferred inside these, so the answer is a
+            // function of the clock and asking twice in one frame could in principle disagree with itself.
+            var driftX = _driftX.Direction;
+            var driftY = _driftY.Direction;
 
-            // The key-up event a terminal never sends, inferred from silence.
-            if (now - _driftXAt > _keyUpAfter)
-                _driftX = 0;
-            if (now - _driftYAt > _keyUpAfter)
-                _driftY = 0;
-
-            if (_driftX == 0 && _driftY == 0)
+            if (driftX == 0 && driftY == 0)
                 return;
 
-            var held = (now - _movingSince).TotalSeconds/_rampOver.TotalSeconds;
+            // The longer of the two, so a diagonal that began as a single held arrow keeps the speed it had built
+            // up when the second one joins it rather than dropping back to a crawl mid-sweep.
+            var moving = _driftX.HeldFor > _driftY.HeldFor ? _driftX.HeldFor : _driftY.HeldFor;
+            var held = moving.TotalSeconds/_rampOver.TotalSeconds;
             var speed = SlowAim + (FastAim - SlowAim)*Math.Clamp(held, 0.0, 1.0);
 
             // A diagonal would otherwise be about forty per cent faster than a straight line, which is a thing
             // players notice without being able to say what is wrong.
-            if (_driftX != 0 && _driftY != 0)
+            if (driftX != 0 && driftY != 0)
                 speed /= Math.Sqrt(2.0);
 
             var step = speed*elapsed.TotalSeconds;
-            SetAim(_aimX + _driftX*step, _aimY + _driftY*step);
+            SetAim(_aimX + driftX*step, _aimY + driftY*step);
         }
 
         /// <summary>Deals a fresh field.</summary>
@@ -355,8 +338,8 @@ namespace WolfCurses.Games.MissileCommand
             _field = new MissileField(SimUnit.Random);
             _aimX = MissileField.Aspect/2.0;
             _aimY = 0.62;
-            _driftX = 0;
-            _driftY = 0;
+            _driftX.Release();
+            _driftY.Release();
             _scoreRecorded = false;
             Compose();
         }
@@ -387,12 +370,10 @@ namespace WolfCurses.Games.MissileCommand
         /// <returns>True to draw a picture, false to draw characters.</returns>
         private bool PictureIsWorthIt(int rows)
         {
-            if (!_vtReady || _forceText)
-                return false;
-
-            // Neither true-pixel renderer consults the colour mode, so without this a forced grayscale or a NO_COLOR
-            // environment would grey every widget on screen and leave the picture in full colour.
-            if (AnsiConsole.DetectColorMode() == AnsiColorModeEnum.None)
+            // Both halves of "will a picture survive to this terminal at all" - virtual terminal processing, and a
+            // colour mode that is not None - now live in the library, which is the only thing that knows its own
+            // presenter blanks a payload row it cannot interpret.
+            if (!AnsiConsole.SupportsPictures() || _forceText)
                 return false;
 
             // Half blocks give two pixels a row, so a field squeezed into a dozen rows is a smear; real pixels only

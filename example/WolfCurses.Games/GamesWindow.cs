@@ -3,6 +3,7 @@
 
 using System;
 using System.Text;
+using WolfCurses.Games.Battlezone;
 using WolfCurses.Games.Blackjack;
 using WolfCurses.Games.Chess;
 using WolfCurses.Games.Labyrinth;
@@ -44,6 +45,7 @@ namespace WolfCurses.Games
             AddCommand(PlayPacMan, GamesCommandsEnum.PacMan);
             AddCommand(PlayBlackjack, GamesCommandsEnum.Blackjack);
             AddCommand(PlayPoker, GamesCommandsEnum.Poker);
+            AddCommand(PlayBattlezone, GamesCommandsEnum.Battlezone);
             AddCommand(Quit, GamesCommandsEnum.Quit);
 
             RefreshMenuHeader();
@@ -95,7 +97,8 @@ namespace WolfCurses.Games
                               $"Mazes escaped: {UserData.LabyrinthMazesEscaped}   " +
                               $"Pac-Man best: {UserData.PacManHighScore:N0}");
             header.AppendLine($"Blackjack best: {UserData.BlackjackBestChips:N0} chips   " +
-                              $"Poker best: {UserData.PokerBestChips:N0} chips");
+                              $"Poker best: {UserData.PokerBestChips:N0} chips   " +
+                              $"Battlezone best: {UserData.BattlezoneBestScore:N0}");
             header.AppendLine();
             header.Append("Choose one (arrow keys + ENTER, or type a number):");
             MenuHeader = header.ToString();
@@ -144,6 +147,11 @@ namespace WolfCurses.Games
         private void PlayPoker()
         {
             SetForm(typeof (PokerDialog));
+        }
+
+        private void PlayBattlezone()
+        {
+            SetForm(typeof (BattlezoneDialog));
         }
 
         private void Quit()

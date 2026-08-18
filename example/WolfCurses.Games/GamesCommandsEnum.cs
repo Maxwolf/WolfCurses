@@ -68,7 +68,13 @@ namespace WolfCurses.Games
         /// </summary>
         [Description("Poker - five-card draw, jacks or better.")] Poker = 9,
 
+        /// <summary>
+        ///     The only screen here that is a view rather than a map: a first-person wireframe world with a camera,
+        ///     a horizon and a radar, where what you cannot see is the whole of the difficulty.
+        /// </summary>
+        [Description("Battlezone - first-person wireframe tank combat.")] Battlezone = 10,
+
         /// <summary>Closes the arcade and returns to the operating system.</summary>
-        [Description("Quit.")] Quit = 10
+        [Description("Quit.")] Quit = 11
     }
 }

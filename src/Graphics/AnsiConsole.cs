@@ -30,6 +30,12 @@ namespace WolfCurses.Graphics
         private static AnsiColorModeEnum? _colorMode;
 
         /// <summary>
+        ///     What <see cref="Enable" /> answered the first time <see cref="SupportsPictures" /> asked it, kept
+        ///     because it cannot change either; null until first asked.
+        /// </summary>
+        private static bool? _vtReady;
+
+        /// <summary>
         ///     An override that forces <see cref="DetectColorMode" /> — and therefore every widget, text style and
         ///     image left at <see cref="AnsiColorModeEnum.Auto" /> — to a chosen color mode, or <c>null</c> (the
         ///     default) to fall back to environment detection. A programmatic counterpart to the <c>NO_COLOR</c> /
@@ -66,6 +72,61 @@ namespace WolfCurses.Graphics
                 ready &= TryEnableWindowsVirtualTerminal();
 
             return ready;
+        }
+
+        /// <summary>
+        ///     Whether a picture drawn as real pixels would survive the trip to this terminal at all.
+        ///     <para>
+        ///         <b>The first half of this is the one that is easy to forget and impossible to miss once it
+        ///         bites.</b> When virtual-terminal processing cannot be turned on, <see cref="ConsolePresenter" />
+        ///         falls back to a plain-text path that <i>strips every escape</i> from each row before writing it —
+        ///         entirely right, since the console would otherwise print the bytes as literal garbage and miscount
+        ///         them as visible columns, and it means a true-pixel payload row is written out <i>blank</i>. An
+        ///         application that only knew how to draw pictures therefore shows an empty rectangle, with nothing
+        ///         anywhere reporting a problem. That is a fact about this library's own presenter, so this library
+        ///         is the right place to answer it rather than each application rediscovering it.
+        ///     </para>
+        ///     <para>
+        ///         The second half is the color mode, because a picture is nothing but color and neither true-pixel
+        ///         renderer consults it — so without this check a <c>NO_COLOR</c> environment or a
+        ///         <see cref="ForcedColorMode" /> of <see cref="AnsiColorModeEnum.None" /> would grey every widget on
+        ///         screen and leave the photographs in full color. It is read live rather than cached, so forcing a
+        ///         mode at run time takes effect immediately.
+        ///     </para>
+        ///     <para>
+        ///         <b>This says nothing about whether a picture is worth looking at</b>, which depends on what is
+        ///         being drawn and on how many rows it was given — a chessboard, a playing card and a photograph all
+        ///         want different answers, and all of them are the caller's to make. Ask
+        ///         <see cref="IImageRenderer.DrawsTruePixels" /> for that, rather than type-testing the built-in
+        ///         renderers.
+        ///     </para>
+        /// </summary>
+        /// <returns>True when a true-pixel payload can reach the screen with its color intact.</returns>
+        public static bool SupportsPictures()
+        {
+            // Asked once, because Enable does real work - it sets the output encoding and, on Windows, calls into the
+            // console API - and its answer cannot change under a running process. Callers were caching this by hand,
+            // one field at a time, and two of the three simply left the check out.
+            _vtReady ??= Enable();
+
+            return SupportsPictures(_vtReady.Value);
+        }
+
+        /// <summary>
+        ///     The decision itself, with the console probe supplied rather than performed.
+        ///     <para>
+        ///         The seam exists because a test host has no console to enable virtual-terminal processing on, so
+        ///         <see cref="Enable" /> answers false there and the public method returns false whatever the colour
+        ///         mode is — which makes the colour half of the rule untestable, and an untestable clause is one a
+        ///         refactor can silently delete. Same shape of seam as the injected environment accessor behind
+        ///         <see cref="DetectColorMode" /> and the console key source behind the input manager.
+        ///     </para>
+        /// </summary>
+        /// <param name="virtualTerminalReady">Whether escape sequences will be interpreted rather than stripped.</param>
+        /// <returns>True when a true-pixel payload can reach the screen with its color intact.</returns>
+        internal static bool SupportsPictures(bool virtualTerminalReady)
+        {
+            return virtualTerminalReady && DetectColorMode() != AnsiColorModeEnum.None;
         }
 
         /// <summary>

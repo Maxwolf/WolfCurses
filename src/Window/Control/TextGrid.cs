@@ -224,6 +224,85 @@ namespace WolfCurses.Window.Control
             }
         }
 
+        /// <summary>
+        ///     Draws a straight line of cells between two points, both ends included, clipped to the grid rather
+        ///     than refused by it.
+        ///     <para>
+        ///         The cell counterpart of <see cref="PixelBuffer.DrawLine(int,int,int,int,Rgba32)" />, and it keeps
+        ///         that method's two hard-won properties because they are worth exactly as much here. <b>The loop
+        ///         range is clipped rather than each cell</b>, so a line drawn between coordinates a million cells
+        ///         apart costs the width of the grid and not a million iterations — which is not an exotic case at
+        ///         all for anything projecting a three-dimensional scene, where a vertex just in front of the eye
+        ///         lands enormously far off the side of the screen. And <b>the position at each step is a pure
+        ///         function of the step index</b>, recomputed from the original endpoints every time, which is the
+        ///         only thing that makes clipping the range sound: an incremental error accumulator would draw a
+        ///         different line depending on where the loop was entered, so a shape would change as it crossed an
+        ///         edge.
+        ///     </para>
+        ///     <para>
+        ///         There is no thickness and no glyph-by-slope cleverness. A cell is already a chunky thing, and
+        ///         which character best suggests a diagonal is a decision about the picture rather than about the
+        ///         grid — a caller wanting <c>/</c> and <c>\</c> works its slope out and passes them in.
+        ///     </para>
+        /// </summary>
+        /// <param name="x0">Start column, which may lie outside the grid.</param>
+        /// <param name="y0">Start row, which may lie outside the grid.</param>
+        /// <param name="x1">End column, which may lie outside the grid.</param>
+        /// <param name="y1">End row, which may lie outside the grid.</param>
+        /// <param name="glyph">The character to draw at every cell along the way.</param>
+        /// <param name="style">How to colour it; <see cref="TextStyle.None" /> emits nothing at all.</param>
+        public void DrawLine(int x0, int y0, int x1, int y1, char glyph, TextStyle style = default)
+        {
+            // Rejected in constant time when nothing can land, which is most of them in a scene that is mostly
+            // behind the viewer.
+            if (Math.Max(x0, x1) < 0 || Math.Min(x0, x1) >= Width)
+                return;
+            if (Math.Max(y0, y1) < 0 || Math.Min(y0, y1) >= Height)
+                return;
+
+            var dx = (long) x1 - x0;
+            var dy = (long) y1 - y0;
+            var steps = Math.Max(Math.Abs(dx), Math.Abs(dy));
+
+            if (steps == 0)
+            {
+                // A line with no length is still a mark rather than nothing — the far end of a scene, where a whole
+                // object has shrunk into one cell, relies on it.
+                Set(x0, y0, glyph, style);
+                return;
+            }
+
+            _anyStyle |= !style.IsEmpty;
+
+            var xMajor = Math.Abs(dx) >= Math.Abs(dy);
+            var majorStart = xMajor ? x0 : y0;
+            var majorLimit = xMajor ? Width : Height;
+            var forward = xMajor ? dx > 0 : dy > 0;
+
+            // Which values of the step counter put the major axis on the grid.
+            var first = forward ? -(long) majorStart : majorStart - (majorLimit - 1L);
+            var last = forward ? majorLimit - 1L - majorStart : majorStart;
+            if (first < 0) first = 0;
+            if (last > steps) last = steps;
+
+            for (var step = first; step <= last; step++)
+            {
+                // The major axis advances exactly one cell per step, so only the minor one is interpolated — and
+                // rounding away from zero keeps the line symmetric whichever way round it is drawn.
+                var minor = (int) Math.Round((double) (xMajor ? dy : dx)*step/steps, MidpointRounding.AwayFromZero);
+                var x = xMajor ? x0 + (forward ? step : -step) : x0 + minor;
+                var y = xMajor ? y0 + minor : y0 + (forward ? step : -step);
+
+                // The range clip bounds the major axis only; the minor one still wanders off the sides.
+                if (x < 0 || x >= Width || y < 0 || y >= Height)
+                    continue;
+
+                var index = (int) (y*Width + x);
+                _glyphs[index] = glyph;
+                _styles[index] = style;
+            }
+        }
+
         /// <summary>The character in a cell, or <see cref="Blank" /> when the cell is off the grid.</summary>
         /// <param name="x">The column, counting from zero.</param>
         /// <param name="y">The row, counting from zero.</param>

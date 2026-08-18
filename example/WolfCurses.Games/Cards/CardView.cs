@@ -31,7 +31,9 @@ namespace WolfCurses.Games.Cards
         /// <returns>Whether to draw the picture.</returns>
         public static bool PictureIsLegible(int rows)
         {
-            if (AnsiConsole.DetectColorMode() == AnsiColorModeEnum.None)
+            // Colour, and virtual-terminal processing: without the latter the presenter blanks the payload row and
+            // the table is an empty rectangle. Both are the library's own facts, so it is the library that answers.
+            if (!AnsiConsole.SupportsPictures())
                 return false;
 
             // Asked of the renderer rather than type-tested against the built-in classes, which gets the wrong
