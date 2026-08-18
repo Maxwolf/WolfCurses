@@ -31,14 +31,32 @@ namespace WolfCurses.Games.Minesweeper
     [ParentWindow(typeof (GamesWindow))]
     public sealed class MinesweeperDialog : Form<GamesWindowInfo>
     {
-        /// <summary>Beginner's board: nine by nine, ten mines. The proportions every version of this game opens with.</summary>
-        private const int BoardWidth = 9;
+        /// <summary>
+        ///     The three boards the original shipped with, largest first.
+        ///     <para>
+        ///         The biggest one that fits the terminal is the one you get, which is the honest answer to "the
+        ///         play area feels small": a nine by nine board is the right size for a window, and a terminal is
+        ///         usually much larger than a window. Chosen once when the screen opens rather than per frame, so a
+        ///         board cannot change size underneath somebody who is halfway through it.
+        ///     </para>
+        /// </summary>
+        private static readonly (int Width, int Height, int Mines)[] _boards =
+        {
+            (30, 16, 99),
+            (16, 16, 40),
+            (9, 9, 10),
 
-        private const int BoardHeight = 9;
-        private const int Mines = 10;
+            // Not one of the originals. A tile is two rows tall because a box has a line above its contents and one
+            // below, so even the beginner board wants a terminal about thirty rows deep - and eighty by twenty-four
+            // has to get something.
+            (9, 6, 8)
+        };
+
+        /// <summary>Rows this screen spends on everything that is not the panel, plus the prompt underneath it.</summary>
+        private const int ChromeRows = 5;
 
         /// <summary>The panel that draws it, and the thing that knows where every square landed.</summary>
-        private readonly MinesweeperFace _face = new(BoardWidth, BoardHeight);
+        private MinesweeperFace _face;
 
         /// <summary>
         ///     Paces the redraw and is also the clock.
@@ -90,6 +108,13 @@ namespace WolfCurses.Games.Minesweeper
                 : "Square (B4), F to flag (F B4), R for a new board, Q or ESC to quit";
 
             RestartOnActivate(_tick);
+
+            // Sized once, here, and not per frame - see _boards. The coordinate gutter is part of that decision,
+            // since it costs a row and three columns and only exists to be typed at.
+            // Read once into locals; each of these is a live syscall.
+            _face = ChooseBoard(!AnsiConsole.MouseEnabled, AnsiConsole.SafeWindowWidth(),
+                AnsiConsole.SafeWindowHeight());
+
             StartNewBoard();
         }
 
@@ -223,7 +248,7 @@ namespace WolfCurses.Games.Minesweeper
         /// <summary>Deals a fresh board and clears whatever the last one had to say.</summary>
         private void StartNewBoard()
         {
-            _field = new Minefield(BoardWidth, BoardHeight, Mines, SimUnit.Random);
+            _field = new Minefield(_face.BoardWidth, _face.BoardHeight, MinesFor(_face), SimUnit.Random);
             _startedAt = null;
             _finalSeconds = 0;
 
@@ -232,6 +257,45 @@ namespace WolfCurses.Games.Minesweeper
                 : "Type a square to open it. The first one you open is never a mine.";
 
             _rendered = Compose();
+        }
+
+        /// <summary>
+        ///     Picks the largest of the original three boards that fits the terminal, and builds the panel for it.
+        /// </summary>
+        /// <param name="labelled">Whether the coordinate gutter has to be drawn, which costs a row and three columns.</param>
+        /// <param name="columns">How many columns the terminal has.</param>
+        /// <param name="rows">How many rows the terminal has.</param>
+        /// <returns>The panel to play on.</returns>
+        internal static MinesweeperFace ChooseBoard(bool labelled, int columns, int rows)
+        {
+            foreach (var (width, height, _) in _boards)
+            {
+                // A board wider than the alphabet cannot name its own columns, so it is only offered to a terminal
+                // that has a pointer to click with. Nobody is typing "AD7".
+                if (labelled && width > MinesweeperFace.WidestLabelledBoard)
+                    continue;
+
+                if (MinesweeperFace.ColumnsFor(width, labelled) <= columns &&
+                    MinesweeperFace.RowsFor(height, labelled) <= rows - ChromeRows)
+                    return new MinesweeperFace(width, height, labelled);
+            }
+
+            var (fallbackWidth, fallbackHeight, _) = _boards[_boards.Length - 1];
+            return new MinesweeperFace(fallbackWidth, fallbackHeight, labelled);
+        }
+
+        /// <summary>How many mines the chosen board carries.</summary>
+        /// <param name="face">The panel that was chosen.</param>
+        /// <returns>The mine count.</returns>
+        internal static int MinesFor(MinesweeperFace face)
+        {
+            foreach (var (width, height, mines) in _boards)
+            {
+                if (width == face.BoardWidth && height == face.BoardHeight)
+                    return mines;
+            }
+
+            return _boards[_boards.Length - 1].Mines;
         }
 
         /// <summary>Starts the clock, if it is not already running. Called by whatever opens the first square.</summary>
@@ -314,8 +378,6 @@ namespace WolfCurses.Games.Minesweeper
         {
             var body = new StringBuilder();
             body.AppendLine();
-            body.AppendLine($"Cleared this session: {UserData.MinefieldsCleared}");
-            body.AppendLine();
 
             // COUNTED, never written down as a constant. The library contributes exactly one un-terminated line
             // above the form, so the leading AppendLine above terminates it rather than making a blank one, and
@@ -324,14 +386,14 @@ namespace WolfCurses.Games.Minesweeper
             var panelRow = CountLineBreaks(body);
 
             _map = new MinesweeperBoardMap(panelRow + _face.BoardOriginRow, _face.BoardOriginColumn,
-                _field.Width, _field.Height, MinesweeperFace.TileWidth);
+                _field.Width, _field.Height, MinesweeperFace.TileWidth, MinesweeperFace.TileHeight);
 
             _smileyRow = panelRow + _face.SmileyRow;
             _smileyColumn = _face.SmileyOriginColumn;
 
             // The coordinates are only there to be typed at, so a terminal with a working mouse gets the panel the
             // way it actually looked.
-            body.AppendLine(_face.Render(_field, Seconds(), !AnsiConsole.MouseEnabled));
+            body.AppendLine(_face.Render(_field, Seconds()));
             body.AppendLine();
             body.Append(_message);
             return body.ToString();

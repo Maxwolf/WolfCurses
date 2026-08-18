@@ -27,14 +27,17 @@ namespace WolfCurses.Games.Minesweeper
         /// <param name="originColumn">Which screen column the left edge of the first square is drawn on.</param>
         /// <param name="width">How many squares across.</param>
         /// <param name="height">How many squares down.</param>
-        /// <param name="tileWidth">How many columns one square is drawn across.</param>
-        public MinesweeperBoardMap(int originRow, int originColumn, int width, int height, int tileWidth)
+        /// <param name="tileWidth">How many columns one square advances, its shared side line included.</param>
+        /// <param name="tileHeight">How many rows one square advances, its shared top line included.</param>
+        public MinesweeperBoardMap(int originRow, int originColumn, int width, int height, int tileWidth,
+            int tileHeight)
         {
             OriginRow = originRow;
             OriginColumn = originColumn;
             Width = width;
             Height = height;
             TileWidth = tileWidth;
+            TileHeight = tileHeight;
         }
 
         /// <summary>Which screen row the top row of squares is drawn on.</summary>
@@ -49,11 +52,14 @@ namespace WolfCurses.Games.Minesweeper
         /// <summary>How many squares down.</summary>
         public int Height { get; }
 
-        /// <summary>How many columns one square is drawn across.</summary>
+        /// <summary>How many columns one square advances, its shared side line included.</summary>
         public int TileWidth { get; }
 
+        /// <summary>How many rows one square advances, its shared top line included.</summary>
+        public int TileHeight { get; }
+
         /// <summary>Whether this map describes a board at all.</summary>
-        public bool IsUsable => Width > 0 && Height > 0 && TileWidth > 0;
+        public bool IsUsable => Width > 0 && Height > 0 && TileWidth > 0 && TileHeight > 0;
 
         /// <summary>
         ///     Turns a clicked cell into a square, or reports that the click missed the field.
@@ -74,18 +80,23 @@ namespace WolfCurses.Games.Minesweeper
             var cy = row - OriginRow;
             var cx = column - OriginColumn;
 
-            // Refused rather than clamped. A click on the chrome — the counters, the smiley, the bevel — is not a
-            // near miss on the nearest square, and treating it as one would open a corner every time somebody
+            // Refused rather than clamped. A click on the chrome — the counters, the smiley, the panel edge — is not
+            // a near miss on the nearest square, and treating it as one would open a corner every time somebody
             // reached for the frame.
-            if (cx < 0 || cy < 0 || cy >= Height)
+            if (cx < 0 || cy < 0)
                 return false;
 
-            cx /= TileWidth;
-            if (cx >= Width)
+            // The subtraction is what puts a click on a shared LINE onto the square above or left of it rather than
+            // below or right. Every line belongs to two squares, so it has to be given to one of them on purpose;
+            // leaving it out instead makes the whole top and left frame of the field open the wrong square.
+            var tileX = (cx - 1)/TileWidth;
+            var tileY = (cy - 1)/TileHeight;
+
+            if (tileX < 0 || tileY < 0 || tileX >= Width || tileY >= Height)
                 return false;
 
-            x = cx;
-            y = cy;
+            x = tileX;
+            y = tileY;
             return true;
         }
     }

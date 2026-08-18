@@ -13,30 +13,31 @@ namespace WolfCurses.Games.Tests.Minesweeper
     [Collection("GamesApp")]
     public class MinesweeperMouseTests
     {
-        private static readonly MinesweeperFace _face = new(9, 9);
-
         [Fact]
         public void TheMapTurnsACellBackIntoASquare()
         {
-            var map = new MinesweeperBoardMap(5, 2, 9, 9, 3);
+            // Origin is the field's own top-left CORNER, so the first square's interior starts one row down and one
+            // column right of it - the line between two squares belongs to both, and the map hands it to the one
+            // above and left.
+            var map = new MinesweeperBoardMap(5, 2, 9, 9, 4, 2);
 
-            Assert.True(map.TryToSquare(5, 2, out var x, out var y));
+            Assert.True(map.TryToSquare(6, 3, out var x, out var y));
             Assert.Equal((0, 0), (x, y));
 
-            Assert.True(map.TryToSquare(13, 2 + 8*3, out x, out y));
+            Assert.True(map.TryToSquare(5 + 8*2 + 1, 2 + 8*4 + 1, out x, out y));
             Assert.Equal((8, 8), (x, y));
         }
 
         [Fact]
         public void EveryColumnOfASquareIsTheSameSquare()
         {
-            // A square is three columns wide, so all three have to answer the same or a player clicking its left
-            // edge opens a different one from a player clicking its middle.
-            var map = new MinesweeperBoardMap(5, 2, 9, 9, 3);
+            // A square is three columns of interior plus the line down its right, and every one of those four has to
+            // answer the same square or clicking a box on its edge opens its neighbour.
+            var map = new MinesweeperBoardMap(5, 2, 9, 9, 4, 2);
 
-            for (var offset = 0; offset < 3; offset++)
+            for (var offset = 0; offset < 4; offset++)
             {
-                Assert.True(map.TryToSquare(5, 2 + 3*4 + offset, out var x, out var y));
+                Assert.True(map.TryToSquare(6, 2 + 4*4 + 1 + offset, out var x, out var y));
                 Assert.Equal((4, 0), (x, y));
             }
         }
@@ -47,12 +48,12 @@ namespace WolfCurses.Games.Tests.Minesweeper
             // Refusing matters more than it sounds: the chrome is where the counters and the face live, and a click
             // there that got rounded onto the nearest square would open a corner every time somebody reached for
             // the frame.
-            var map = new MinesweeperBoardMap(5, 2, 9, 9, 3);
+            var map = new MinesweeperBoardMap(5, 2, 9, 9, 4, 2);
 
             Assert.False(map.TryToSquare(4, 10, out _, out _));
-            Assert.False(map.TryToSquare(14, 10, out _, out _));
+            Assert.False(map.TryToSquare(5 + 9*2 + 1, 10, out _, out _));
             Assert.False(map.TryToSquare(7, 1, out _, out _));
-            Assert.False(map.TryToSquare(7, 2 + 9*3, out _, out _));
+            Assert.False(map.TryToSquare(7, 2 + 9*4 + 1, out _, out _));
         }
 
         [Fact]
@@ -72,15 +73,15 @@ namespace WolfCurses.Games.Tests.Minesweeper
             using var game = new DrivenGamesApp();
             game.ChooseMenuItem((int) GamesCommandsEnum.Minesweeper);
 
-            var row = FirstBoardRow(game.Screen);
+            var row = MinesweeperScreen.OriginRow(game.Screen);
             Assert.True(row >= 0, "no board on screen:\n" + game.Describe());
 
-            var before = HiddenCount(game.Screen);
+            var before = MinesweeperScreen.Hidden(game.Screen);
             game.App.InputManager.SendMousePress(
-                new MouseEvent(_face.BoardOriginColumn, row, MouseButtonEnum.Left));
+                new MouseEvent(MinesweeperScreen.OriginColumn(game.Screen), row, MouseButtonEnum.Left));
             game.App.PumpInput();
 
-            Assert.True(HiddenCount(game.Screen) < before,
+            Assert.True(MinesweeperScreen.Hidden(game.Screen) < before,
                 "clicking the top-left square opened nothing:\n" + game.Describe());
         }
 
@@ -90,15 +91,15 @@ namespace WolfCurses.Games.Tests.Minesweeper
             using var game = new DrivenGamesApp();
             game.ChooseMenuItem((int) GamesCommandsEnum.Minesweeper);
 
-            var row = FirstBoardRow(game.Screen);
-            var before = HiddenCount(game.Screen);
+            var row = MinesweeperScreen.OriginRow(game.Screen);
+            var before = MinesweeperScreen.Hidden(game.Screen);
 
             game.App.InputManager.SendMousePress(
-                new MouseEvent(_face.BoardOriginColumn, row, MouseButtonEnum.Right));
+                new MouseEvent(MinesweeperScreen.OriginColumn(game.Screen), row, MouseButtonEnum.Right));
             game.App.PumpInput();
 
             Assert.Contains('¶', game.Screen);
-            Assert.Equal(before, HiddenCount(game.Screen));
+            Assert.Equal(before, MinesweeperScreen.Hidden(game.Screen));
         }
 
         [Fact]
@@ -110,10 +111,10 @@ namespace WolfCurses.Games.Tests.Minesweeper
             var before = game.Screen;
 
             // The panel's own raised edge, which is not a square and must not be treated as the nearest one.
-            game.App.InputManager.SendMousePress(new MouseEvent(0, FirstBoardRow(before), MouseButtonEnum.Left));
+            game.App.InputManager.SendMousePress(new MouseEvent(0, MinesweeperScreen.OriginRow(before), MouseButtonEnum.Left));
             game.App.PumpInput();
 
-            Assert.Equal(HiddenCount(before), HiddenCount(game.Screen));
+            Assert.Equal(MinesweeperScreen.Hidden(before), MinesweeperScreen.Hidden(game.Screen));
         }
 
         [Fact]
@@ -123,16 +124,21 @@ namespace WolfCurses.Games.Tests.Minesweeper
             using var game = new DrivenGamesApp();
             game.ChooseMenuItem((int) GamesCommandsEnum.Minesweeper);
 
-            game.Type("e5");
-            var opened = HiddenCount(game.Screen);
-            Assert.True(opened < 81, "nothing was opened, so a fresh board proves nothing");
+            var full = MinesweeperScreen.Hidden(game.Screen);
 
-            var row = FirstBoardRow(game.Screen) - _face.BoardOriginRow + _face.SmileyRow;
-            game.App.InputManager.SendMousePress(
-                new MouseEvent(_face.SmileyOriginColumn, row, MouseButtonEnum.Left));
+            game.Type("e5");
+            Assert.True(MinesweeperScreen.Hidden(game.Screen) < full,
+                "nothing was opened, so a fresh board proves nothing");
+
+            // The face, found on screen rather than computed: the board size is chosen from the terminal, so a test
+            // that worked out where the smiley "should" be would be right on one machine and wrong on the next.
+            var (column, row) = MinesweeperScreen.Smiley(game.Screen);
+            Assert.True(row >= 0, "no face on screen:\n" + game.Describe());
+
+            game.App.InputManager.SendMousePress(new MouseEvent(column, row, MouseButtonEnum.Left));
             game.App.PumpInput();
 
-            Assert.Equal(81, HiddenCount(game.Screen));
+            Assert.Equal(full, MinesweeperScreen.Hidden(game.Screen));
         }
 
         [Fact]
@@ -143,53 +149,11 @@ namespace WolfCurses.Games.Tests.Minesweeper
             using var game = new DrivenGamesApp();
             game.ChooseMenuItem((int) GamesCommandsEnum.Minesweeper);
 
-            var before = HiddenCount(game.Screen);
+            var before = MinesweeperScreen.Hidden(game.Screen);
             game.Type("e5");
 
-            Assert.True(HiddenCount(game.Screen) < before, "typing a square opened nothing:\n" + game.Describe());
+            Assert.True(MinesweeperScreen.Hidden(game.Screen) < before, "typing a square opened nothing:\n" + game.Describe());
         }
 
-        /// <summary>Which screen row the top row of squares is drawn on, found by the row number down the side.</summary>
-        private static int FirstBoardRow(string screen)
-        {
-            var rows = screen.Replace("\r\n", "\n").Split('\n');
-
-            for (var i = 0; i < rows.Length; i++)
-            {
-                if (rows[i].Length > _face.BoardOriginColumn && rows[i][0] == '▌' &&
-                    char.IsDigit(rows[i][_face.BoardOriginColumn - 1]))
-                    return i;
-            }
-
-            return -1;
-        }
-
-        /// <summary>How many squares are still face down, counted off the raised bevel each one carries.</summary>
-        private static int HiddenCount(string screen)
-        {
-            var hidden = 0;
-
-            foreach (var row in BoardRows(screen))
-            {
-                for (var x = 0; x < 9; x++)
-                {
-                    var at = _face.BoardOriginColumn + x*MinesweeperFace.TileWidth;
-                    if (at < row.Length && row[at] == '▌')
-                        hidden++;
-                }
-            }
-
-            return hidden;
-        }
-
-        private static IEnumerable<string> BoardRows(string screen)
-        {
-            foreach (var row in screen.Replace("\r\n", "\n").Split('\n'))
-            {
-                if (row.Length > _face.BoardOriginColumn && row[0] == '▌' &&
-                    char.IsDigit(row[_face.BoardOriginColumn - 1]))
-                    yield return row;
-            }
-        }
     }
 }

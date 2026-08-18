@@ -16,10 +16,10 @@ namespace WolfCurses.Games.Tests.Minesweeper
         {
             // The TextGrid guarantee the click map is built on. A panel that changed width with its contents would
             // put every square somewhere else the moment a number appeared.
-            var face = new MinesweeperFace(9, 9);
+            var face = new MinesweeperFace(9, 9, true);
             var field = Played();
 
-            foreach (var render in new[] {face.Render(field, 0, true), face.Render(field, 999, false)})
+            foreach (var render in new[] {face.Render(field, 0), face.Render(field, 999)})
             {
                 var rows = Rows(render);
 
@@ -29,28 +29,161 @@ namespace WolfCurses.Games.Tests.Minesweeper
             }
         }
 
-        [Fact]
-        public void TurningTheCoordinatesOnMovesNothing()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public void WhereTheBoardIsDrawnIsWhereTheClickMapSaysItIs(bool labelled)
         {
-            // THE invariant the mouse depends on. The letters and numbers ride on chrome that is drawn either way,
-            // so a click lands on the same square whether or not the terminal has a pointer - and if they ever
-            // started shifting the board, every click would be a row or a column out on exactly one of the two
-            // terminals, which is the sort of thing nobody reproduces.
-            var face = new MinesweeperFace(9, 9);
-            var field = Played();
-
-            var labelled = Rows(AnsiText.StripEscapes(face.Render(field, 12, true)));
-            var plain = Rows(AnsiText.StripEscapes(face.Render(field, 12, false)));
-
-            Assert.Equal(plain.Length, labelled.Length);
+            // THE invariant the mouse depends on, and it is not "the coordinates change nothing" — they legitimately
+            // do, since the gutter costs a row and three columns. What has to hold is that the DRAWING and the MAP
+            // move together, which they do by both taking the origin from the same two properties. Asserted for
+            // every square in both modes: plant a flag, find it on the panel, and ask the map which square that cell
+            // belongs to.
+            var face = new MinesweeperFace(9, 9, labelled);
+            var map = new MinesweeperBoardMap(face.BoardOriginRow, face.BoardOriginColumn, face.BoardWidth,
+                face.BoardHeight, MinesweeperFace.TileWidth, MinesweeperFace.TileHeight);
 
             for (var y = 0; y < face.BoardHeight; y++)
+            for (var x = 0; x < face.BoardWidth; x++)
             {
-                var row = face.BoardOriginRow + y;
-                var from = face.BoardOriginColumn;
+                var field = new Minefield(9, 9, 10, new Randomizer(4));
+                field.ToggleFlag(x, y);
 
-                Assert.Equal(plain[row].Substring(from), labelled[row].Substring(from));
+                var rows = Rows(AnsiText.StripEscapes(face.Render(field, 0)));
+                var (foundColumn, foundRow) = FindGlyph(rows, '¶');
+
+                Assert.True(foundRow >= 0, $"the flag on {x},{y} was not drawn at all");
+                Assert.True(map.TryToSquare(foundRow, foundColumn, out var mappedX, out var mappedY),
+                    $"the map does not think {foundColumn},{foundRow} is on the board");
+
+                Assert.Equal((x, y), (mappedX, mappedY));
             }
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public void EveryClosedSquareIsACompleteFourSidedBox(bool labelled)
+        {
+            // THE point of the whole thing, and it took four wrong answers to get here: a box has a line above its
+            // contents AND a line below them, which is three vertical positions, and a character cell offers one.
+            // Every attempt to fit that into a single row per tile left an edge or a corner missing - rails, then
+            // bands, then invisible white-on-silver, then an open corner. Two rows and a shared-edge lattice is the
+            // floor, and this asserts the result square by square rather than trusting the drawing code.
+            var face = new MinesweeperFace(9, 9, labelled);
+            var rows = Rows(AnsiText.StripEscapes(face.Render(new Minefield(9, 9, 10, new Randomizer(4)), 0)));
+
+            for (var y = 0; y < face.BoardHeight; y++)
+            for (var x = 0; x < face.BoardWidth; x++)
+            {
+                var row = face.InteriorRow(y);
+                var left = face.BoardOriginColumn + x*MinesweeperFace.TileWidth;
+                var right = left + MinesweeperFace.TileWidth;
+
+                Assert.Equal('│', rows[row][left]);
+                Assert.Equal('│', rows[row][right]);
+
+                for (var i = 1; i < MinesweeperFace.TileWidth; i++)
+                {
+                    Assert.Equal('─', rows[row - 1][left + i]);
+                    Assert.Equal('─', rows[row + 1][left + i]);
+                }
+            }
+        }
+
+        [Fact]
+        public void TheFieldsOwnCornersAreCorners()
+        {
+            // The outer frame comes out of the same rule as every inner line - anything off the board counts as
+            // still closed - so there is no special case for it, and this is what says the rule reaches the edges.
+            //
+            // Asserted on a board with an EDGE SQUARE ALREADY OPEN, which is the only arrangement that can tell the
+            // rule apart from an accident: while every edge square is closed the frame is drawn because the squares
+            // themselves ask for it, and dropping the off-the-board rule entirely changes nothing. That mutation
+            // survived until this line was added.
+            var face = new MinesweeperFace(9, 9, false);
+            var field = new Minefield(9, 9, 10, new Randomizer(4));
+            field.Reveal(4, 4);
+
+            var (edgeX, edgeY) = FirstOpenedOnTheEdge(field);
+            var rows = Rows(AnsiText.StripEscapes(face.Render(field, 0)));
+
+            if (edgeY == 0)
+            {
+                for (var i = 1; i < MinesweeperFace.TileWidth; i++)
+                {
+                    Assert.Equal('─',
+                        rows[face.BoardOriginRow][face.BoardOriginColumn + edgeX*MinesweeperFace.TileWidth + i]);
+                }
+            }
+
+            var top = face.BoardOriginRow;
+            var bottom = top + face.BoardHeight*MinesweeperFace.TileHeight;
+            var left = face.BoardOriginColumn;
+            var right = left + face.BoardWidth*MinesweeperFace.TileWidth;
+
+            Assert.Equal('┌', rows[top][left]);
+            Assert.Equal('┐', rows[top][right]);
+            Assert.Equal('└', rows[bottom][left]);
+            Assert.Equal('┘', rows[bottom][right]);
+        }
+
+        [Fact]
+        public void ACLearedRegionLosesItsLinesAndBecomesOneFlatExpanse()
+        {
+            // The other half of the lattice rule: a line is drawn only where a square beside it is still closed, so
+            // an opened region reads as one flat area rather than as more squares - which is what the original did,
+            // and what makes "boxed" and "closed" mean the same thing on screen.
+            var face = new MinesweeperFace(9, 9, false);
+            var field = new Minefield(9, 9, 10, new Randomizer(4));
+            field.Reveal(4, 4);
+
+            var opened = 0;
+            for (var y = 0; y < 9; y++)
+            for (var x = 0; x < 9; x++)
+            {
+                if (field.IsRevealed(x, y))
+                    opened++;
+            }
+
+            Assert.True(opened > 4, "the opening did not cascade, so this proves nothing");
+
+            var rows = Rows(AnsiText.StripEscapes(face.Render(field, 0)));
+            var inside = 0;
+
+            // Somewhere in the cleared region two opened squares are side by side, and the line between them has to
+            // be gone.
+            for (var y = 0; y < 9; y++)
+            for (var x = 0; x + 1 < 9; x++)
+            {
+                if (!field.IsRevealed(x, y) || !field.IsRevealed(x + 1, y))
+                    continue;
+
+                inside++;
+                var column = face.BoardOriginColumn + (x + 1)*MinesweeperFace.TileWidth;
+                Assert.Equal(' ', rows[face.InteriorRow(y)][column]);
+            }
+
+            Assert.True(inside > 0, "no two opened squares were side by side, so this proves nothing");
+
+            // And the same downward. Checking only one direction leaves the other rule untested, and a mutation that
+            // drew every horizontal line everywhere survived exactly that gap.
+            var stacked = 0;
+
+            for (var y = 0; y + 1 < 9; y++)
+            for (var x = 0; x < 9; x++)
+            {
+                if (!field.IsRevealed(x, y) || !field.IsRevealed(x, y + 1))
+                    continue;
+
+                stacked++;
+                var row = face.InteriorRow(y) + 1;
+
+                for (var i = 1; i < MinesweeperFace.TileWidth; i++)
+                    Assert.Equal(' ', rows[row][face.BoardOriginColumn + x*MinesweeperFace.TileWidth + i]);
+            }
+
+            Assert.True(stacked > 0, "no two opened squares were stacked, so this proves nothing");
         }
 
         [Fact]
@@ -59,17 +192,40 @@ namespace WolfCurses.Games.Tests.Minesweeper
             // Read with the escapes stripped, so this is about the GLYPHS. Raised, flat, flagged and mined have to
             // be four different shapes before they are four different colours, or the game stops working the moment
             // somebody sets NO_COLOR.
-            var face = new MinesweeperFace(9, 9);
+            var face = new MinesweeperFace(9, 9, true);
             var field = new Minefield(9, 9, 10, new Randomizer(4));
             field.Reveal(4, 4);
 
-            var rows = Rows(AnsiText.StripEscapes(face.Render(field, 0, false)));
+            var rows = Rows(AnsiText.StripEscapes(face.Render(field, 0)));
 
+            // The highlight hairline just inside a closed square's left edge, which is where Windows put it and is
+            // also the one mark that says "closed" without depending on the lines around it. That is a difference in
+            // GLYPH rather than in shade, which is what keeps the board playable with no colour at all.
             var opened = Glyph(face, rows, 4, 4);
             var untouched = FindSquare(face, rows, field, revealed: false);
 
-            Assert.Equal('▏', opened);
-            Assert.Equal('▌', untouched);
+            Assert.Equal(' ', opened);
+            Assert.Equal('▏', untouched);
+        }
+
+        [Fact]
+        public void TheGridIsDrawnInShadowRatherThanInHighlight()
+        {
+            // Windows lights a button from the top left, so the faithful thing is a white top edge — except that
+            // white is #FFFFFF against a #C0C0C0 face and there is almost nothing between them, while #808080
+            // against the same face is unmistakable. Drawn "correctly", the vertical grooves came out crisp and the
+            // horizontal highlights invisible, and the tiles ran together into strips exactly as if they had no
+            // horizontal edges at all. Definition beats direction, and this is what says so.
+            // An UNTOUCHED board, so the square being read is certainly still raised. Reading a played one is how
+            // this test first failed to catch anything: the opening cascade had opened that corner, so the style at
+            // that column was the flat face rather than a grid hairline and the comparison was about nothing.
+            var face = new MinesweeperFace(9, 9, false);
+            var rows = Rows(face.Render(new Minefield(9, 9, 10, new Randomizer(4)), 0));
+
+            var panelTop = StyleAt(rows[face.SmileyRow - 1], face.BoardOriginColumn);
+            var tileEdge = StyleAt(rows[face.BoardOriginRow], face.BoardOriginColumn);
+
+            Assert.NotEqual(panelTop, tileEdge);
         }
 
         [Fact]
@@ -79,7 +235,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
             // Flagging an OPENED square is correctly a no-op, and the opening cascade reaches a different set of
             // squares on every seed - so a test that flags a fixed corner passes or fails on the shuffle. This one
             // did, on its first run, which is the third time this arcade has learned it.
-            var face = new MinesweeperFace(9, 9);
+            var face = new MinesweeperFace(9, 9, true);
             var field = new Minefield(9, 9, 10, new Randomizer(4));
             field.Reveal(4, 4);
 
@@ -87,7 +243,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
             field.ToggleFlag(fx, fy);
             Assert.True(field.IsFlagged(fx, fy), "the flag did not go down at all");
 
-            var rows = Rows(AnsiText.StripEscapes(face.Render(field, 0, false)));
+            var rows = Rows(AnsiText.StripEscapes(face.Render(field, 0)));
 
             Assert.Equal('¶', Middle(face, rows, fx, fy));
         }
@@ -95,7 +251,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
         [Fact]
         public void TheLeftCounterCountsDownAsFlagsArePlanted()
         {
-            var face = new MinesweeperFace(9, 9);
+            var face = new MinesweeperFace(9, 9, true);
             var field = new Minefield(9, 9, 10, new Randomizer(4));
 
             Assert.Equal("010", Counter(face, field, 0));
@@ -111,7 +267,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
         {
             // It always did, and it is genuinely useful: a negative counter is the game telling a player they have
             // planted more flags than there are mines, which means one of them is wrong.
-            var face = new MinesweeperFace(9, 9);
+            var face = new MinesweeperFace(9, 9, true);
             var field = new Minefield(9, 9, 10, new Randomizer(4));
 
             for (var i = 0; i < 12; i++)
@@ -125,26 +281,26 @@ namespace WolfCurses.Games.Tests.Minesweeper
         {
             // Three digits is what the panel has room for, so a long game has to clamp rather than push the face
             // sideways - which would move the board with it.
-            var face = new MinesweeperFace(9, 9);
+            var face = new MinesweeperFace(9, 9, true);
             var field = new Minefield(9, 9, 10, new Randomizer(4));
 
             foreach (var seconds in new[] {0, 7, 999, 4000})
             {
-                var rows = Rows(AnsiText.StripEscapes(face.Render(field, seconds, false)));
+                var rows = Rows(AnsiText.StripEscapes(face.Render(field, seconds)));
                 Assert.Equal(face.Columns, rows[face.SmileyRow].Length);
             }
 
-            var capped = Rows(AnsiText.StripEscapes(face.Render(field, 4000, false)));
+            var capped = Rows(AnsiText.StripEscapes(face.Render(field, 4000)));
             Assert.Contains("999", capped[face.SmileyRow], StringComparison.Ordinal);
         }
 
         [Fact]
         public void TheFaceKnowsHowTheGameIsGoing()
         {
-            var face = new MinesweeperFace(9, 9);
+            var face = new MinesweeperFace(9, 9, true);
 
             var playing = new Minefield(9, 9, 10, new Randomizer(4));
-            Assert.Contains(":)", AnsiText.StripEscapes(face.Render(playing, 0, false)), StringComparison.Ordinal);
+            Assert.Contains(":)", AnsiText.StripEscapes(face.Render(playing, 0)), StringComparison.Ordinal);
 
             var lost = new Minefield(9, 9, 10, new Randomizer(4));
             lost.Reveal(4, 4);
@@ -156,7 +312,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
             }
 
             Assert.True(lost.HitMine);
-            Assert.Contains(":(", AnsiText.StripEscapes(face.Render(lost, 0, false)), StringComparison.Ordinal);
+            Assert.Contains(":(", AnsiText.StripEscapes(face.Render(lost, 0)), StringComparison.Ordinal);
 
             var won = new Minefield(9, 9, 10, new Randomizer(4));
             for (var y = 0; y < 9; y++)
@@ -167,13 +323,13 @@ namespace WolfCurses.Games.Tests.Minesweeper
             }
 
             Assert.True(won.Won);
-            Assert.Contains("B)", AnsiText.StripEscapes(face.Render(won, 0, false)), StringComparison.Ordinal);
+            Assert.Contains("B)", AnsiText.StripEscapes(face.Render(won, 0)), StringComparison.Ordinal);
         }
 
         [Fact]
         public void EveryMineIsShownOnceTheBoardIsLost()
         {
-            var face = new MinesweeperFace(9, 9);
+            var face = new MinesweeperFace(9, 9, true);
             var field = new Minefield(9, 9, 10, new Randomizer(4));
             field.Reveal(4, 4);
 
@@ -184,7 +340,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
                     field.Reveal(x, y);
             }
 
-            var rows = Rows(AnsiText.StripEscapes(face.Render(field, 0, false)));
+            var rows = Rows(AnsiText.StripEscapes(face.Render(field, 0)));
             var shown = 0;
 
             for (var y = 0; y < 9; y++)
@@ -203,11 +359,11 @@ namespace WolfCurses.Games.Tests.Minesweeper
             // Counted rather than "does it contain an escape at all", which is nearly free and stays true after any
             // one of the styles has been flattened - it survived exactly that mutation. The panel is a highlight, a
             // shadow, a face, two readouts and a row of numbers, so half a dozen distinct sequences is the floor.
-            var face = new MinesweeperFace(9, 9);
+            var face = new MinesweeperFace(9, 9, true);
             var field = Played();
             field.Reveal(4, 4);
 
-            Assert.True(DistinctSequences(face.Render(field, 42, false)) >= 6,
+            Assert.True(DistinctSequences(face.Render(field, 42)) >= 6,
                 "the panel came out in fewer colours than it has parts");
         }
 
@@ -218,10 +374,15 @@ namespace WolfCurses.Games.Tests.Minesweeper
             // DIFFERENT colours or the panel is a flat grey rectangle with a border. Counting sequences is not
             // enough on its own - flattening one of the two leaves plenty of others behind, and it survived exactly
             // that.
-            var face = new MinesweeperFace(9, 9);
-            var rows = Rows(face.Render(Played(), 0, false));
+            var face = new MinesweeperFace(9, 9, true);
+            var rows = Rows(face.Render(Played(), 0));
 
-            Assert.NotEqual(StyleAt(rows[rows.Length - 1], 0), StyleAt(rows[0], 0));
+            // The panel's own top edge against its bottom edge - not row zero, which with the coordinates on is the
+            // gutter and is deliberately unstyled.
+            var top = rows[face.SmileyRow - 1];
+            var bottom = rows[rows.Length - 1];
+
+            Assert.NotEqual(StyleAt(bottom, face.BoardOriginColumn), StyleAt(top, face.BoardOriginColumn));
         }
 
         [Fact]
@@ -229,7 +390,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
         {
             // Losing opens every mine at once, so without the board remembering which one went off they would all
             // be drawn identically - and the one square that matters is the one you actually stood on.
-            var face = new MinesweeperFace(9, 9);
+            var face = new MinesweeperFace(9, 9, true);
             var field = new Minefield(9, 9, 10, new Randomizer(4));
             field.Reveal(4, 4);
 
@@ -239,7 +400,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
             Assert.True(field.HitMine);
             Assert.Equal((mx, my), (field.HitX, field.HitY));
 
-            var rows = Rows(face.Render(field, 0, false));
+            var rows = Rows(face.Render(field, 0));
             var hit = StyledCell(face, rows, mx, my);
 
             var other = FirstMine(field, skipX: mx, skipY: my);
@@ -251,7 +412,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
         [Fact]
         public void AFlagThatTurnedOutToBeRightKeepsItsFlag()
         {
-            var face = new MinesweeperFace(9, 9);
+            var face = new MinesweeperFace(9, 9, true);
             var field = new Minefield(9, 9, 10, new Randomizer(4));
             field.Reveal(4, 4);
 
@@ -263,7 +424,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
             field.Reveal(other.X, other.Y);
             Assert.True(field.IsOver);
 
-            var rows = Rows(AnsiText.StripEscapes(face.Render(field, 0, false)));
+            var rows = Rows(AnsiText.StripEscapes(face.Render(field, 0)));
 
             Assert.Equal('¶', Middle(face, rows, mx, my));
         }
@@ -281,17 +442,16 @@ namespace WolfCurses.Games.Tests.Minesweeper
             return render.Replace("\r\n", "\n").Split('\n');
         }
 
-        /// <summary>The left-hand cell of a square, which is where the bevel or the grid line lives.</summary>
+        /// <summary>The cell just inside a square's left edge, which is where the closed highlight lives.</summary>
         private static char Glyph(MinesweeperFace face, string[] rows, int x, int y)
         {
-            return rows[face.BoardOriginRow + y][face.BoardOriginColumn + x*MinesweeperFace.TileWidth];
+            return rows[face.InteriorRow(y)][face.InteriorColumn(x) - 1];
         }
 
         /// <summary>The middle cell of a square, which is where anything drawn on it lives.</summary>
         private static char Middle(MinesweeperFace face, string[] rows, int x, int y)
         {
-            return rows[face.BoardOriginRow + y]
-                [face.BoardOriginColumn + x*MinesweeperFace.TileWidth + MinesweeperFace.TileWidth/2];
+            return rows[face.InteriorRow(y)][face.InteriorColumn(x)];
         }
 
         /// <summary>
@@ -329,6 +489,19 @@ namespace WolfCurses.Games.Tests.Minesweeper
             return seen.Count;
         }
 
+        /// <summary>Where a glyph is on the panel, or (-1, -1) when it is not there at all.</summary>
+        private static (int Column, int Row) FindGlyph(string[] rows, char glyph)
+        {
+            for (var y = 0; y < rows.Length; y++)
+            {
+                var at = rows[y].IndexOf(glyph);
+                if (at >= 0)
+                    return (at, y);
+            }
+
+            return (-1, -1);
+        }
+
         /// <summary>Whatever escape sequence is in force at a visible column of a styled row.</summary>
         private static string StyleAt(string row, int column)
         {
@@ -360,9 +533,9 @@ namespace WolfCurses.Games.Tests.Minesweeper
         /// <summary>A square's middle cell together with whatever style was opened just before it.</summary>
         private static string StyledCell(MinesweeperFace face, string[] rows, int x, int y)
         {
-            var row = rows[face.BoardOriginRow + y];
+            var row = rows[face.InteriorRow(y)];
             var plain = AnsiText.StripEscapes(row);
-            var column = face.BoardOriginColumn + x*MinesweeperFace.TileWidth + MinesweeperFace.TileWidth/2;
+            var column = face.InteriorColumn(x);
 
             // Walks the styled row counting only visible characters, so the answer is the escape run that is in
             // force at that cell plus the cell itself.
@@ -389,6 +562,20 @@ namespace WolfCurses.Games.Tests.Minesweeper
             }
 
             return plain[column].ToString();
+        }
+
+        /// <summary>The first opened square that sits against an edge of the board.</summary>
+        private static (int X, int Y) FirstOpenedOnTheEdge(Minefield field)
+        {
+            for (var y = 0; y < field.Height; y++)
+            for (var x = 0; x < field.Width; x++)
+            {
+                var onEdge = x == 0 || y == 0 || x == field.Width - 1 || y == field.Height - 1;
+                if (onEdge && field.IsRevealed(x, y))
+                    return (x, y);
+            }
+
+            throw new InvalidOperationException("the cascade never reached an edge, so this proves nothing");
         }
 
         /// <summary>The first mine on the board, optionally skipping one that has already been used.</summary>
@@ -420,7 +607,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
         /// <summary>The three digits of the left-hand counter.</summary>
         private static string Counter(MinesweeperFace face, Minefield field, int seconds)
         {
-            var rows = Rows(AnsiText.StripEscapes(face.Render(field, seconds, false)));
+            var rows = Rows(AnsiText.StripEscapes(face.Render(field, seconds)));
             return rows[face.SmileyRow].Substring(face.BoardOriginColumn, 3);
         }
     }
