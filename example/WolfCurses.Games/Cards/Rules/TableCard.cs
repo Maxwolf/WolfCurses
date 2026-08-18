@@ -10,6 +10,12 @@ namespace WolfCurses.Games.Cards
     ///         without knowing whose it is: the dealer's hole card is face down in blackjack and a held card is face
     ///         up in poker, and neither renderer has to learn either rule to draw both.
     ///     </para>
+    ///     <para>
+    ///         It sits under <c>Rules/</c> rather than <c>Rendering/</c> although only the renderers read it,
+    ///         because <b>which cards are face down is a rule and not a drawing decision</b> — hiding the hole card
+    ///         is what blackjack <i>is</i>. Everything that builds one of these is a rules class; the renderers only
+    ///         ever receive them.
+    ///     </para>
     /// </summary>
     public readonly struct TableCard
     {
