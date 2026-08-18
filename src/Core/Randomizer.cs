@@ -2,6 +2,7 @@
 // Timestamp 12/31/2015@2:38 PM
 
 using System;
+using System.Collections.Generic;
 
 namespace WolfCurses.Core
 {
@@ -121,6 +122,35 @@ namespace WolfCurses.Core
         public bool NextBool()
         {
             return _random.Next(100)%2 == 0;
+        }
+
+        /// <summary>
+        ///     Shuffles a list into a random order, in place, so that every ordering is equally likely.
+        ///     <para>
+        ///         <b>This is a Fisher-Yates shuffle, and the reason it is here rather than in each caller is that
+        ///         the obvious hand-written version is subtly wrong.</b> Walking the list and swapping each item with
+        ///         a random index anywhere in the whole list — <c>Next(count)</c> rather than <c>Next(i + 1)</c> — is
+        ///         the mistake almost everybody makes, and it does not produce a uniform shuffle: it can reach
+        ///         n<sup>n</sup> equally-likely outcomes for n! orderings, which do not divide, so some orders come
+        ///         up more often than others. It still <i>looks</i> shuffled, which is why it survives review.
+        ///     </para>
+        ///     <para>
+        ///         The loop below only ever picks from the part of the list it has not settled yet, which is the
+        ///         whole difference. A list of nothing, or of one item, is left alone rather than refused.
+        ///     </para>
+        /// </summary>
+        /// <typeparam name="T">What the list holds.</typeparam>
+        /// <param name="items">The list to shuffle. Modified in place; null is ignored rather than thrown at.</param>
+        public void Shuffle<T>(IList<T> items)
+        {
+            if (items == null)
+                return;
+
+            for (var i = items.Count - 1; i > 0; i--)
+            {
+                var j = _random.Next(i + 1);
+                (items[i], items[j]) = (items[j], items[i]);
+            }
         }
     }
 }

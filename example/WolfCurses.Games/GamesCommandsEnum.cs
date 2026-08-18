@@ -56,7 +56,19 @@ namespace WolfCurses.Games
         /// </summary>
         [Description("Pac-Man - eat the board, avoid the ghosts.")] PacMan = 7,
 
+        /// <summary>
+        ///     The first of two games built on one shared deck. An opponent with a published, fixed strategy — the
+        ///     dealer draws to sixteen and stands on all seventeens, and never does anything else.
+        /// </summary>
+        [Description("Blackjack - beat the dealer without going bust.")] Blackjack = 8,
+
+        /// <summary>
+        ///     The second, sharing every card, image and shuffle with the first. Here the whole of the interest is
+        ///     in what five cards are worth, which is where every hand evaluator gets the ace wrong twice.
+        /// </summary>
+        [Description("Poker - five-card draw, jacks or better.")] Poker = 9,
+
         /// <summary>Closes the arcade and returns to the operating system.</summary>
-        [Description("Quit.")] Quit = 8
+        [Description("Quit.")] Quit = 10
     }
 }

@@ -3,11 +3,13 @@
 
 using System;
 using System.Text;
+using WolfCurses.Games.Blackjack;
 using WolfCurses.Games.Chess;
 using WolfCurses.Games.Labyrinth;
 using WolfCurses.Games.Minesweeper;
 using WolfCurses.Games.MissileCommand;
 using WolfCurses.Games.PacMan;
+using WolfCurses.Games.Poker;
 using WolfCurses.Games.Snake;
 using WolfCurses.Games.Tetris;
 using WolfCurses.Window;
@@ -40,6 +42,8 @@ namespace WolfCurses.Games
             AddCommand(PlayMissileCommand, GamesCommandsEnum.MissileCommand);
             AddCommand(PlayLabyrinth, GamesCommandsEnum.Labyrinth);
             AddCommand(PlayPacMan, GamesCommandsEnum.PacMan);
+            AddCommand(PlayBlackjack, GamesCommandsEnum.Blackjack);
+            AddCommand(PlayPoker, GamesCommandsEnum.Poker);
             AddCommand(Quit, GamesCommandsEnum.Quit);
 
             RefreshMenuHeader();
@@ -90,6 +94,8 @@ namespace WolfCurses.Games
                               $"Missile Command best: {UserData.MissileCommandBestScore:N0}   " +
                               $"Mazes escaped: {UserData.LabyrinthMazesEscaped}   " +
                               $"Pac-Man best: {UserData.PacManHighScore:N0}");
+            header.AppendLine($"Blackjack best: {UserData.BlackjackBestChips:N0} chips   " +
+                              $"Poker best: {UserData.PokerBestChips:N0} chips");
             header.AppendLine();
             header.Append("Choose one (arrow keys + ENTER, or type a number):");
             MenuHeader = header.ToString();
@@ -128,6 +134,16 @@ namespace WolfCurses.Games
         private void PlayPacMan()
         {
             SetForm(typeof (PacManDialog));
+        }
+
+        private void PlayBlackjack()
+        {
+            SetForm(typeof (BlackjackDialog));
+        }
+
+        private void PlayPoker()
+        {
+            SetForm(typeof (PokerDialog));
         }
 
         private void Quit()

@@ -30,6 +30,16 @@
          for no attribution - credited anyway, because where art came from is worth being able to look up. They are
          decoded by the library's own PNG decoder like everything else here. -->
     <None Include="Assets\chess\*.png" Link="chess\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+
+    <!-- The fifty-two card faces and one back, flattened next to the executable into a cards/ folder. 75x113 8-bit
+         RGBA PNG, from github.com/saulspatz/SVGCards (the Vertical2 deck), placed in the public domain by its author
+         - the picture cards originate in Byron Knoll's public-domain set and the backs in openclipart.org. No
+         attribution is required; it is credited anyway, in CardImages, because where art came from is worth being
+         able to look up.
+
+         Only that repository's pngs/ folders are usable. Its SVGs are the source of truth there, and this library
+         decodes PNG, JPEG and GIF - exactly the situation that made only SmallPng/ usable for the chess pieces. -->
+    <None Include="Assets\cards\*.png" Link="cards\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

@@ -32,5 +32,11 @@ namespace WolfCurses.Games
 
         /// <summary>Highest score reached in a single game of Pac-Man this session.</summary>
         public int PacManHighScore { get; set; }
+
+        /// <summary>Biggest pile of chips the player has held at the blackjack table this session.</summary>
+        public int BlackjackBestChips { get; set; }
+
+        /// <summary>Biggest pile of chips the player has held at the poker table this session.</summary>
+        public int PokerBestChips { get; set; }
     }
 }
