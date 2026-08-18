@@ -15,18 +15,56 @@ namespace WolfCurses.Games.Tests.Cards
         [Fact]
         public void BlackjackOpensWithAHandAndAHiddenHoleCard()
         {
-            using var game = new DrivenGamesApp();
-            game.ChooseMenuItem((int) GamesCommandsEnum.Blackjack);
+            // Dealt until the opening hand is one somebody still has to play, and that is not fussiness: a natural
+            // on EITHER side settles the round inside Deal, before the player has a turn, and that happens on 9.4%
+            // of opening hands (measured over five thousand). Every assertion below is about a live hand — the
+            // chips have not moved, the hole card is still face down, the dealer is still "showing" — so all five
+            // of them are wrong on a settled one, and this test shipped asserting them unconditionally and failed
+            // about one run in eleven.
+            //
+            // A fresh app each attempt rather than dealing again in the same one, because the exact chip count is
+            // part of what is being checked and a settled round has already moved it.
+            for (var attempt = 0; attempt < 10; attempt++)
+            {
+                using var game = new DrivenGamesApp();
+                game.ChooseMenuItem((int) GamesCommandsEnum.Blackjack);
 
-            var screen = game.Screen;
+                var screen = game.Screen;
+                if (!screen.Contains("Hit or stand?", StringComparison.Ordinal))
+                    continue;
 
-            Assert.Contains("Chips 500", screen, StringComparison.Ordinal);
-            Assert.Contains("Dealer", screen, StringComparison.Ordinal);
-            Assert.Contains("showing", screen, StringComparison.Ordinal);
-            Assert.Contains("Hit or stand?", screen, StringComparison.Ordinal);
+                Assert.Contains("Chips 500", screen, StringComparison.Ordinal);
+                Assert.Contains("Dealer", screen, StringComparison.Ordinal);
+                Assert.Contains("showing", screen, StringComparison.Ordinal);
 
-            // The hatched back. Exactly one of them: the hole card and nothing else.
-            Assert.Contains("▒▒▒", screen, StringComparison.Ordinal);
+                // The hatched back. Exactly one of them: the hole card and nothing else.
+                Assert.Contains("▒▒▒", screen, StringComparison.Ordinal);
+                return;
+            }
+
+            Assert.Fail("ten opening hands in a row settled themselves, which is not credible");
+        }
+
+        [Fact]
+        public void ANaturalSettlesBeforeAnybodyGetsATurn()
+        {
+            // The other side of the test above, so that the skipping up there is a documented rule rather than a
+            // way of ignoring an inconvenient outcome. Driven through the rules directly, since finding a natural
+            // by dealing through the arcade would take a hundred windows.
+            var found = false;
+
+            for (var seed = 1; seed <= 200 && !found; seed++)
+            {
+                var blackjack = new WolfCurses.Games.Blackjack.BlackjackGame(new WolfCurses.Core.Randomizer(seed));
+                if (blackjack.Player.IsBlackjack || blackjack.Dealer.IsBlackjack)
+                {
+                    found = true;
+                    Assert.False(blackjack.CanAct, "a natural left the player with a turn to take");
+                    Assert.DoesNotContain("Hit or stand?", blackjack.Message, StringComparison.Ordinal);
+                }
+            }
+
+            Assert.True(found, "two hundred deals produced no natural at all, which is not credible");
         }
 
         [Fact]
