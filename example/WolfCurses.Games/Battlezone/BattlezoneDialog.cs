@@ -28,9 +28,11 @@ namespace WolfCurses.Games.Battlezone
     ///         <see cref="BattleScene" />, which is why the two views cannot disagree.
     ///     </para>
     ///     <para>
-    ///         The controls need <see cref="HeldAxis" /> for the reason Missile Command needed it first: a tank
-    ///         turning is a key being <i>held</i>, and a terminal never reports a key being let go. That type came
-    ///         out of that game while this one was being written, which is the whole point of this folder.
+    ///         Its controls are the one place this game disagrees with Missile Command about a problem they share.
+    ///         Both are steered continuously and a terminal never reports a key being let go — but a terminal also
+    ///         repeats only the <i>last</i> key pressed, so a tank driven by two held axes stops dead every time the
+    ///         player steers, which is the first thing anybody notices. <see cref="TankControls" /> is the answer:
+    ///         a gear that stays where it is put, and steering bought a nudge at a time.
     ///     </para>
     /// </summary>
     [ParentWindow(typeof (GamesWindow))]
@@ -43,8 +45,14 @@ namespace WolfCurses.Games.Battlezone
         private const int ChromeRows = 6;
 
         private readonly IntervalTimer _frame = new(_framePace);
-        private readonly HeldAxis _turn = new();
-        private readonly HeldAxis _throttle = new();
+
+        /// <summary>
+        ///     Driving and steering. Deliberately <b>not</b> a pair of <see cref="HeldAxis" /> instances, which is
+        ///     what this screen shipped with and what a play-test caught at once: a terminal repeats only the last
+        ///     key pressed, so holding forward and then steering silences the forward repeats and the tank stops
+        ///     dead every time the player tries to turn. See <see cref="TankControls" />.
+        /// </summary>
+        private readonly TankControls _controls = new();
 
         private BattleField _field;
         private BattlezoneArt _art;
@@ -74,14 +82,14 @@ namespace WolfCurses.Games.Battlezone
 
             // Kept under eighty columns on purpose: the prompt is a real row of the frame, and one long enough to
             // wrap costs a row of the view on the smallest terminal this has to fit.
-            ParentWindow.PromptText = "Arrows/WASD drive, SPACE fires, TAB view, ENTER replays, ESC leaves";
+            ParentWindow.PromptText = "W/S gear, A/D steer, SPACE fires, TAB view, ENTER replays, ESC leaves";
 
             RestartOnActivate(_frame);
             NewGame();
         }
 
         /// <summary>
-        ///     Notes which way the player is holding the sticks. It moves nothing — see <see cref="HeldAxis" />.
+        ///     Works the gear and the steering. It moves nothing itself — see <see cref="TankControls" />.
         /// </summary>
         /// <param name="key">The key that was pressed.</param>
         public override void OnKeyPressed(ConsoleKey key)
@@ -91,16 +99,20 @@ namespace WolfCurses.Games.Battlezone
             switch (key)
             {
                 case ConsoleKey.LeftArrow or ConsoleKey.A:
-                    _turn.Press(-1);
+                    _controls.PressTurn(-1);
                     break;
                 case ConsoleKey.RightArrow or ConsoleKey.D:
-                    _turn.Press(1);
+                    _controls.PressTurn(1);
                     break;
                 case ConsoleKey.UpArrow or ConsoleKey.W:
-                    _throttle.Press(1);
+                    _controls.Shift(1);
                     break;
                 case ConsoleKey.DownArrow or ConsoleKey.S:
-                    _throttle.Press(-1);
+                    _controls.Shift(-1);
+                    break;
+                case ConsoleKey.X:
+                    // A brake, for when stepping down through the gears is one press too many.
+                    _controls.Halt();
                     break;
                 case ConsoleKey.Spacebar:
                     _field.Fire();
@@ -123,7 +135,8 @@ namespace WolfCurses.Games.Battlezone
             if (!_frame.TryConsume())
                 return;
 
-            _field.Advance(_frame.LastElapsed, _turn.Direction, _throttle.Direction);
+            _field.Advance(_frame.LastElapsed, _controls.TurnFor(_frame.LastElapsed, BattleField.PlayerTurnRate),
+                _controls.Gear);
             RecordScoreOnce();
             Compose();
         }
@@ -158,8 +171,7 @@ namespace WolfCurses.Games.Battlezone
         private void NewGame()
         {
             _field = new BattleField(SimUnit.Random);
-            _turn.Release();
-            _throttle.Release();
+            _controls.Reset();
             _scoreRecorded = false;
             Compose();
         }
@@ -219,12 +231,16 @@ namespace WolfCurses.Games.Battlezone
         /// <returns>The view as one block of ANSI.</returns>
         private string PaintPicture(int columns, int rows)
         {
-            var (canvasWidth, canvasHeight) = BattlezoneArt.SizeFor(columns, rows);
+            // Real pixels get a much larger canvas than half blocks do - see BattlezoneArt.SizeFor. The stroke
+            // widths are the same either way; what changes is how much the picture is magnified on the way out,
+            // and that is what decides how thick a line looks.
+            var truePixels = ImageRenderers.Default.DrawsTruePixels;
+            var (canvasWidth, canvasHeight) = BattlezoneArt.SizeFor(columns, rows, truePixels);
 
             // Rebuilt only when the terminal has really been resized; the buffer and the camera are reused between
             // frames, and rebuilding either per frame would be the cost of the game.
             if (_art == null || _art.Width != canvasWidth || _art.Height != canvasHeight)
-                _art = new BattlezoneArt(canvasWidth, canvasHeight);
+                _art = new BattlezoneArt(canvasWidth, canvasHeight, truePixels);
 
             var options = new AnsiImageOptions
             {
@@ -259,9 +275,18 @@ namespace WolfCurses.Games.Battlezone
             if (_field.Lives == 0)
                 tanks.Append('-');
 
+            // The gear is ON SCREEN, and it has to be: a throttle that stays where it was put is exactly the kind
+            // of state a player fights when they cannot see it.
+            var gear = _controls.Gear switch
+            {
+                > 0 => "AHEAD",
+                < 0 => "ASTERN",
+                _ => "STOP"
+            };
+
             return string.Format(CultureInfo.InvariantCulture,
-                "Score {0:N0}  ·  Tanks {1}  ·  Kills {2}  ·  Best {3:N0}",
-                _field.Score, tanks, _field.Kills, UserData.BattlezoneBestScore);
+                "Score {0:N0}  ·  Tanks {1}  ·  Kills {2}  ·  {3}  ·  Best {4:N0}",
+                _field.Score, tanks, _field.Kills, gear, UserData.BattlezoneBestScore);
         }
     }
 }

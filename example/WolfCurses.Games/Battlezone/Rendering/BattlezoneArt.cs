@@ -40,14 +40,30 @@ namespace WolfCurses.Games.Battlezone
         private static readonly Rgba32 _crack = new(0xEA, 0xFF, 0xF2, 0xFF);
 
         private readonly PixelBuffer _canvas;
+        private readonly bool _truePixels;
         private readonly BattleScene _scene;
         private readonly Action<int, int, int, int, BattleInkEnum> _draw;
 
         /// <summary>Initializes a new instance of the <see cref="BattlezoneArt" /> class at a canvas size.</summary>
         /// <param name="width">Canvas width in pixels.</param>
         /// <param name="height">Canvas height in pixels.</param>
-        public BattlezoneArt(int width, int height)
+        public BattlezoneArt(int width, int height) : this(width, height, false)
         {
+        }
+
+        /// <summary>Initializes a new instance of the <see cref="BattlezoneArt" /> class at a canvas size.</summary>
+        /// <param name="width">Canvas width in pixels.</param>
+        /// <param name="height">Canvas height in pixels.</param>
+        /// <param name="truePixels">Whether the renderer downstream draws real pixels rather than half blocks.</param>
+        public BattlezoneArt(int width, int height, bool truePixels)
+        {
+            // A stroke is chosen in OUTPUT pixels and then expressed in canvas ones, which is the only way to get
+            // the same weight out of two very differently sized canvases. Half blocks supersample by two, so two
+            // canvas pixels are one cell-pixel and that is already the thinnest a line can be drawn there - going
+            // to one would not make it narrower, only half as bright. Real pixels magnify a canvas that is closer
+            // to their own grid, so one canvas pixel is about two or three real ones and is thin already.
+            _truePixels = truePixels;
+
             _canvas = new PixelBuffer(width, height);
 
             // Square pixels, so one focal length does for both axes - see WireCamera for why that is worth saying
@@ -67,16 +83,28 @@ namespace WolfCurses.Games.Battlezone
         public WireCamera Camera => _scene.Camera;
 
         /// <summary>
-        ///     Works out a canvas for the character cells the game has been given: two pixels per column and four
-        ///     per row, which is twice what half blocks will use in each direction and so leaves the resampling
-        ///     something to average.
+        ///     Works out a canvas for the character cells the game has been given.
+        ///     <para>
+        ///         <b>It has to know which kind of renderer is downstream, and a picture made of lines is where
+        ///         that stops being ignorable.</b> Half blocks draw one pixel per column and two per row, so a
+        ///         canvas at twice that is a 2x supersample: a two-pixel line lands on exactly one cell-pixel at
+        ///         full strength, which is as thin as a line can be drawn there. Sixel and kitty draw something
+        ///         like ten by twenty <i>real</i> pixels per cell, so the same canvas is blown up about five times
+        ///         on the way out and every stroke goes up with it — which is why the wireframe came out fat on a
+        ///         terminal with real pixels and crisp on one without. Sizing the canvas nearer the real pixel grid
+        ///         is the fix — enough to bring the strokes down without turning every frame into a megabyte of
+        ///         base64 for the terminal to swallow, which is the cost on the other side of this knob.
+        ///     </para>
         /// </summary>
         /// <param name="columns">How many character columns the picture may occupy.</param>
         /// <param name="rows">How many character rows the picture may occupy.</param>
+        /// <param name="truePixels">Whether the renderer draws real pixels rather than half blocks.</param>
         /// <returns>The canvas size.</returns>
-        public static (int Width, int Height) SizeFor(int columns, int rows)
+        public static (int Width, int Height) SizeFor(int columns, int rows, bool truePixels)
         {
-            return (Math.Clamp(columns*2, 80, 440), Math.Clamp(rows*4, 48, 240));
+            return truePixels
+                ? (Math.Clamp(columns*4, 160, 900), Math.Clamp(rows*8, 96, 480))
+                : (Math.Clamp(columns*2, 80, 440), Math.Clamp(rows*4, 48, 240));
         }
 
         /// <summary>Draws the whole scene. The same buffer comes back every time, so a caller keeping a frame copies it.</summary>
@@ -116,12 +144,20 @@ namespace WolfCurses.Games.Battlezone
                 _ => _crack
             };
 
+            // Structure is drawn at the thinnest weight that survives the trip; only the few things a player has
+            // to pick out of a field of lines are drawn heavier. A wireframe is mostly structure, so this is what
+            // decides whether the picture reads as a drawing or as a scribble.
+            // Structure at the thinnest weight that survives the trip, and only the few things a player has to
+            // pick out of a field of lines drawn heavier. A wireframe is mostly structure, so this is what decides
+            // whether the picture reads as a drawing or as a scribble.
+            var structure = _truePixels ? 1 : 2;
+
             var thickness = ink switch
             {
-                BattleInkEnum.Blip => 5,
-                BattleInkEnum.Shell => 3,
-                BattleInkEnum.Radar => 1,
-                _ => 2
+                BattleInkEnum.Blip => structure*4,
+                BattleInkEnum.Enemy or BattleInkEnum.Saucer => structure + 1,
+                BattleInkEnum.Shell or BattleInkEnum.Explosion => structure + 1,
+                _ => structure
             };
 
             _canvas.DrawLine(x0, y0, x1, y1, color, thickness);

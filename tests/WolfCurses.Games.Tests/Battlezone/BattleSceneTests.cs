@@ -176,6 +176,24 @@ namespace WolfCurses.Games.Tests.Battlezone
         }
 
         [Fact]
+        public void TheCanvasIsSizedToTheRendererThatWillDrawIt()
+        {
+            // The strokes are chosen in OUTPUT pixels, so the canvas has to be near the grid the renderer will use
+            // or the picture is magnified and every line goes up with it. That is not theoretical: the wireframe
+            // shipped fat on a terminal with real pixels and crisp on one without, because a canvas sized for half
+            // blocks was being blown up about five times on its way to a sixel terminal.
+            var (halfWidth, halfHeight) = BattlezoneArt.SizeFor(198, 44, false);
+            var (trueWidth, trueHeight) = BattlezoneArt.SizeFor(198, 44, true);
+
+            Assert.True(trueWidth > halfWidth*1.5, $"real pixels got {trueWidth} against half blocks' {halfWidth}");
+            Assert.True(trueHeight > halfHeight*1.5, $"real pixels got {trueHeight} against half blocks' {halfHeight}");
+
+            // And bounded, because every one of those pixels is base64 on its way to the terminal thirty times a
+            // second - the cost on the other side of the same knob.
+            Assert.InRange(trueWidth*trueHeight, 1, 500_000);
+        }
+
+        [Fact]
         public void NothingIsDrawnForATankOverTheHorizon()
         {
             var field = new BattleField(new Randomizer(4));

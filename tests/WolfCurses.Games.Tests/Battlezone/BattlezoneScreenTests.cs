@@ -149,6 +149,33 @@ namespace WolfCurses.Games.Tests.Battlezone
         }
 
         [Fact]
+        public void TheGearIsOnTheScreenBecauseItStaysWhereItIsPut()
+        {
+            // A throttle that holds its setting is exactly the kind of state a player fights when they cannot see
+            // it — "why is my tank still moving" is not a question the screen should leave unanswered.
+            using var game = new DrivenGamesApp();
+            game.ChooseMenuItem((int) GamesCommandsEnum.Battlezone);
+
+            Assert.Contains("STOP", game.Screen, StringComparison.Ordinal);
+
+            game.PressChar('w', ConsoleKey.W);
+            Thread.Sleep(50);
+            game.Tick();
+            Assert.Contains("AHEAD", game.Screen, StringComparison.Ordinal);
+
+            game.PressChar('s', ConsoleKey.S);
+            game.PressChar('s', ConsoleKey.S);
+            Thread.Sleep(50);
+            game.Tick();
+            Assert.Contains("ASTERN", game.Screen, StringComparison.Ordinal);
+
+            game.PressChar('x', ConsoleKey.X);
+            Thread.Sleep(50);
+            game.Tick();
+            Assert.Contains("STOP", game.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
         public void SingleKeyPlayNeverReachesThePrompt()
         {
             // Steering is WASD and firing is SPACE, all printable - left at the default every one of them would
