@@ -6,7 +6,6 @@ using System.Globalization;
 using System.Text;
 using WolfCurses.Graphics;
 using WolfCurses.Window;
-using WolfCurses.Window.Control;
 using WolfCurses.Window.Form;
 
 namespace WolfCurses.Games.Minesweeper
@@ -38,12 +37,39 @@ namespace WolfCurses.Games.Minesweeper
         private const int BoardHeight = 9;
         private const int Mines = 10;
 
-        /// <summary>The board's frame, and the same widget the snake plays inside.</summary>
-        private readonly Box _frame = new() {Title = "Minesweeper", Padding = 0};
+        /// <summary>The panel that draws it, and the thing that knows where every square landed.</summary>
+        private readonly MinesweeperFace _face = new(BoardWidth, BoardHeight);
+
+        /// <summary>
+        ///     Paces the redraw and is also the clock.
+        ///     <para>
+        ///         This game had no clock at all until the counters arrived — it is typed, so nothing moved between
+        ///         keystrokes — and that was worth keeping until the right-hand readout made it wrong: a timer that
+        ///         only advances when you touch something is not a timer. It ticks four times a second rather than
+        ///         once, so the digits change on the second they are supposed to instead of up to a second late.
+        ///     </para>
+        /// </summary>
+        private readonly IntervalTimer _tick = new(TimeSpan.FromMilliseconds(250));
 
         private Minefield _field;
+        private MinesweeperBoardMap _map;
         private string _message;
         private string _rendered;
+
+        /// <summary>
+        ///     When the clock started, on <see cref="IntervalTimer.TotalElapsed" />, or null before the first square
+        ///     is opened. The originals start counting on the first click and not when the board appears, which is
+        ///     the difference between a timer and a stopwatch nobody asked for.
+        /// </summary>
+        private TimeSpan? _startedAt;
+
+        /// <summary>What the clock said when the game ended, so a finished board stops counting.</summary>
+        private int _finalSeconds;
+
+        /// <summary>Where the face landed in the frame, so a click on it can be recognised.</summary>
+        private int _smileyRow;
+
+        private int _smileyColumn;
 
         /// <summary>Initializes a new instance of the <see cref="MinesweeperDialog" /> class.</summary>
         /// <param name="window">The parent window.</param>
@@ -57,16 +83,77 @@ namespace WolfCurses.Games.Minesweeper
         {
             base.OnFormPostCreate();
 
-            ParentWindow.PromptText = "Square (B4), F to flag (F B4), R for a new board, Q or ESC to quit";
+            // The mouse is only advertised when the host actually got one - and where it did, the coordinates come
+            // off the board as well, since they are only there to be typed at.
+            ParentWindow.PromptText = AnsiConsole.MouseEnabled
+                ? "Click to open, right-click to flag, click the face for a new board; or type B4. ESC to quit"
+                : "Square (B4), F to flag (F B4), R for a new board, Q or ESC to quit";
+
+            RestartOnActivate(_tick);
             StartNewBoard();
+        }
+
+        /// <inheritdoc />
+        public override void OnTick(bool systemTick, bool skipDay)
+        {
+            base.OnTick(systemTick, skipDay);
+
+            // Only the clock moves on its own, so this does nothing at all until a square has been opened and stops
+            // again the moment the board is finished - which is most of the time this screen is on show.
+            if (_startedAt == null || _field.IsOver || !_tick.TryConsume())
+                return;
+
+            _rendered = Compose();
         }
 
         /// <inheritdoc />
         public override string OnRenderForm()
         {
-            // Called on every system tick. Nothing here moves on its own — the board changes only when a line is
-            // typed — so the string is built by OnInputBufferReturned and simply handed back here.
+            // Called on every system tick, so it hands back a string built at most four times a second up in OnTick
+            // - or, for everything except the clock, whenever the board actually changed.
             return _rendered;
+        }
+
+        /// <summary>
+        ///     Opens a square with the left button and flags one with the right, which is the only binding this game
+        ///     has ever had.
+        ///     <para>
+        ///         Clicking the face deals a new board, as it always did. That is worth having rather than clever:
+        ///         it is where a player's hand already is when a board ends, and the alternative is telling them to
+        ///         type <c>R</c> on a screen they are driving with a pointer.
+        ///     </para>
+        /// </summary>
+        /// <param name="mouse">Where the press landed and which button it was.</param>
+        public override void OnMousePressed(MouseEvent mouse)
+        {
+            base.OnMousePressed(mouse);
+
+            if (mouse.Row == _smileyRow && mouse.Column >= _smileyColumn &&
+                mouse.Column < _smileyColumn + _face.SmileyWidth)
+            {
+                StartNewBoard();
+                return;
+            }
+
+            if (_field.IsOver || !_map.TryToSquare(mouse.Row, mouse.Column, out var x, out var y))
+                return;
+
+            if (mouse.Button == MouseButtonEnum.Right)
+            {
+                _field.ToggleFlag(x, y);
+            }
+            else if (mouse.Button == MouseButtonEnum.Left)
+            {
+                StartClock();
+                _field.Reveal(x, y);
+            }
+            else
+            {
+                return;
+            }
+
+            _message = DescribeState();
+            _rendered = Compose();
         }
 
         /// <summary>
@@ -120,9 +207,14 @@ namespace WolfCurses.Games.Minesweeper
             }
 
             if (flagging)
+            {
                 _field.ToggleFlag(x, y);
+            }
             else
+            {
+                StartClock();
                 _field.Reveal(x, y);
+            }
 
             _message = DescribeState();
             _rendered = Compose();
@@ -132,8 +224,35 @@ namespace WolfCurses.Games.Minesweeper
         private void StartNewBoard()
         {
             _field = new Minefield(BoardWidth, BoardHeight, Mines, SimUnit.Random);
-            _message = "Type a square to open it. The first one you open is never a mine.";
+            _startedAt = null;
+            _finalSeconds = 0;
+
+            _message = AnsiConsole.MouseEnabled
+                ? "Click a square to open it. The first one you open is never a mine."
+                : "Type a square to open it. The first one you open is never a mine.";
+
             _rendered = Compose();
+        }
+
+        /// <summary>Starts the clock, if it is not already running. Called by whatever opens the first square.</summary>
+        private void StartClock()
+        {
+            // TotalElapsed, deliberately: it is the one reading nothing resets, so the clock survives the form being
+            // left and come back to rather than starting again from wherever the pacing timer happened to be.
+            _startedAt ??= _tick.TotalElapsed;
+        }
+
+        /// <summary>What the right-hand counter shows: running while the game is, frozen once it is not.</summary>
+        private int Seconds()
+        {
+            if (_startedAt == null)
+                return 0;
+
+            if (_field.IsOver)
+                return _finalSeconds;
+
+            _finalSeconds = (int) (_tick.TotalElapsed - _startedAt.Value).TotalSeconds;
+            return _finalSeconds;
         }
 
         /// <summary>What the status line says after a move, including the two ways the game can end.</summary>
@@ -187,77 +306,51 @@ namespace WolfCurses.Games.Minesweeper
             return true;
         }
 
-        /// <summary>Draws the header, the board inside its frame, and the status line under it.</summary>
+        /// <summary>
+        ///     Draws the panel and the status line under it, and works out where the squares ended up.
+        /// </summary>
+        /// <returns>The whole screen.</returns>
         private string Compose()
         {
             var body = new StringBuilder();
             body.AppendLine();
-            body.AppendLine($"Mines {_field.MineCount - _field.FlagsPlaced} left    " +
-                            $"Cleared this session: {UserData.MinefieldsCleared}");
+            body.AppendLine($"Cleared this session: {UserData.MinefieldsCleared}");
             body.AppendLine();
-            body.AppendLine(_frame.Render(ComposeBoard()));
+
+            // COUNTED, never written down as a constant. The library contributes exactly one un-terminated line
+            // above the form, so the leading AppendLine above terminates it rather than making a blank one, and
+            // counting the breaks already in the builder cannot drift when any of this changes - where a hardcoded
+            // number quietly becomes wrong and puts every click a row out. Missile Command learned this first.
+            var panelRow = CountLineBreaks(body);
+
+            _map = new MinesweeperBoardMap(panelRow + _face.BoardOriginRow, _face.BoardOriginColumn,
+                _field.Width, _field.Height, MinesweeperFace.TileWidth);
+
+            _smileyRow = panelRow + _face.SmileyRow;
+            _smileyColumn = _face.SmileyOriginColumn;
+
+            // The coordinates are only there to be typed at, so a terminal with a working mouse gets the panel the
+            // way it actually looked.
+            body.AppendLine(_face.Render(_field, Seconds(), !AnsiConsole.MouseEnabled));
             body.AppendLine();
             body.Append(_message);
             return body.ToString();
         }
 
-        /// <summary>Draws the squares, with the column letters along the top and the row numbers down the side.</summary>
-        private string ComposeBoard()
+        /// <summary>How many line breaks are already in the builder, which is the row the next line will occupy.</summary>
+        /// <param name="builder">The frame being composed.</param>
+        /// <returns>The count.</returns>
+        private static int CountLineBreaks(StringBuilder builder)
         {
-            var sb = new StringBuilder();
-
-            sb.Append("   ");
-            for (var x = 0; x < _field.Width; x++)
-                sb.Append((char) ('A' + x)).Append(' ');
-
-            for (var y = 0; y < _field.Height; y++)
+            var breaks = 0;
+            for (var i = 0; i < builder.Length; i++)
             {
-                sb.AppendLine();
-                sb.Append((y + 1).ToString(CultureInfo.InvariantCulture).PadLeft(2)).Append(' ');
-
-                for (var x = 0; x < _field.Width; x++)
-                    sb.Append(DrawSquare(x, y)).Append(' ');
+                if (builder[i] == (char) 10)
+                    breaks++;
             }
 
-            return sb.ToString();
+            return breaks;
         }
 
-        /// <summary>
-        ///     One square, glyph and color. The numbers take the palette every version of this game has used since
-        ///     1990 — and take it as <see cref="ConsoleColor" /> rather than exact RGB, so they follow whatever theme
-        ///     the terminal is wearing instead of fighting it.
-        /// </summary>
-        /// <param name="x">Column, counting from zero.</param>
-        /// <param name="y">Row, counting from zero.</param>
-        /// <returns>The styled single character to draw.</returns>
-        private string DrawSquare(int x, int y)
-        {
-            if (_field.IsFlagged(x, y))
-                return new TextStyle(ConsoleColor.Yellow).Apply("F");
-
-            if (!_field.IsRevealed(x, y))
-                return "·";
-
-            if (_field.IsMine(x, y))
-                return new TextStyle(ConsoleColor.Red, bold: true).Apply("*");
-
-            var adjacent = _field.AdjacentMines(x, y);
-            if (adjacent == 0)
-                return " ";
-
-            var color = adjacent switch
-            {
-                1 => ConsoleColor.Blue,
-                2 => ConsoleColor.DarkGreen,
-                3 => ConsoleColor.Red,
-                4 => ConsoleColor.DarkBlue,
-                5 => ConsoleColor.DarkRed,
-                6 => ConsoleColor.DarkCyan,
-                7 => ConsoleColor.DarkMagenta,
-                _ => ConsoleColor.DarkGray
-            };
-
-            return new TextStyle(color).Apply(adjacent.ToString(CultureInfo.InvariantCulture));
-        }
     }
 }

@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
+using WolfCurses.Games.Minesweeper;
 using WolfCurses.Games.Tests.Support;
 using Xunit;
 
@@ -11,6 +14,9 @@ namespace WolfCurses.Games.Tests
     [Collection("GamesApp")]
     public class ArcadeScreenTests
     {
+        /// <summary>The panel's own geometry, so a test reading squares off the screen cannot disagree with it.</summary>
+        private static readonly MinesweeperFace _minesweeperBoard = new(9, 9);
+
         [Fact]
         public void TheMenuOffersEveryGame()
         {
@@ -98,7 +104,11 @@ namespace WolfCurses.Games.Tests
         {
             using var game = new DrivenGamesApp();
             game.ChooseMenuItem((int) GamesCommandsEnum.Minesweeper);
-            Assert.Contains("Mines 10 left", game.Screen, StringComparison.Ordinal);
+
+            // Read off the counter the panel actually draws, which is three red digits counting DOWN from the mine
+            // total as flags are planted - the same readout the original had, and now the only place the number
+            // appears at all.
+            Assert.Equal(10, MinesLeft(game.Screen));
 
             var hiddenBefore = CountHidden(game.Screen);
             game.Type("e5");
@@ -115,7 +125,80 @@ namespace WolfCurses.Games.Tests
             Assert.NotNull(hidden);
 
             game.Type("f " + hidden);
-            Assert.Contains("Mines 9 left", game.Screen, StringComparison.Ordinal);
+            Assert.Equal(9, MinesLeft(game.Screen));
+        }
+
+        [Fact]
+        public void MinesweeperStartsItsClockOnTheFirstSquareRatherThanOnTheBoard()
+        {
+            // The originals start counting when you open something, not when the board appears — which is the
+            // difference between a timer and a stopwatch nobody asked for. It has to really sleep, because the
+            // readout is driven by elapsed time rather than by ticks.
+            using var game = new DrivenGamesApp();
+            game.ChooseMenuItem((int) GamesCommandsEnum.Minesweeper);
+
+            for (var i = 0; i < 10; i++)
+            {
+                System.Threading.Thread.Sleep(150);
+                game.Tick();
+            }
+
+            Assert.Equal(0, Clock(game.Screen));
+
+            game.Type("e5");
+            for (var i = 0; i < 12; i++)
+            {
+                System.Threading.Thread.Sleep(150);
+                game.Tick();
+            }
+
+            Assert.True(Clock(game.Screen) > 0, "the clock never started:\n" + game.Describe());
+        }
+
+        [Fact]
+        public void MinesweeperStopsItsClockWhenTheBoardIsFinished()
+        {
+            // A finished board keeps its time on show - it is the score. The board has to be REDRAWN after the wait
+            // for this to be able to fail at all, because nothing recomposes on its own once the game is over; so it
+            // ends the game, waits, and then types something that forces a redraw.
+            using var game = new DrivenGamesApp();
+            game.ChooseMenuItem((int) GamesCommandsEnum.Minesweeper);
+
+            game.Type("e5");
+            for (var i = 0; i < 10; i++)
+            {
+                System.Threading.Thread.Sleep(150);
+                game.Tick();
+            }
+
+            // Opened one at a time until one of them ends it, which on a ten-mine board takes very few squares.
+            for (var y = 1; y <= 9 && !IsFinished(game.Screen); y++)
+            for (var x = 0; x < 9 && !IsFinished(game.Screen); x++)
+                game.Type($"{(char) ('A' + x)}{y}");
+
+            Assert.True(IsFinished(game.Screen), "the board never finished:\n" + game.Describe());
+
+            var stopped = Clock(game.Screen);
+            Assert.True(stopped > 0, "the clock never ran at all");
+
+            for (var i = 0; i < 12; i++)
+            {
+                System.Threading.Thread.Sleep(150);
+                game.Tick();
+            }
+
+            game.Type("a1");
+
+            Assert.Equal(stopped, Clock(game.Screen));
+        }
+
+        /// <summary>Whether the minesweeper board on screen has been either cleared or blown up.</summary>
+        /// <param name="screen">The frame.</param>
+        /// <returns>True when the game is over.</returns>
+        private static bool IsFinished(string screen)
+        {
+            return screen.Contains("R to play again", StringComparison.Ordinal) ||
+                   screen.Contains("This board is finished", StringComparison.Ordinal);
         }
 
         [Fact]
@@ -129,7 +212,7 @@ namespace WolfCurses.Games.Tests
             game.Type("zz9");
 
             Assert.Contains("is not a square", game.Screen, StringComparison.Ordinal);
-            Assert.Equal(BoardRowsOf(before), BoardRowsOf(game.Screen));
+            Assert.Equal(BoardRows(before), BoardRows(game.Screen));
         }
 
         [Fact]
@@ -204,23 +287,19 @@ namespace WolfCurses.Games.Tests
 
         /// <summary>
         ///     The name of a square the board still shows as face down, read straight off the screen — which is the
-        ///     only place a screen test is entitled to look. Rows render as <c>│ 4 · · 1 …│</c>, so the cells sit at
-        ///     every second character from index four and the file follows from the offset.
+        ///     only place a screen test is entitled to look. The row number the panel draws down its own sunken edge
+        ///     is what names the rank, and the square's offset along the row names the file.
         /// </summary>
         /// <param name="screen">The visible screen.</param>
         /// <returns>A square such as "C4", or null if the whole board is face up.</returns>
         private static string FirstHiddenSquareName(string screen)
         {
-            foreach (var line in screen.Split('\n'))
+            foreach (var row in BoardRows(screen))
             {
-                var row = line.TrimEnd('\r');
-                if (row.Length < 6 || row[0] != '│' || !char.IsDigit(row[2]))
-                    continue;
-
-                for (var index = 4; index < row.Length; index += 2)
+                for (var x = 0; x < _minesweeperBoard.BoardWidth; x++)
                 {
-                    if (row[index] == '·')
-                        return $"{(char) ('A' + (index - 4) / 2)}{row[2]}";
+                    if (IsHidden(row, x))
+                        return $"{(char) ('A' + x)}{row[_minesweeperBoard.BoardOriginColumn - 1]}";
                 }
             }
 
@@ -228,16 +307,94 @@ namespace WolfCurses.Games.Tests
         }
 
         /// <summary>How many squares on a minesweeper board are still face down.</summary>
+        /// <param name="screen">The visible screen.</param>
+        /// <returns>The count.</returns>
         private static int CountHidden(string screen)
         {
             var hidden = 0;
-            foreach (var character in screen)
+
+            foreach (var row in BoardRows(screen))
             {
-                if (character == '·')
-                    hidden++;
+                for (var x = 0; x < _minesweeperBoard.BoardWidth; x++)
+                {
+                    if (IsHidden(row, x))
+                        hidden++;
+                }
             }
 
             return hidden;
+        }
+
+        /// <summary>
+        ///     Whether a square is still face down, read off the panel: an untouched square carries the raised
+        ///     left-hand bevel and an opened one carries a thin grid line in its place.
+        /// </summary>
+        /// <param name="row">One drawn row of squares.</param>
+        /// <param name="x">Which square across.</param>
+        /// <returns>True when it has not been opened.</returns>
+        private static bool IsHidden(string row, int x)
+        {
+            var at = _minesweeperBoard.BoardOriginColumn + x*MinesweeperFace.TileWidth;
+            return at < row.Length && row[at] == '▌';
+        }
+
+        /// <summary>
+        ///     The rows of the panel that carry squares, found by the row number drawn down its side. Asked of the
+        ///     panel's own geometry rather than of numbers written down here, so a test cannot disagree with the
+        ///     thing it is reading.
+        /// </summary>
+        /// <param name="screen">The frame.</param>
+        /// <returns>Each row of squares, in order.</returns>
+        private static IEnumerable<string> BoardRows(string screen)
+        {
+            foreach (var line in screen.Replace("\r\n", "\n").Split('\n'))
+            {
+                if (line.Length > _minesweeperBoard.BoardOriginColumn && line[0] == '▌' &&
+                    char.IsDigit(line[_minesweeperBoard.BoardOriginColumn - 1]))
+                    yield return line;
+            }
+        }
+
+        /// <summary>What the right-hand counter says, which is the clock.</summary>
+        /// <param name="screen">The frame.</param>
+        /// <returns>Seconds since the first square was opened, or -1 when the counter was not found.</returns>
+        private static int Clock(string screen)
+        {
+            foreach (var line in screen.Replace("\r\n", "\n").Split('\n'))
+            {
+                if (!line.Contains(":)", StringComparison.Ordinal) &&
+                    !line.Contains(":(", StringComparison.Ordinal) &&
+                    !line.Contains("B)", StringComparison.Ordinal))
+                    continue;
+
+                var at = line.Length - _minesweeperBoard.BoardOriginColumn - 3;
+                if (at >= 0 && int.TryParse(line.Substring(at, 3), NumberStyles.Integer,
+                        CultureInfo.InvariantCulture, out var seconds))
+                    return seconds;
+            }
+
+            return -1;
+        }
+
+        /// <summary>What the left-hand counter says, read off the row the face is drawn on.</summary>
+        /// <param name="screen">The frame.</param>
+        /// <returns>How many mines are still unaccounted for, or -1 when the counter was not found.</returns>
+        private static int MinesLeft(string screen)
+        {
+            foreach (var line in screen.Replace("\r\n", "\n").Split('\n'))
+            {
+                if (!line.Contains(":)", StringComparison.Ordinal) &&
+                    !line.Contains(":(", StringComparison.Ordinal) &&
+                    !line.Contains("B)", StringComparison.Ordinal))
+                    continue;
+
+                var at = _minesweeperBoard.BoardOriginColumn;
+                if (at + 3 <= line.Length && int.TryParse(line.Substring(at, 3), NumberStyles.Integer,
+                        CultureInfo.InvariantCulture, out var left))
+                    return left;
+            }
+
+            return -1;
         }
 
         [Fact]
@@ -256,18 +413,5 @@ namespace WolfCurses.Games.Tests
             Assert.Contains("resign", game.Screen, StringComparison.Ordinal);
         }
 
-        /// <summary>The board rows of a minesweeper screen, so a test can say "the board did not change".</summary>
-        private static string BoardRowsOf(string screen)
-        {
-            var rows = new System.Text.StringBuilder();
-            foreach (var line in screen.Split('\n'))
-            {
-                var row = line.TrimEnd('\r');
-                if (row.StartsWith("│ ", StringComparison.Ordinal))
-                    rows.AppendLine(row);
-            }
-
-            return rows.ToString();
-        }
     }
 }

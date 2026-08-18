@@ -75,6 +75,19 @@ namespace WolfCurses.Games.Minesweeper
         /// <summary>True when the game ended by opening a mine.</summary>
         public bool HitMine { get; private set; }
 
+        /// <summary>
+        ///     Which square the losing mine was on, or -1 before there is one.
+        ///     <para>
+        ///         Kept because a board has always shown that one differently from the mines that were merely
+        ///         sitting there, and nothing else can work out which it was: losing opens <i>every</i> mine at
+        ///         once, so by the time anything comes to draw the board they are all face up and identical.
+        ///     </para>
+        /// </summary>
+        public int HitX { get; private set; } = -1;
+
+        /// <summary>Which square the losing mine was on, or -1 before there is one.</summary>
+        public int HitY { get; private set; } = -1;
+
         /// <summary>Whether that square has been opened.</summary>
         /// <param name="x">Column, counting from zero.</param>
         /// <param name="y">Row, counting from zero.</param>
@@ -131,6 +144,8 @@ namespace WolfCurses.Games.Minesweeper
                 _revealed[y, x] = true;
                 IsOver = true;
                 HitMine = true;
+                HitX = x;
+                HitY = y;
                 RevealEveryMine();
                 return;
             }
