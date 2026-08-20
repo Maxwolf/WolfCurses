@@ -75,6 +75,14 @@ namespace WolfCurses.Documents
         /// <summary>Whether the document has been edited since it was loaded or last marked saved.</summary>
         public bool IsModified { get; private set; }
 
+        /// <summary>
+        ///     Columns between tab stops for this document, which is what a renderer needs to know to draw its lines
+        ///     and place its caret. It lives here rather than on the viewport because it is a property of the file
+        ///     being edited (what its author indented with) rather than of the window looking at it, and because
+        ///     this is where the lines are; the arithmetic itself is <see cref="TabStops" />.
+        /// </summary>
+        public int TabWidth { get; set; } = TabStops.DefaultWidth;
+
         /// <summary>Whether any text is selected.</summary>
         public bool HasSelection => _anchor.HasValue && _anchor.Value != Caret;
 

@@ -35,7 +35,15 @@ namespace WolfCurses.Documents
         /// <summary>The document line drawn on the viewport's first row.</summary>
         public int FirstLine { get; private set; }
 
-        /// <summary>The document column drawn in the viewport's first cell, for horizontal scrolling.</summary>
+        /// <summary>
+        ///     The column drawn in the viewport's first cell, for horizontal scrolling.
+        ///     <para>
+        ///         <b>A screen column, not a character index.</b> The two are the same until a line contains a tab,
+        ///         after which they part company and only one of them scrolls evenly: stepping sideways by character
+        ///         index over an indented line would jump the view by a tab's width at a time. Callers translate with
+        ///         <see cref="TabStops" />, which is also what keeps this class free of the document.
+        ///     </para>
+        /// </summary>
         public int FirstColumn { get; private set; }
 
         /// <summary>How many columns are visible; at least one.</summary>

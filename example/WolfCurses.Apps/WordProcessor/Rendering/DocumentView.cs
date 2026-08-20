@@ -64,8 +64,16 @@ namespace WolfCurses.Apps.WordProcessor
         /// <returns>The drawn line.</returns>
         private static string RenderLine(TextBuffer buffer, TextViewport viewport, int lineIndex, bool showCaret)
         {
-            var line = buffer.GetLine(lineIndex);
-            var (highlightStart, highlightEnd) = HighlightRange(buffer, lineIndex, showCaret);
+            var stored = buffer.GetLine(lineIndex);
+            var (documentStart, documentEnd) = HighlightRange(buffer, lineIndex, showCaret);
+
+            // A highlight is a range of characters and the line is drawn in screen columns, which stop being the
+            // same thing as soon as the line contains a tab. Translating the range as well as expanding the text is
+            // the half that is easy to forget, and forgetting it puts the caret on the wrong character of exactly
+            // the indented lines somebody is most likely to be editing.
+            var highlightStart = TabStops.ToDisplayColumn(stored, documentStart, buffer.TabWidth);
+            var highlightEnd = TabStops.ToDisplayColumn(stored, documentEnd, buffer.TabWidth);
+            var line = TabStops.Expand(stored, buffer.TabWidth);
 
             // The caret and the end of a selected line both sit one past the last character, where there is nothing
             // to put in inverse video. Pad so the highlight has a cell to live in; the padding is trimmed off again

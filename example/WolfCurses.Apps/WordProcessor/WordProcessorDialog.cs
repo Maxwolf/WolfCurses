@@ -172,6 +172,11 @@ namespace WolfCurses.Apps.WordProcessor
                 case ConsoleKey.Delete:
                     _buffer.Delete();
                     break;
+                case ConsoleKey.Tab:
+                    // A tab is one character in the document and several columns on screen; TabStops is what keeps
+                    // those two facts in step everywhere it matters.
+                    _buffer.Insert('\t');
+                    break;
                 default:
                     // Anything that carries a printable character is text. Control characters are not, which is what
                     // keeps CTRL combinations and TAB from being typed into the document as gibberish.
@@ -183,7 +188,21 @@ namespace WolfCurses.Apps.WordProcessor
             }
 
             _message = null;
-            _viewport.EnsureVisible(_buffer.Caret);
+            _viewport.EnsureVisible(CaretOnScreen());
+        }
+
+        /// <summary>
+        ///     Where the caret is <i>drawn</i>, which is not where it is stored the moment the line contains a tab.
+        ///     The viewport scrolls in screen columns, so this is what it has to be told about; the buffer keeps the
+        ///     character index, and <see cref="TabStops" /> is the bridge.
+        /// </summary>
+        /// <returns>The caret's position in screen coordinates.</returns>
+        private TextPosition CaretOnScreen()
+        {
+            var caret = _buffer.Caret;
+            var column = TabStops.ToDisplayColumn(_buffer.GetLine(caret.Line), caret.Column, _buffer.TabWidth);
+
+            return new TextPosition(caret.Line, column);
         }
 
         /// <summary>
@@ -219,7 +238,7 @@ namespace WolfCurses.Apps.WordProcessor
             // One column short of the console, because a row that fills the last cell scrolls a classic console.
             _viewport.Resize(Math.Max(20, width - 1), Math.Max(4, height - ChromeRows));
             _viewport.ClampToDocument(_buffer.LineCount);
-            _viewport.EnsureVisible(_buffer.Caret);
+            _viewport.EnsureVisible(CaretOnScreen());
         }
 
         /// <summary>The line above the document: what is being edited, where the caret is, and anything gone wrong.</summary>
@@ -230,7 +249,11 @@ namespace WolfCurses.Apps.WordProcessor
                 return _message;
 
             var name = _path == null ? "Untitled" : Path.GetFileName(_path);
-            var caret = _buffer.Caret;
+
+            // The column a person means is the one they can see, so this reports the drawn column rather than the
+            // character index. On a line with no tabs the two are the same; on an indented one they are not, and
+            // the visible number is the useful one.
+            var caret = CaretOnScreen();
 
             return string.Format(CultureInfo.InvariantCulture,
                 "{0}{1}   Ln {2}, Col {3}   {4} lines{5}",

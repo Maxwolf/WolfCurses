@@ -113,6 +113,65 @@ namespace WolfCurses.Apps.Tests
         }
 
         [Fact]
+        public void ATabMovesTheCaretToTheNextStopRatherThanOneColumn()
+        {
+            // End to end proof that the document and the screen agree about where the caret is. A tab is one
+            // character to the buffer and eight columns to the terminal, and the status line reports the column a
+            // person can see, so this is 9 rather than 2.
+            using var suite = OpenEditor();
+            Assert.Equal((1, 1), ReportedCaret(suite.Screen));
+
+            suite.Press(ConsoleKey.Tab);
+            Assert.Equal((1, 9), ReportedCaret(suite.Screen));
+
+            suite.Press(ConsoleKey.Tab);
+            Assert.Equal((1, 17), ReportedCaret(suite.Screen));
+        }
+
+        [Fact]
+        public void BackspaceRemovesAWholeTabInOnePress()
+        {
+            // The other half of a tab being one character: rubbing it out is one press, not eight.
+            using var suite = OpenEditor();
+            suite.Press(ConsoleKey.Tab);
+            Assert.Equal((1, 9), ReportedCaret(suite.Screen));
+
+            suite.Press(ConsoleKey.Backspace);
+
+            Assert.Equal((1, 1), ReportedCaret(suite.Screen));
+        }
+
+        [Fact]
+        public void TextAfterATabIsDrawnAtTheColumnTheCaretReports()
+        {
+            // The failure this guards against is the renderer expanding the line but leaving the highlight where the
+            // character index said, which puts the block cursor several columns off on any indented line. Typing a
+            // letter after a tab must draw it exactly where the status line claims the caret is.
+            using var suite = OpenEditor();
+            suite.Press(ConsoleKey.Tab);
+            suite.PressChar('Z', ConsoleKey.Z);
+
+            var caret = ReportedCaret(suite.Screen);
+            Assert.Equal(10, caret.Column);
+
+            var row = FirstRowContaining(suite.Screen, 'Z');
+            Assert.Equal(8, row.IndexOf('Z', StringComparison.Ordinal));
+        }
+
+        /// <summary>The first rendered row containing a character, for asserting where something was drawn.</summary>
+        private static string FirstRowContaining(string screen, char character)
+        {
+            foreach (var row in screen.Split('\n'))
+            {
+                if (row.IndexOf(character) >= 0)
+                    return row.TrimEnd('\r');
+            }
+
+            Assert.Fail($"no rendered row contained '{character}':\n{screen}");
+            return null;
+        }
+
+        [Fact]
         public void TypingMarksTheDocumentModified()
         {
             using var suite = OpenEditor();
