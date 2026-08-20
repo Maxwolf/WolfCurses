@@ -37,6 +37,7 @@ namespace WolfCurses.Apps
 
             // Applications go above this line, one AddCommand each, in the order they appear on the menu. Quit stays
             // last, which is what the renumbering note on AppsCommandsEnum is about.
+            AddCommand(OpenWordProcessor, AppsCommandsEnum.WordProcessor);
             AddCommand(Quit, AppsCommandsEnum.Quit);
 
             RestoreMenuChrome();
@@ -98,6 +99,12 @@ namespace WolfCurses.Apps
 
             MenuHeader = header.ToString();
             PromptText = MenuPrompt;
+        }
+
+        /// <summary>Opens the word processor on its default document.</summary>
+        private void OpenWordProcessor()
+        {
+            SetForm(typeof (WordProcessor.WordProcessorDialog));
         }
 
         /// <summary>Closes the suite and hands the terminal back.</summary>

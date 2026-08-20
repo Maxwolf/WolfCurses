@@ -276,6 +276,19 @@ namespace WolfCurses.Core
         /// <param name="keyInfo">The key exactly as the console reported it.</param>
         public void SendConsoleKey(ConsoleKeyInfo keyInfo)
         {
+            // ENTER and BACKSPACE are buffer control here and reach no key handler at all, which is right for a
+            // prompt and leaves a screen editing a document unable to see a backspace. Such a screen says so
+            // (IForm.EditsText) and gets them as ordinary key presses instead. Asked of the focused window rather
+            // than kept as a mode on this class, so the answer changes with the screen and nothing has to be unset.
+            var editingText = keyInfo.Key is ConsoleKey.Enter or ConsoleKey.Backspace &&
+                              _simUnit.WindowManager.EditingText;
+
+            if (editingText)
+            {
+                SendKeyPress(keyInfo);
+                return;
+            }
+
             switch (keyInfo.Key)
             {
                 case ConsoleKey.Enter:

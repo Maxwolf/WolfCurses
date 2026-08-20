@@ -31,6 +31,14 @@ namespace WolfCurses.Window
         bool AcceptsInput { get; }
 
         /// <summary>
+        ///     When true, ENTER and BACKSPACE are delivered to this window as key presses rather than being spent as
+        ///     input-buffer control. Default is false, and a default interface member so existing windows need not
+        ///     change. <see cref="Window{TCommands,TData}" /> answers with whatever its attached form says, since a
+        ///     screen that edits text is nearly always a form; see <see cref="Form.IForm.EditsText" />.
+        /// </summary>
+        bool EditsText => false;
+
+        /// <summary>
         ///     Holds the current state which this Windows is in, a Windows will cycle through available states until it is
         ///     finished and
         ///     then detach.

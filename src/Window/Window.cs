@@ -181,6 +181,17 @@ namespace WolfCurses.Window
         /// </summary>
         public virtual bool MaskInput => false;
 
+        /// <summary>
+        ///     When true, ENTER and BACKSPACE arrive as key presses rather than being spent on the input buffer.
+        ///     <para>
+        ///         Answers with whatever the attached form says, because a screen that edits a document is nearly
+        ///         always a form on a window rather than a window itself, and asking the form is what lets one
+        ///         editor opt in without its menu window changing behaviour for every other screen it hosts. A window
+        ///         that edits text with no form attached overrides this directly.
+        ///     </para>
+        /// </summary>
+        public virtual bool EditsText => Form?.EditsText ?? false;
+
         /// <summary>The compare to.</summary>
         /// <param name="other">The other.</param>
         /// <returns>The <see cref="int" />.</returns>

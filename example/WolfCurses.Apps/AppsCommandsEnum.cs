@@ -17,7 +17,13 @@ namespace WolfCurses.Apps
     /// </summary>
     public enum AppsCommandsEnum
     {
+        /// <summary>
+        ///     A full-screen text editor over the library's <see cref="WolfCurses.Documents.TextBuffer" />: the only
+        ///     screen in this repository with a caret in it, and the reason that type exists at all.
+        /// </summary>
+        [Description("Word processor - edit a document.")] WordProcessor = 1,
+
         /// <summary>Closes the suite and returns to the operating system.</summary>
-        [Description("Quit.")] Quit = 1
+        [Description("Quit.")] Quit = 2
     }
 }

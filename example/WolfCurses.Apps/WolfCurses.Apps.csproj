@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="CLAUDE.md" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\WolfCurses.csproj" />
   </ItemGroup>
 
@@ -19,8 +23,19 @@
   </ItemGroup>
 
   <!-- No PackageReferences here, and there should not be any: everything is the .NET base class library plus
-       WolfCurses, which is the whole claim these examples exist to back up. Nothing is copied beside the executable
-       yet either. When the applications need sample documents to open, they go in Assets/documents/ and are
-       flattened into a documents/ folder here, the way the arcade does it with chess/ and cards/. -->
+       WolfCurses, which is the whole claim these examples exist to back up. -->
+
+  <ItemGroup>
+    <!-- The sample documents, flattened next to the executable into a documents/ folder, which is where the word
+         processor opens and where its Open dialog starts. Provenance and licensing for each file are in
+         Assets/documents/README.md; all of them are freely redistributable.
+
+         Deliberately two shapes of document. The RFCs are hard-wrapped at 72 columns with form feeds as page
+         breaks, so they are what the print feature is tested against; hamlet.txt is 4,550 lines of prose and
+         dialogue, which is the scrolling fixture and long enough that anything accidentally quadratic in the
+         document model shows up by hand rather than only in a test. -->
+    <None Include="Assets\documents\*.txt" Link="documents\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 
 </Project>

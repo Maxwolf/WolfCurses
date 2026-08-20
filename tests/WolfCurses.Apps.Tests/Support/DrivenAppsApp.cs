@@ -74,11 +74,22 @@ namespace WolfCurses.Apps.Tests.Support
             App.PumpInput();
         }
 
-        /// <summary>Presses a key that has no character, such as an arrow, TAB or ESC.</summary>
+        /// <summary>
+        ///     Presses a key that has no character, such as an arrow, TAB or ESC. Modifiers matter to anything that
+        ///     selects text, where SHIFT is the difference between moving the caret and dragging a selection behind
+        ///     it, so they travel the same way a real console reports them.
+        /// </summary>
         /// <param name="key">The key to press.</param>
-        public void Press(ConsoleKey key)
+        /// <param name="modifiers">Which of SHIFT, ALT and CONTROL were held.</param>
+        public void Press(ConsoleKey key, ConsoleModifiers modifiers = 0)
         {
-            App.InputManager.SendConsoleKey(new ConsoleKeyInfo((char) 0, key, false, false, false));
+            App.InputManager.SendConsoleKey(new ConsoleKeyInfo(
+                (char) 0,
+                key,
+                (modifiers & ConsoleModifiers.Shift) != 0,
+                (modifiers & ConsoleModifiers.Alt) != 0,
+                (modifiers & ConsoleModifiers.Control) != 0));
+
             App.PumpInput();
         }
 

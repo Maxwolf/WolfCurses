@@ -26,6 +26,26 @@ namespace WolfCurses.Window.Form
         bool AllowInput { get; }
 
         /// <summary>
+        ///     When true, ENTER and BACKSPACE arrive as ordinary key presses on <see cref="OnKeyPressed(ConsoleKeyInfo)" />
+        ///     instead of being spent on the input buffer. Default is FALSE, so every existing screen keeps the
+        ///     routing it has always had.
+        ///     <para>
+        ///         <b>This exists because those two keys are otherwise unreachable</b>, and an editor cannot be
+        ///         written without them.
+        ///         <see cref="WolfCurses.Core.InputManager.SendConsoleKey" /> treats ENTER as "submit the buffer" and
+        ///         BACKSPACE as "rub a character out of it" before any key press is queued, which is exactly right
+        ///         for a prompt and leaves a screen editing a document with no way to see a backspace at all.
+        ///     </para>
+        ///     <para>
+        ///         Opting in means giving up the buffer's meaning of those keys, which is the point rather than a
+        ///         cost: a screen editing text is not collecting a command. Such a screen almost always also returns
+        ///         false from <see cref="InputFillsBuffer" />, so typed characters do not pile up in a prompt nobody
+        ///         is reading.
+        ///     </para>
+        /// </summary>
+        bool EditsText => false;
+
+        /// <summary>
         ///     Intended to be overridden in abstract class by generics to provide method to return object that contains all the
         ///     data for parent game Windows.
         /// </summary>

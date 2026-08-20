@@ -125,6 +125,14 @@ namespace WolfCurses.Core
         }
 
         /// <summary>
+        ///     Whether the focused screen wants ENTER and BACKSPACE as key presses rather than as input-buffer
+        ///     control, which is what a screen editing a document needs. Read by
+        ///     <see cref="InputManager.SendConsoleKey" /> on the way in, so the decision belongs to whichever screen
+        ///     happens to be focused rather than being a mode the host has to remember to set and unset.
+        /// </summary>
+        internal bool EditingText => FocusedWindow?.EditsText ?? false;
+
+        /// <summary>
         ///     Fired when the simulation is closing and needs to clear out any data structures that it created so the program can
         ///     exit cleanly.
         /// </summary>

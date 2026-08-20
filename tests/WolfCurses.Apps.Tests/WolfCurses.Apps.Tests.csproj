@@ -24,8 +24,13 @@
     <PackageReference Include="xunit.v3" Version="3.2.2" />
   </ItemGroup>
 
-  <!-- Nothing is copied beside the test binary yet. When an application ships sample documents, they are copied
-       here too, exactly as they are copied beside the executable, or every test that opens one silently takes its
-       "file not found" path and passes. -->
+  <!-- The sample documents, next to the test binary in the documents/ folder DocumentLibrary resolves, exactly as
+       the app copies them next to the executable. Without this every test that opens one would silently take the
+       "could not open" path and still pass, which is the shape of dead test the arcade's chess artwork copy exists
+       to prevent. -->
+  <ItemGroup>
+    <None Include="..\..\example\WolfCurses.Apps\Assets\documents\*.txt" Link="documents\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 
 </Project>

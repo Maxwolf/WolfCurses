@@ -132,6 +132,14 @@ namespace WolfCurses.Window.Form
         public virtual bool AllowInput => !ParentWindow.ShouldRemoveMode;
 
         /// <summary>
+        ///     When true, ENTER and BACKSPACE reach <see cref="OnKeyPressed(ConsoleKeyInfo)" /> as ordinary key
+        ///     presses instead of being spent on the input buffer. Off by default, so every form that already exists
+        ///     keeps exactly the routing it had. A screen that edits a document overrides this to true; see
+        ///     <see cref="IForm.EditsText" /> for why those two keys are otherwise unreachable.
+        /// </summary>
+        public virtual bool EditsText => false;
+
+        /// <summary>
         ///     Returns a text only representation of the current game Windows state. Could be a statement, information, question
         ///     waiting input, etc.
         ///     <para>
