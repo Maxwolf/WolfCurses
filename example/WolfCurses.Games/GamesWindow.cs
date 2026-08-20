@@ -66,7 +66,7 @@ namespace WolfCurses.Games
         /// <summary>
         ///     ESC backs out of whichever game is showing and returns to the arcade menu. Every game here is a form on
         ///     this one window, so intercepting the key before the base class forwards it down backs all of them out
-        ///     from a single place — the same trick WolfCurses.Example uses, and the reason no game has to handle ESC.
+        ///     from a single place — the same trick WolfCurses.Demo uses, and the reason no game has to handle ESC.
         ///     <para>
         ///         The library's own modal controls are separate windows this override never sees, so a
         ///         <see cref="Controls.MessageBox" /> a game puts up is dismissed on its own terms, not by this.

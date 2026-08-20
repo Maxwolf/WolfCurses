@@ -13,13 +13,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "example", "example", "{1D587995-D2B1-D47C-23B4-E8E972FA15E9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WolfCurses.Example", "example\WolfCurses.Example\WolfCurses.Example.csproj", "{E1A910FD-C068-4A0A-8FE3-D71B4FF9B689}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WolfCurses.Demo", "example\WolfCurses.Demo\WolfCurses.Demo.csproj", "{E1A910FD-C068-4A0A-8FE3-D71B4FF9B689}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WolfCurses.Games", "example\WolfCurses.Games\WolfCurses.Games.csproj", "{CDCCB9EC-2BDC-4EBD-8B5C-9E4D3323D3F3}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WolfCurses.Games.Tests", "tests\WolfCurses.Games.Tests\WolfCurses.Games.Tests.csproj", "{57F3ECD3-7115-41FA-AAC7-E35B0F1D2465}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WolfCurses.Example.Tests", "tests\WolfCurses.Example.Tests\WolfCurses.Example.Tests.csproj", "{A774323F-2AEA-47A4-BF84-5F07BD53F805}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WolfCurses.Demo.Tests", "tests\WolfCurses.Demo.Tests\WolfCurses.Demo.Tests.csproj", "{A774323F-2AEA-47A4-BF84-5F07BD53F805}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

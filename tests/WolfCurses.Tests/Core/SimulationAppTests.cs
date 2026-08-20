@@ -135,7 +135,7 @@ namespace WolfCurses.Tests.Core
         public void OnFirstTick_ThatCallsRestart_FiresOnceAndKeepsTheWindowAcrossTicks()
         {
             // Regression: the idiomatic "OnFirstTick attaches the initial window by calling Restart()" pattern (used
-            // by WolfCurses.Example) must not turn into an every-tick restart loop. Restart resets the tick counter to
+            // by WolfCurses.Demo) must not turn into an every-tick restart loop. Restart resets the tick counter to
             // re-fire OnFirstTick for a new session, but when Restart is invoked from inside OnFirstTick the reset has
             // to be suppressed or the "== 1" branch keeps re-firing, wiping the window (and any active form) each tick.
             var app = new RestartOnFirstTickSimulationApp();

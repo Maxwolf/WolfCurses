@@ -4,11 +4,11 @@ Two runnable console applications built on [WolfCurses](../README.md). Each is i
 
 | | | |
 | --- | --- | --- |
-| **[WolfCurses.Example](WolfCurses.Example/README.md)** | The library tour | Images, sprites, widgets, colour, and every dialog |
+| **[WolfCurses.Demo](WolfCurses.Demo/README.md)** | The library tour | Images, sprites, widgets, colour, and every dialog |
 | **[WolfCurses.Games](WolfCurses.Games/README.md)** | The arcade | Ten games, each built on a different part of the library |
 
 ```cmd
-dotnet run --project example/WolfCurses.Example
+dotnet run --project example/WolfCurses.Demo
 dotnet run --project example/WolfCurses.Games
 ```
 

@@ -24,7 +24,7 @@ namespace WolfCurses.Tests.Support
     ///         matters — the package still has none.
     ///     </para>
     ///     <para>
-    ///         The example app has a near-identical adapter, and that duplication is deliberate rather than an
+    ///         The demo app has a near-identical adapter, and that duplication is deliberate rather than an
     ///         oversight: these are the library's own tests, so having them compile a file out of the demo app would
     ///         point the dependency backwards and let a change over there break the test suite. Both are a thin
     ///         forwarding call, and each project owns its own.

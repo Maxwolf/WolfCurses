@@ -369,7 +369,7 @@ namespace WolfCurses
 
             // Reset tick measurements so the restarted session fires OnFirstTick again just like a fresh one — but
             // only when this Restart is a genuinely new session. A Restart invoked from within OnFirstTick (the
-            // idiomatic "OnFirstTick attaches the initial window by calling Restart" pattern the example app uses)
+            // idiomatic "OnFirstTick attaches the initial window by calling Restart" pattern the demo app uses)
             // is part of the current first tick, so resetting the counter there would re-satisfy the "== 1"
             // condition on the next tick and re-enter OnFirstTick every tick, endlessly wiping windows and forms.
             _lastTickTime = DateTime.UtcNow;

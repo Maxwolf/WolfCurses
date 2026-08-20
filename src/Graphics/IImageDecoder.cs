@@ -14,7 +14,7 @@ namespace WolfCurses.Graphics
     ///         box and is what <see cref="ImageDecoders.Default" /> starts as. Reach for the seam when you need a
     ///         format outside those three, when decode speed matters, or simply so one process is not decoding images
     ///         two different ways. Assign yours to <see cref="ImageDecoders.Default" /> at start-up, or pass it
-    ///         per-call to <see cref="AnsiImage.FromFile" /> and friends; the example app adapts StbImageSharp in
+    ///         per-call to <see cref="AnsiImage.FromFile" /> and friends; the demo app adapts StbImageSharp in
     ///         about thirty lines.
     ///     </para>
     /// </summary>

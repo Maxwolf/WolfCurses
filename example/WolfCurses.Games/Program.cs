@@ -47,7 +47,7 @@ namespace WolfCurses.Games
                 Console.CursorVisible = false;
             }
 
-            // The whole host loop, and everything it does not have to do, is the same as WolfCurses.Example's: the
+            // The whole host loop, and everything it does not have to do, is the same as WolfCurses.Demo's: the
             // simulation reads the keyboard itself at the start of each tick, and presents each changed frame to this
             // console itself, flicker-free. A game needs neither a key loop nor a draw call here — it overrides
             // OnKeyPressed and returns a string, and that is the entire contract.

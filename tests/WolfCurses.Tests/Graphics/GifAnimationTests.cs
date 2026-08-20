@@ -178,7 +178,7 @@ namespace WolfCurses.Tests.Graphics
         public void ZeroDelay_IsPassedOnUntouched()
         {
             // Deliberately not clamped here. A great many real files say 0, and browsers each impose a different floor;
-            // choosing one would be a display decision made somewhere that cannot see the display. The example app's
+            // choosing one would be a display decision made somewhere that cannot see the display. The demo app's
             // player is where that floor lives.
             var gif = Begin(4, 4, Red);
             WriteFrame(gif, 0, 0, 4, 4, Keep, 0, Opaque, Fill(16, Red));
@@ -387,7 +387,7 @@ namespace WolfCurses.Tests.Graphics
         [Fact]
         public void CountFrames_AgreesWithTheNumberDecodeFramesYields()
         {
-            // The progress bar the example puts in front of the decoder needs the total before the first frame is
+            // The progress bar the demo puts in front of the decoder needs the total before the first frame is
             // rendered, and CountFrames is where it comes from: a walk of the block framing that never decodes a pixel.
             // The only thing worth asserting about it is that it lands on the same number as the decode it stands in
             // front of, over each shape the walk has to step across — a graphic control extension, a bare descriptor

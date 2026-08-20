@@ -23,7 +23,7 @@
        from spec in src/Graphics/Decoding/ rather than by pulling in an imaging library, so that nobody installing a
        terminal UI library inherits one just to show a logo. DEFLATE is the exception and needs no reference: it
        comes from the BCL (System.IO.Compression.ZLibStream). Applications wanting another format or more speed fill
-       the IImageDecoder seam instead; see the example app for a StbImageSharp adapter to copy. -->
+       the IImageDecoder seam instead; see the demo app for a StbImageSharp adapter to copy. -->
 
   <ItemGroup>
     <InternalsVisibleTo Include="WolfCurses.Tests" />

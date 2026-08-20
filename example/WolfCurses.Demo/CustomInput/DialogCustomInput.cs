@@ -1,0 +1,66 @@
+﻿// Created by Maxwolf (bigmaxwolf.com)
+// Timestamp 01/16/2016@5:33 PM
+
+using System;
+using System.Text;
+using WolfCurses.Window;
+using WolfCurses.Window.Form;
+
+namespace WolfCurses.Demo.CustomInput
+{
+    /// <summary>
+    ///     Asks for user name and then accepts the input from the input buffer.
+    /// </summary>
+    [ParentWindow(typeof (DemoWindow))]
+    public sealed class DialogCustomInput : Form<DemoWindowInfo>
+    {
+        /// <summary>
+        ///     Makes it easy to print and manage multiple lines of text.
+        /// </summary>
+        private readonly StringBuilder _inputNamesHelp;
+
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="Form{TData}" /> class.
+        ///     This constructor will be used by the other one
+        /// </summary>
+        /// <param name="window">The window.</param>
+        // ReSharper disable once UnusedMember.Global
+        public DialogCustomInput(IWindow window) : base(window)
+        {
+            _inputNamesHelp = new StringBuilder();
+        }
+
+        /// <summary>
+        ///     Returns a text only representation of the current game Windows state. Could be a statement, information, question
+        ///     waiting input, etc.
+        /// </summary>
+        /// <returns>
+        ///     The text user interface.<see cref="string" />.
+        /// </returns>
+        public override string OnRenderForm()
+        {
+            // Ask the question on the prompt line so the name the user types echoes right after it — the same way the
+            // menu shows the typed number after "What is your choice?" — instead of on a separate line below a
+            // second, redundant prompt.
+            ParentWindow.PromptText = "What is your name?";
+
+            _inputNamesHelp.Clear();
+            _inputNamesHelp.Append($"{Environment.NewLine}Dialog Custom Input{Environment.NewLine}");
+
+            return _inputNamesHelp.ToString();
+        }
+
+        /// <summary>Fired when the game Windows current state is not null and input buffer does not match any known command.</summary>
+        /// <param name="input">Contents of the input buffer which didn't match any known command in parent game Windows.</param>
+        public override void OnInputBufferReturned(string input)
+        {
+            // Do not allow empty names.
+            if (string.IsNullOrEmpty(input) || string.IsNullOrWhiteSpace(input))
+                return;
+
+            // Copy name into user name and show form.
+            UserData.PlayerName = input;
+            SetForm(typeof (ShowName));
+        }
+    }
+}

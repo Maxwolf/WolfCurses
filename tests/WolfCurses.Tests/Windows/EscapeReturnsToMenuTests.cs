@@ -8,12 +8,12 @@ using Xunit;
 namespace WolfCurses.Tests.Windows
 {
     /// <summary>
-    ///     Pins the window-level Escape-to-menu pattern the example app is built on (its <c>ExampleWindow</c> overrides
+    ///     Pins the window-level Escape-to-menu pattern the demo app is built on (its <c>DemoWindow</c> overrides
     ///     <c>OnKeyPressed</c> exactly this way): a window that intercepts ESC and calls <c>ClearForm</c> backs out of
     ///     whatever form is showing, all the way through the real key-dispatch chain
     ///     (<c>SendKeyPress</c> / <c>SendConsoleKey</c> -> tick -> <c>OnKeyPressed(ConsoleKeyInfo)</c> ->
     ///     <c>OnKeyPressed(ConsoleKey)</c> override). If ESC were ever consumed as buffer control the way ENTER and
-    ///     BACKSPACE are, the example's feature would silently break and dead-code the override — this is what catches
+    ///     BACKSPACE are, the demo's feature would silently break and dead-code the override — this is what catches
     ///     that.
     /// </summary>
     public class EscapeReturnsToMenuTests

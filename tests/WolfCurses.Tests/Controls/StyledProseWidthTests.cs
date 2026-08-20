@@ -7,7 +7,7 @@ using Xunit;
 namespace WolfCurses.Tests.Controls
 {
     /// <summary>
-    ///     Pins the composite the example app's demo screens rely on to keep their prose inside the console:
+    ///     Pins the composite the demo app's screens rely on to keep their prose inside the console:
     ///     <b>word-wrap first, style second</b>, and the result never measures wider than the width asked for.
     ///     <para>
     ///         This exists because of a defect the widget tests structurally could not see. The colored demos grew
@@ -19,7 +19,7 @@ namespace WolfCurses.Tests.Controls
     ///         <see cref="StringExtensions.WordWrap" /> and applies the <see cref="TextStyle" /> per produced row.
     ///     </para>
     ///     <para>
-    ///         The example app is a separate executable with no test project reference — <c>dotnet test</c> cannot
+    ///         The demo app is a separate executable this project cannot reference — nothing here can
     ///         reach it — so what is pinned here is the guarantee the fix stands on rather than the demo screens
     ///         themselves: wrapping bounds every row, styling adds length but no <em>width</em>, and the two compose.
     ///         The strings below are the literal ones those screens carry, so shortening a fix by deleting the wrap

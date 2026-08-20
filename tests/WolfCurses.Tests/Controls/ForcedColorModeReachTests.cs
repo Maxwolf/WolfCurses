@@ -12,7 +12,7 @@ namespace WolfCurses.Tests.Controls
     ///         because that is how a widget test avoids racing the process-wide cache — so the path a <i>running
     ///         application</i> actually takes, where every widget is left at <see cref="AnsiColorModeEnum.Auto" />
     ///         and the answer comes from <see cref="AnsiConsole.ForcedColorMode" />, is tested by none of them. That
-    ///         hop is the entire mechanism by which the example's "Force render type" menu greys the graphs and the
+    ///         hop is the entire mechanism by which the demo app's "Force render type" menu greys the graphs and the
     ///         flags, and a widget that stopped consulting it would look correct in the whole suite.
     ///     </para>
     ///     <para>

@@ -121,7 +121,7 @@ Every widget takes colours and ramps, and colour is entirely opt-in: with styles
 
 Two example apps ship in the repository, each with its own guide:
 
-- **[The library tour](https://github.com/Maxwolf/WolfCurses/blob/master/example/WolfCurses.Example/README.md)**: images, sprites, widgets, colour, and every dialog.
+- **[The library tour](https://github.com/Maxwolf/WolfCurses/blob/master/example/WolfCurses.Demo/README.md)**: images, sprites, widgets, colour, and every dialog.
 - **[The arcade](https://github.com/Maxwolf/WolfCurses/blob/master/example/WolfCurses.Games/README.md)**: ten games, each built on a different part of the library.
 
 Prebuilt, self-contained downloads for Windows, macOS and Linux are on the [releases page](https://github.com/Maxwolf/WolfCurses/releases), both apps in a single archive with no .NET install needed.

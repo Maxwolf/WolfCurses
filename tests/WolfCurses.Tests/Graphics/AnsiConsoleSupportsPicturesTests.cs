@@ -64,7 +64,7 @@ namespace WolfCurses.Tests.Graphics
         public void TheColourHalfIsReadLiveRatherThanCached()
         {
             // Only the virtual-terminal half is cached, because only that half cannot change. Forcing a colour mode
-            // at run time - which is exactly what the example app's renderer picker does - has to take effect at
+            // at run time - which is exactly what the demo app's renderer picker does - has to take effect at
             // once, so caching the whole answer would break the feature that motivated it.
             var previous = AnsiConsole.ForcedColorMode;
 

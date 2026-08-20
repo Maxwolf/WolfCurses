@@ -20,7 +20,7 @@ namespace WolfCurses.Tests.Controls
     ///         sequences in all and <see cref="AnsiColorModeEnum.Palette256" /> has 256, so a smooth ramp across
     ///         sixty columns hands out sixty distinct colors that arrive as a couple of dozen distinct escapes. The
     ///         picture was correct either way, which is exactly why no byte-exact test caught it: the cost was a
-    ///         reset and a re-open between neighbouring cells the terminal draws identically, on a string the example
+    ///         reset and a re-open between neighbouring cells the terminal draws identically, on a string the demo
     ///         dashboard rebuilds inside <c>OnRenderForm</c>.
     ///     </para>
     ///     <para>

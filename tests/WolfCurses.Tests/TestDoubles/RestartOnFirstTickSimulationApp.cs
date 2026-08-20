@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace WolfCurses.Tests.TestDoubles
 {
     /// <summary>
-    ///     Mirrors the idiomatic consumer pattern (used by WolfCurses.Example and downstream apps): OnFirstTick attaches
+    ///     Mirrors the idiomatic consumer pattern (used by WolfCurses.Demo and downstream apps): OnFirstTick attaches
     ///     the initial window by delegating to Restart(). Because Restart() used to unconditionally reset the tick
     ///     counter, this pattern re-entered OnFirstTick on every subsequent tick — endlessly clearing and re-adding the
     ///     window so no form could ever survive a tick. Counts first-tick fires and exposes the current window so the

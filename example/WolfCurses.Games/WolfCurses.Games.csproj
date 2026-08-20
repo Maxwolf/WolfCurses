@@ -11,7 +11,7 @@
     <ProjectReference Include="..\..\src\WolfCurses.csproj" />
   </ItemGroup>
 
-  <!-- Granted to this app's OWN test project and nowhere else, exactly as WolfCurses.Example does it. The rules
+  <!-- Granted to this app's OWN test project and nowhere else, exactly as WolfCurses.Demo does it. The rules
        classes are fully public; what this opens up is the handful of internal seams that let a test build an exact
        position - a warhead here, a fireball there - instead of advancing a randomised wave until something like the
        scenario it means happens to turn up. Fishing for a situation in random state is how this repository has

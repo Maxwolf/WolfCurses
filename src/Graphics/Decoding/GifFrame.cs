@@ -42,7 +42,7 @@ namespace WolfCurses.Graphics.Decoding
         ///         the browsers of 1998 and meaning nothing at all to anything else. Browsers answer that by quietly
         ///         imposing a floor, and they do not agree on it. Deciding it here would be this class making a display
         ///         decision on behalf of a caller it cannot see, the same reason the error texture lives in
-        ///         <see cref="AnsiImage" /> and not in a decoder; a player that cares should clamp, and the example
+        ///         <see cref="AnsiImage" /> and not in a decoder; a player that cares should clamp, and the demo
         ///         app's animated GIF demo does.
         ///     </para>
         /// </summary>

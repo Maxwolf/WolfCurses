@@ -8,7 +8,7 @@ Windows and forms, menus, dialogs, file pickers, progress bars and graphs, plus 
 
 **Zero dependencies.** PNG, JPEG and GIF decoding included.
 
-![The example's basic sprite test: the DVD logo bouncing over a photograph drawn as real sixel pixels, with a live fps readout](docs/demo-sprite-basic.gif)
+![The demo's basic sprite test: the DVD logo bouncing over a photograph drawn as real sixel pixels, with a live fps readout](docs/demo-sprite-basic.gif)
 
 *Yes, that is a photograph in a terminal, at ~30 fps. Sixel where the terminal speaks it, half blocks everywhere else, detected automatically.*
 
@@ -91,11 +91,11 @@ Menus are steerable with the arrow keys as well as by typing a number, and typed
 
 Two example apps live in this repo, each with its own README:
 
-- **[The library tour](example/WolfCurses.Example/README.md)**: images, sprites, widgets, colour, and every dialog.
+- **[The library tour](example/WolfCurses.Demo/README.md)**: images, sprites, widgets, colour, and every dialog.
 - **[The arcade](example/WolfCurses.Games/README.md)**: ten games, each built on a different part of the library. Snake, Minesweeper, Tetris, WolfChess 5000, Missile Command, Labyrinth, Pac-Man, Blackjack, Poker and Battlezone.
 
 ```cmd
-dotnet run --project example/WolfCurses.Example
+dotnet run --project example/WolfCurses.Demo
 dotnet run --project example/WolfCurses.Games
 ```
 
@@ -107,7 +107,7 @@ Prebuilt, self-contained downloads for Windows, macOS and Linux are on the [rele
 
 Images become a block of text and color escapes that you drop into your window's output like any other string.
 
-![The example's animated GIF demo: a progress bar fills while every frame is pre-rendered, then the animation plays on loop with fps and ms/frame readouts](docs/demo-animated-gif.gif)
+![The demo's animated GIF demo: a progress bar fills while every frame is pre-rendered, then the animation plays on loop with fps and ms/frame readouts](docs/demo-animated-gif.gif)
 
 *An animated GIF playing on loop: decoded, pre-rendered, then played back at the speed the file asks for.*
 
@@ -162,7 +162,7 @@ var photo = image.ToAnsi(options, new KittyImageRenderer());
 - **`SixelImageRenderer`**: xterm (built with sixel), foot, WezTerm, mlterm, contour, recent Konsole and VTE, iTerm2, Windows Terminal 1.22+.
 - **`KittyImageRenderer`**: kitty, WezTerm, Ghostty. Full 24-bit color and real alpha, so it wins where both are available.
 
-The example app's **Force render type** menu item redraws everything with each one in turn, so you can see what your terminal actually does.
+The demo app's **Force render type** menu item redraws everything with each one in turn, so you can see what your terminal actually does.
 
 </details>
 
@@ -183,13 +183,13 @@ Sprites draw in order (last is nearest), are clipped rather than refused so they
 
 > **The one knob worth knowing:** the scene is the size of its background. Resize the background once to roughly what the terminal can show and a frame costs a fraction of what it costs at a photograph's native resolution.
 
-The [three sprite demos](example/WolfCurses.Example/README.md#sprites) cover the lot: a bouncing logo, five animated GIFs flying through one another while being added and removed, and two penguins you steer together to watch collision fire.
+The [three sprite demos](example/WolfCurses.Demo/README.md#sprites) cover the lot: a bouncing logo, five animated GIFs flying through one another while being added and removed, and two penguins you steer together to watch collision fire.
 
 ## Widgets
 
 Drop-in display widgets that turn data into text you return from your render. No windows to register: they're pure string producers, so they compose with everything else.
 
-![The example's progress bars and graphs demo: a progress bar, marquee, sparkline, bar chart and scrolling line graph all animating together](docs/demo-progress-graphs.gif)
+![The demo's progress bars and graphs demo: a progress bar, marquee, sparkline, bar chart and scrolling line graph all animating together](docs/demo-progress-graphs.gif)
 
 *`ProgressBar`, `MarqueeBar`, `Sparkline`, `BarChart` and `LineGraph` animating together. Every one of them is just a string returned from the form's render.*
 

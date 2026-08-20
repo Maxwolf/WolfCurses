@@ -83,7 +83,7 @@ namespace WolfCurses.Graphics
                 "    ImageDecoders.Default = new StbImageDecoder();" +
                 Environment.NewLine + Environment.NewLine +
                 "Implement IImageDecoder over whatever image library you already use — it is a single method — or " +
-                "copy the StbImageSharp adapter from the example app (example/WolfCurses.Example/Graphics/). Pixels " +
+                "copy the StbImageSharp adapter from the demo app (example/WolfCurses.Demo/Graphics/). Pixels " +
                 "you have already decoded need no decoder at all: AnsiImage.FromPixels takes a PixelBuffer.");
         }
 
