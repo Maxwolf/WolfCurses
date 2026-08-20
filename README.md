@@ -85,7 +85,7 @@ internal static class Program
 
 That is the whole setup. You don't register windows, read keys, or draw frames. The library discovers `MainWindow`, drains the keyboard each tick, and presents changed rows itself.
 
-Menus are steerable with the arrow keys as well as by typing a number, and typed input always wins.
+Menus are steerable with the arrow keys as well as by typing a number, and typed input always wins. Up and Down walk the items in numbered order and roll over at the ends; when a menu is too tall for the terminal it reflows into columns, and Left and Right cross between them.
 
 ## See it running
 

@@ -23,8 +23,10 @@ namespace WolfCurses.Window.Control
     ///     </para>
     ///     <para>
     ///         Navigation deliberately owns only one axis (<see cref="Horizontal" /> picks which), so the other axis
-    ///         stays free for the owner — a vertical list can spend Left/Right on paging, a horizontal button bar
-    ///         leaves Up/Down alone. Home/End always work; PageUp/PageDown work when <see cref="PageSize" /> is set
+    ///         stays free for the owner — <see cref="HandleKey" /> reports which keys it spent, and a vertical list is
+    ///         free to spend Left/Right on whatever it likes (a window's reflowed menu crosses between its columns
+    ///         with them), while a horizontal button bar leaves Up/Down alone. Home/End always work; PageUp/PageDown
+    ///         work when <see cref="PageSize" /> is set
     ///         and clamp rather than wrap, because a page jump that teleports past an end is disorienting where a
     ///         single step wrapping around it is expected.
     ///     </para>

@@ -36,6 +36,19 @@ namespace WolfCurses.Tests.TestDoubles
         }
 
         /// <summary>
+        ///     Fills the menu with the given number of distinct commands, for the column-reflow tests: a menu long
+        ///     enough that no plausible console can show it in one column. The values past Third are undefined enum
+        ///     members on purpose, which is legal in C# and renders as the number, since what these tests read off the
+        ///     screen is where the highlight cursor sits rather than what the row says.
+        /// </summary>
+        /// <param name="count">How many commands to add.</param>
+        public void AddTestCommands(int count)
+        {
+            for (var value = 1; value <= count; value++)
+                AddTestCommand((TestCommandsEnum) value);
+        }
+
+        /// <summary>
         ///     Clears and re-adds every command, the way a store window refreshes its menu — used to pin what happens
         ///     to the arrow-key highlight across a rebuild.
         /// </summary>

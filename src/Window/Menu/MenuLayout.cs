@@ -89,6 +89,65 @@ namespace WolfCurses.Window.Menu
         }
 
         /// <summary>
+        ///     How many rows a column-major layout puts in each column. Shared by the composer and by the highlight's
+        ///     Left/Right stepping, so the grid a person sees and the grid the arrow keys move through can never
+        ///     disagree about which cell holds which item.
+        /// </summary>
+        /// <param name="itemCount">How many menu items there are.</param>
+        /// <param name="columns">How many columns they are laid out in.</param>
+        /// <returns>The rows in each column; every column but the last is that full.</returns>
+        internal static int RowsPerColumn(int itemCount, int columns)
+        {
+            if (columns < 1)
+                columns = 1;
+
+            return (itemCount + columns - 1) / columns;
+        }
+
+        /// <summary>
+        ///     Moves an index one column sideways through the column-major grid, keeping the row it sits on. Up and
+        ///     Down still walk the items in numbered order (down one column and on into the next, which is what the
+        ///     numbering promises), so this is the only thing that crosses the grid sideways.
+        ///     <para>
+        ///         Two rules, and both are answers to "what if there is nothing there". A row the target column does
+        ///         not reach lands on that column's bottom item rather than refusing to move: the row is where the
+        ///         highlight happens to be, not a requirement the step has to satisfy. Only the last column is ever
+        ///         short, so this is the one case, but the clamp is written against the column's own extent rather
+        ///         than against that fact.
+        ///     </para>
+        ///     <para>
+        ///         The outer edges are <b>walls</b>: Right on the rightmost column and Left on the leftmost stay put,
+        ///         deliberately unlike a single vertical step, which wraps. Wrapping sideways would throw the
+        ///         highlight the full width of the screen, and in a menu whose columns are only one list reflowed it
+        ///         would move the number the user is reading by a whole column at once.
+        ///     </para>
+        /// </summary>
+        /// <param name="index">The index the highlight is on.</param>
+        /// <param name="itemCount">How many menu items there are.</param>
+        /// <param name="columns">How many columns they are laid out in.</param>
+        /// <param name="delta">-1 for one column left, +1 for one column right.</param>
+        /// <returns>The index to highlight, which is <paramref name="index" /> itself when the step hits a wall.</returns>
+        internal static int StepColumn(int index, int itemCount, int columns, int delta)
+        {
+            if (columns <= 1 || itemCount <= 0)
+                return index;
+
+            var rowsPerColumn = RowsPerColumn(itemCount, columns);
+            var target = index / rowsPerColumn + delta;
+            if (target < 0 || target >= columns)
+                return index;
+
+            // A column with nothing in it is a wall too, not somewhere to land. ComputeColumnCount does not produce
+            // one, but StepColumn is handed a column count rather than deriving it, so it does not get to assume.
+            var first = target * rowsPerColumn;
+            if (first >= itemCount)
+                return index;
+
+            var last = Math.Min(itemCount, first + rowsPerColumn) - 1;
+            return Math.Min(first + index % rowsPerColumn, last);
+        }
+
+        /// <summary>
         ///     Draws the rows column-major (down the first column, then the next) into
         ///     <paramref name="columns" /> fixed-width columns. The <see cref="ListNavigator" /> cursor decorates the
         ///     one highlighted cell in place, and every cell is fitted to its column so the grid stays square even with
@@ -103,7 +162,7 @@ namespace WolfCurses.Window.Menu
             var cellWidth = Math.Max(4, (usableWidth - (columns - 1) * ColumnGap) / columns);
             var innerWidth = Math.Max(1, cellWidth - 2);
 
-            var rowsPerColumn = (rows.Count + columns - 1) / columns;
+            var rowsPerColumn = RowsPerColumn(rows.Count, columns);
             var separator = new string(' ', ColumnGap);
 
             var sb = new StringBuilder();

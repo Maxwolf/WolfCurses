@@ -391,11 +391,13 @@ namespace WolfCurses.Window
         /// <summary>
         ///     Fired when the host reports a key press and this window is the focused one. A form on top hears the key
         ///     instead — a form is where anything being steered rather than typed at lives — exactly as before. With no
-        ///     form and the menu showing, the arrow keys drive the menu highlight; every other key still goes nowhere,
-        ///     so a subclass override loses nothing. Unlike the input buffer, none of this is gated on the window
-        ///     accepting input: a key press is not text and does not enter the buffer, so the rules protecting the
-        ///     buffer have nothing to say about it — a form that wants to be driven by arrow keys while refusing typed
-        ///     commands is an ordinary thing to want and this is what allows it.
+        ///     form and the menu showing, the arrow keys drive the menu highlight: Up and Down walk the items in
+        ///     numbered order and wrap round the ends, and Left and Right cross between the columns of a menu
+        ///     <see cref="MenuLayout" /> has reflowed (see <see cref="StepMenuColumn" />). Every other key still goes
+        ///     nowhere, so a subclass override loses nothing. Unlike the input buffer, none of this is gated on the
+        ///     window accepting input: a key press is not text and does not enter the buffer, so the rules protecting
+        ///     the buffer have nothing to say about it — a form that wants to be driven by arrow keys while refusing
+        ///     typed commands is an ordinary thing to want and this is what allows it.
         ///     <para>
         ///         ENTER and BACKSPACE never arrive here: <see cref="WolfCurses.Core.InputManager.SendConsoleKey" />
         ///         consumes both as buffer control before any key press is reported, so a
@@ -415,8 +417,58 @@ namespace WolfCurses.Window
                 return;
             }
 
-            if (_menuCommands?.Count > 0)
-                _menuNavigator.HandleKey(key);
+            // The navigator owns one axis and reports the keys it spent; whatever it left is offered to the other.
+            if (_menuCommands?.Count > 0 && !_menuNavigator.HandleKey(key))
+                StepMenuColumn(key);
+        }
+
+        /// <summary>
+        ///     Spends Left and Right on crossing between the columns of a reflowed menu.
+        ///     <see cref="ListNavigator" /> deliberately owns one axis only and leaves the other to whoever has a use
+        ///     for it; a menu <see cref="MenuLayout" /> has reflowed is exactly that use. The highlight keeps the row
+        ///     it is on and changes column, landing on the bottom of a column too short to have that row, and the
+        ///     outer edges are walls rather than wrapping round (<see cref="MenuLayout.StepColumn" /> holds the rules
+        ///     and the reasoning).
+        ///     <para>
+        ///         <b>A single-column menu is left completely alone</b>, which is the usual case: Left and Right stay
+        ///         as inert as any other non-arrow key, so a window whose menu fits its console behaves exactly as it
+        ///         did, down to never summoning a highlight nobody asked for.
+        ///     </para>
+        ///     <para>
+        ///         The column count is worked out from the live console rather than remembered from the last render,
+        ///         so a window resized between two key presses steps through the grid that is on screen now. Both
+        ///         paths reach it through <see cref="MenuAvailableRows" /> and
+        ///         <see cref="MenuLayout.ComputeColumnCount" />, so what the renderer drew and what an arrow key
+        ///         moves through cannot drift apart.
+        ///     </para>
+        /// </summary>
+        /// <param name="key">The key that was pressed; anything but Left or Right is ignored.</param>
+        private void StepMenuColumn(ConsoleKey key)
+        {
+            var delta = key switch
+            {
+                ConsoleKey.LeftArrow => -1,
+                ConsoleKey.RightArrow => 1,
+                _ => 0
+            };
+
+            if (delta == 0)
+                return;
+
+            var columns = MenuLayout.ComputeColumnCount(_menuCommands.Count, MenuAvailableRows(),
+                AnsiConsole.SafeWindowWidth());
+            if (columns <= 1)
+                return;
+
+            if (!_menuNavigator.HasSelection)
+            {
+                // The rule the vertical keys already follow: the first movement key summons the highlight rather than
+                // moving one, onto whichever end of the list the key points at.
+                _menuNavigator.Select(delta > 0 ? 0 : _menuCommands.Count - 1);
+                return;
+            }
+
+            _menuNavigator.Select(MenuLayout.StepColumn(_menuNavigator.Index, _menuCommands.Count, columns, delta));
         }
 
         /// <summary>
@@ -656,13 +708,27 @@ namespace WolfCurses.Window
 
             var highlightIndex = _menuNavigator.HasSelection ? _menuNavigator.Index : -1;
 
-            // Rows the menu cannot use: the activity spinner above it and the input prompt below it, plus the blank
-            // line a header brings and a little slack for the pre-render text the window does not control. Reflow
-            // begins only once the list would outgrow what is left, so a menu that fits is composed exactly as before.
-            var reserved = 5 + LineCount(MenuHeader) + LineCount(MenuFooter);
-            var availableRows = Math.Max(1, AnsiConsole.SafeWindowHeight() - reserved);
+            _menuPrompt.Append(MenuLayout.Compose(rows, highlightIndex, MenuAvailableRows(),
+                AnsiConsole.SafeWindowWidth()));
+        }
 
-            _menuPrompt.Append(MenuLayout.Compose(rows, highlightIndex, availableRows, AnsiConsole.SafeWindowWidth()));
+        /// <summary>
+        ///     How many console rows the menu may fill before <see cref="MenuLayout" /> reflows it into columns: the
+        ///     console's height less what the menu does not own. That is the activity spinner above it and the input
+        ///     prompt below it, the blank line a header brings, and a little slack for the pre-render text the window
+        ///     does not control. Reflow begins only once the list would outgrow what is left, so a menu that fits is
+        ///     composed exactly as before.
+        ///     <para>
+        ///         One method rather than the same expression twice, because <see cref="StepMenuColumn" /> has to
+        ///         reach the same answer: an arrow key stepping through a grid of a different shape from the one on
+        ///         screen would move the highlight somewhere the user cannot see it go.
+        ///     </para>
+        /// </summary>
+        /// <returns>The rows available to the menu, never fewer than one.</returns>
+        private int MenuAvailableRows()
+        {
+            var reserved = 5 + LineCount(MenuHeader) + LineCount(MenuFooter);
+            return Math.Max(1, AnsiConsole.SafeWindowHeight() - reserved);
         }
 
         /// <summary>The number of newline-separated lines a header or footer occupies, zero for null or empty.</summary>

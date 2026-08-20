@@ -85,7 +85,7 @@ That is the whole setup. Three things you might expect to write are already done
 - **Keys are read and routed**, at the start of every tick. ENTER submits the typed command, BACKSPACE edits it, every other key both fills the prompt and reaches the focused form.
 - **Frames present themselves**, without flicker: rows overwritten in place rather than cleared first, only changed rows rewritten, the whole update as one write.
 
-Forms (dialogs, prompts) derive from `Form<TData>` and attach to their parent window with a `[ParentWindow(typeof(MainWindow))]` attribute, again with no manual registration. Menus are steerable with the arrow keys as well as by typing a number, and typed input always wins.
+Forms (dialogs, prompts) derive from `Form<TData>` and attach to their parent window with a `[ParentWindow(typeof(MainWindow))]` attribute, again with no manual registration. Menus are steerable with the arrow keys as well as by typing a number, and typed input always wins. Up and Down walk the items in numbered order and roll over at the ends; when a menu is too tall for the terminal it reflows into columns, and Left and Right cross between them.
 
 ## What else is in the box
 
