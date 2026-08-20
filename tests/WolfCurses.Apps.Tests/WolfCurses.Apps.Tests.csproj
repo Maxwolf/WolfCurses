@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+  <!-- References the APPS suite, and nothing references this. That direction is the whole point of the project
+       existing separately: WolfCurses.Tests tests the library and must never learn that an example exists, because
+       the package has to ship without them. Anything here is free to reach into the example, since the example is
+       already downstream of the library. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\example\WolfCurses.Apps\WolfCurses.Apps.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
+  </ItemGroup>
+
+  <!-- Nothing is copied beside the test binary yet. When an application ships sample documents, they are copied
+       here too, exactly as they are copied beside the executable, or every test that opens one silently takes its
+       "file not found" path and passes. -->
+
+</Project>

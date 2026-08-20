@@ -1,10 +1,10 @@
 name: Release Demos
 
-# Manual release of the two example apps: WolfCurses.Demo (the image/widget tour) and
-# WolfCurses.Games (the arcade). Both ship inside a SINGLE archive per platform - one
-# download is the whole showcase - with each app in its own folder, so every executable sits
-# beside its own assets (images/ for Example, chess/ and cards/ for Games) and two apps can
-# never collide over a shared folder name. This is a showcase, not a distribution channel -
+# Manual release of the three example apps: WolfCurses.Apps (the office suite),
+# WolfCurses.Demo (the image/widget tour) and WolfCurses.Games (the arcade). All of them ship
+# inside a SINGLE archive per platform - one download is the whole showcase - with each app in
+# its own folder, so every executable sits beside its own assets (images/ for Demo, chess/ and
+# cards/ for Games) and no two apps can collide over a shared folder name. This is a showcase, not a distribution channel -
 # it exists so somebody can download a demo and run it without a toolchain, a clone or a
 # .NET install. Anyone actually building against the library takes it from NuGet instead,
 # which is what publish.yml does; the two are deliberately separate and their version
@@ -78,7 +78,7 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts
           # One archive holding both demos, each in its own folder - see the header note.
-          for proj in WolfCurses.Demo WolfCurses.Games; do
+          for proj in WolfCurses.Apps WolfCurses.Demo WolfCurses.Games; do
             dotnet publish "example/$proj/$proj.csproj" -c Release -p:Version="$VERSION" \
               -o "publish/portable/$proj"
           done
@@ -145,7 +145,7 @@ jobs:
           # Both apps publish into one staging folder, each under its own name, and that
           # folder is archived once. Archiving after the loop rather than inside it is what
           # makes a single download hold both demos.
-          for proj in WolfCurses.Demo WolfCurses.Games; do
+          for proj in WolfCurses.Apps WolfCurses.Demo WolfCurses.Games; do
             dotnet publish "example/$proj/$proj.csproj" \
               -c Release -r "$RID" --self-contained true \
               -p:PublishSingleFile=true -p:PublishTrimmed=false \
@@ -158,7 +158,7 @@ jobs:
             *)
               # tar, not zip, so the executable bit survives the round trip - and set it
               # explicitly first, since a cross-published apphost does not always carry one.
-              for proj in WolfCurses.Demo WolfCurses.Games; do
+              for proj in WolfCurses.Apps WolfCurses.Demo WolfCurses.Games; do
                 chmod +x "publish/$RID/$proj/$proj"
               done
               tar -czf "artifacts/WolfCurses-demos-v$VERSION-$RID.tar.gz" -C "publish/$RID" .
@@ -196,16 +196,17 @@ jobs:
         run: |
           set -euo pipefail
           cat > release-notes.md <<EOF
-          Two demo apps built on WolfCurses, and **one download gives you both**. Every
-          per-platform archive is **self-contained** - unpack and run, no .NET install needed. Both
+          Three demo apps built on WolfCurses, and **one download gives you all of them**. Every
+          per-platform archive is **self-contained** - unpack and run, no .NET install needed. They
           are terminal UIs, so start them from a real terminal window rather than by double-clicking,
           and give the window some room.
 
-          Each archive unpacks to two folders, \`WolfCurses.Demo/\` and \`WolfCurses.Games/\`, each
-          holding its app and that app's own artwork.
+          Each archive unpacks to three folders, \`WolfCurses.Apps/\`, \`WolfCurses.Demo/\` and
+          \`WolfCurses.Games/\`, each holding its app and that app's own artwork.
 
           | App | What it is |
           | --- | --- |
+          | \`WolfCurses.Apps\` | A small office suite. Scaffolding only for now: the menu is up and the applications are on their way. |
           | \`WolfCurses.Demo\` | The library tour: image rendering (kitty/sixel/half blocks), sprites, progress bars and graphs, colored widgets, file and list dialogs. |
           | \`WolfCurses.Games\` | A small arcade: Snake, Minesweeper, Tetris, WolfChess 5000, Missile Command, Labyrinth, Pac-Man, blackjack, poker and Battlezone. |
 
@@ -219,8 +220,9 @@ jobs:
 
           Every file is named \`WolfCurses-demos-v$VERSION-<platform>\`.
 
-          On macOS and Linux, unpack with \`tar -xzf <file>\`, then run
-          \`./WolfCurses.Demo/WolfCurses.Demo\` or \`./WolfCurses.Games/WolfCurses.Games\`.
+          On macOS and Linux, unpack with \`tar -xzf <file>\`, then run any of
+          \`./WolfCurses.Apps/WolfCurses.Apps\`, \`./WolfCurses.Demo/WolfCurses.Demo\` or
+          \`./WolfCurses.Games/WolfCurses.Games\`.
           macOS quarantines unsigned downloads, so if Gatekeeper objects, clear it for the whole
           folder: \`xattr -dr com.apple.quarantine .\`
 

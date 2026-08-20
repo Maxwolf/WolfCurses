@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\WolfCurses.csproj" />
+  </ItemGroup>
+
+  <!-- Granted to this app's OWN test project and nowhere else, exactly as the two sibling examples do it. Nothing
+       references that test project in turn, which is the direction the whole split exists to protect: the library's
+       own tests must never learn an example exists, because the package ships without them. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="WolfCurses.Apps.Tests" />
+  </ItemGroup>
+
+  <!-- No PackageReferences here, and there should not be any: everything is the .NET base class library plus
+       WolfCurses, which is the whole claim these examples exist to back up. Nothing is copied beside the executable
+       yet either. When the applications need sample documents to open, they go in Assets/documents/ and are
+       flattened into a documents/ folder here, the way the arcade does it with chess/ and cards/. -->
+
+</Project>

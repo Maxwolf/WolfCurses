@@ -89,19 +89,21 @@ Menus are steerable with the arrow keys as well as by typing a number, and typed
 
 ## See it running
 
-Two example apps live in this repo, each with its own README:
+Three example apps live in this repo, each with its own README:
 
 - **[The library tour](example/WolfCurses.Demo/README.md)**: images, sprites, widgets, colour, and every dialog.
+- **[The office suite](example/WolfCurses.Apps/README.md)**: small productivity applications. Scaffolding only so far, with the menu up and the applications on their way.
 - **[The arcade](example/WolfCurses.Games/README.md)**: ten games, each built on a different part of the library. Snake, Minesweeper, Tetris, WolfChess 5000, Missile Command, Labyrinth, Pac-Man, Blackjack, Poker and Battlezone.
 
 ```cmd
 dotnet run --project example/WolfCurses.Demo
 dotnet run --project example/WolfCurses.Games
+dotnet run --project example/WolfCurses.Apps
 ```
 
-Both are terminal UIs, so run them from a real terminal window and give it some room. Between them they cover both input styles, every pacing model, styled output, generated and decoded graphics, scrolling, and falling back to characters where a terminal can't show a picture.
+All three are terminal UIs, so run them from a real terminal window and give it some room. Between them they cover both input styles, every pacing model, styled output, generated and decoded graphics, scrolling, and falling back to characters where a terminal can't show a picture.
 
-Prebuilt, self-contained downloads for Windows, macOS and Linux are on the [releases page](https://github.com/Maxwolf/WolfCurses/releases), both apps in a single archive with no .NET install needed.
+Prebuilt, self-contained downloads for Windows, macOS and Linux are on the [releases page](https://github.com/Maxwolf/WolfCurses/releases), all of them in a single archive with no .NET install needed.
 
 ## Images in the terminal
 

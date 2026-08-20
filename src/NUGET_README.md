@@ -119,12 +119,13 @@ Every widget takes colours and ramps, and colour is entirely opt-in: with styles
 
 ## See it running
 
-Two example apps ship in the repository, each with its own guide:
+Three example apps ship in the repository, each with its own guide:
 
 - **[The library tour](https://github.com/Maxwolf/WolfCurses/blob/master/example/WolfCurses.Demo/README.md)**: images, sprites, widgets, colour, and every dialog.
 - **[The arcade](https://github.com/Maxwolf/WolfCurses/blob/master/example/WolfCurses.Games/README.md)**: ten games, each built on a different part of the library.
+- **[The office suite](https://github.com/Maxwolf/WolfCurses/blob/master/example/WolfCurses.Apps/README.md)**: small productivity applications, scaffolding only so far.
 
-Prebuilt, self-contained downloads for Windows, macOS and Linux are on the [releases page](https://github.com/Maxwolf/WolfCurses/releases), both apps in a single archive with no .NET install needed.
+Prebuilt, self-contained downloads for Windows, macOS and Linux are on the [releases page](https://github.com/Maxwolf/WolfCurses/releases), all of them in a single archive with no .NET install needed.
 
 ## Links
 
