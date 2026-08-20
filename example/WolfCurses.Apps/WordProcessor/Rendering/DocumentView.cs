@@ -2,67 +2,56 @@
 // Timestamp 08/20/2026
 
 using System;
-using System.Text;
 using WolfCurses.Documents;
-using WolfCurses.Window.Control;
+using WolfCurses.Graphics;
 
 namespace WolfCurses.Apps.WordProcessor
 {
     /// <summary>
-    ///     Draws the visible part of a document: the lines the viewport is over, with the selection and the caret in
-    ///     inverse video. Pure, taking a buffer and a viewport and returning a string, so what the editor looks like
-    ///     can be asserted without a console.
+    ///     Draws the visible part of a document: the lines the viewport is over, with the selection and the caret
+    ///     marked. Pure, taking a buffer and a viewport and returning rows, so what the editor looks like can be
+    ///     asserted without a console.
+    ///     <para>
+    ///         <b>Every row comes back exactly the viewport's width.</b> That is what lets the frame around it stay a
+    ///         rectangle and what makes the blue field cover the whole page rather than stopping after each line's
+    ///         last word. It is the same rectangle invariant <c>TextGrid</c> keeps, and for the same reason.
+    ///     </para>
     ///     <para>
     ///         <b>The caret is drawn rather than placed.</b> The library parks the terminal's real cursor at the end
-    ///         of the input prompt, which is right for a prompt and means there is no cursor to put inside the
-    ///         document. So the caret is a cell in inverse video, which is what a block cursor looks like anyway.
-    ///         With no selection it is exactly one cell; with a selection it merges into the highlighted run, which
-    ///         is also what a terminal editor does.
-    ///     </para>
-    ///     <para>
-    ///         Emphasis goes through <see cref="ListNavigator.Emphasize" />, the same gate every highlight in the
-    ///         library uses, so <c>NO_COLOR</c> and a forced colour mode of none reach this screen too and the
-    ///         output degrades to plain text rather than to escape sequences nobody asked for.
-    ///     </para>
-    ///     <para>
-    ///         <b>Known limitation: tabs are drawn as they arrive.</b> A tab is one character to the document model
-    ///         and several columns to the terminal, so a file containing them renders with the caret column out of
-    ///         step with where the cursor appears. None of the shipped samples contain a tab. Fixing it properly
-    ///         means an expansion layer between document columns and screen columns, which is a real feature and
-    ///         belongs in the library beside <see cref="TextViewport" /> rather than being faked here.
+    ///         of the input prompt, so there is no cursor to put inside the document. The caret is a cell in the
+    ///         highlight style instead, which is what a block cursor looks like anyway; with a selection it merges
+    ///         into the highlighted run, which is also what a terminal editor does.
     ///     </para>
     /// </summary>
     internal static class DocumentView
     {
-        /// <summary>Renders the visible rows of a document.</summary>
+        /// <summary>Renders the visible rows of a document, each padded to the viewport's exact width.</summary>
         /// <param name="buffer">The document.</param>
         /// <param name="viewport">The window onto it.</param>
-        /// <param name="showCaret">FALSE while something else owns the cursor, such as an open dialog.</param>
-        /// <returns>One line of text per viewport row, newline separated.</returns>
-        public static string Render(TextBuffer buffer, TextViewport viewport, bool showCaret = true)
+        /// <param name="field">How ordinary text is painted.</param>
+        /// <param name="highlight">How the caret and the selection are painted.</param>
+        /// <param name="showCaret">FALSE while something else owns the cursor, such as an open menu.</param>
+        /// <returns>One string per viewport row.</returns>
+        public static string[] Render(TextBuffer buffer, TextViewport viewport, TextStyle field, TextStyle highlight,
+            bool showCaret = true)
         {
-            var sb = new StringBuilder();
+            var rows = new string[viewport.Height];
 
             for (var row = 0; row < viewport.Height; row++)
             {
                 var lineIndex = viewport.FirstLine + row;
 
-                if (lineIndex < buffer.LineCount)
-                    sb.Append(RenderLine(buffer, viewport, lineIndex, showCaret));
-
-                sb.Append(Environment.NewLine);
+                rows[row] = lineIndex < buffer.LineCount
+                    ? RenderLine(buffer, viewport, lineIndex, field, highlight, showCaret)
+                    : field.Apply(new string(' ', viewport.Width));
             }
 
-            return sb.ToString();
+            return rows;
         }
 
-        /// <summary>Renders one document line, clipped to the viewport and with any highlight applied.</summary>
-        /// <param name="buffer">The document.</param>
-        /// <param name="viewport">The window onto it.</param>
-        /// <param name="lineIndex">Which document line to draw.</param>
-        /// <param name="showCaret">Whether the caret should be drawn.</param>
-        /// <returns>The drawn line.</returns>
-        private static string RenderLine(TextBuffer buffer, TextViewport viewport, int lineIndex, bool showCaret)
+        /// <summary>Renders one document line, clipped to the viewport and padded back out to its full width.</summary>
+        private static string RenderLine(TextBuffer buffer, TextViewport viewport, int lineIndex, TextStyle field,
+            TextStyle highlight, bool showCaret)
         {
             var stored = buffer.GetLine(lineIndex);
             var (documentStart, documentEnd) = HighlightRange(buffer, lineIndex, showCaret);
@@ -75,34 +64,29 @@ namespace WolfCurses.Apps.WordProcessor
             var highlightEnd = TabStops.ToDisplayColumn(stored, documentEnd, buffer.TabWidth);
             var line = TabStops.Expand(stored, buffer.TabWidth);
 
-            // The caret and the end of a selected line both sit one past the last character, where there is nothing
-            // to put in inverse video. Pad so the highlight has a cell to live in; the padding is trimmed off again
-            // by the clip below whenever it is not needed.
-            if (highlightEnd > line.Length)
-                line = line.PadRight(highlightEnd);
+            // Padded to cover the whole row before anything is clipped, so the caret has a cell to sit in past the
+            // end of the text and the field colour reaches the frame on the right.
+            var needed = Math.Max(viewport.FirstColumn + viewport.Width, highlightEnd);
+            if (line.Length < needed)
+                line = line.PadRight(needed);
 
-            var visible = Clip(line, viewport.FirstColumn, viewport.Width);
-            if (highlightEnd <= highlightStart)
-                return visible.TrimEnd();
+            var visible = line.Substring(viewport.FirstColumn, viewport.Width);
 
             var from = Math.Clamp(highlightStart - viewport.FirstColumn, 0, visible.Length);
             var to = Math.Clamp(highlightEnd - viewport.FirstColumn, 0, visible.Length);
-            if (to <= from)
-                return visible.TrimEnd();
 
-            return visible.Substring(0, from) +
-                   ListNavigator.Emphasize(visible.Substring(from, to - from)) +
-                   visible.Substring(to).TrimEnd();
+            if (to <= from)
+                return field.Apply(visible);
+
+            return field.Apply(visible.Substring(0, from)) +
+                   highlight.Apply(visible.Substring(from, to - from)) +
+                   field.Apply(visible.Substring(to));
         }
 
         /// <summary>
         ///     Which columns of a line are highlighted: the part of the selection that falls on it, or the single
         ///     cell under the caret when nothing is selected. An empty range means nothing on this line is marked.
         /// </summary>
-        /// <param name="buffer">The document.</param>
-        /// <param name="lineIndex">The line being drawn.</param>
-        /// <param name="showCaret">Whether the caret counts as a highlight.</param>
-        /// <returns>The half-open column range to emphasize.</returns>
         private static (int Start, int End) HighlightRange(TextBuffer buffer, int lineIndex, bool showCaret)
         {
             if (buffer.HasSelection)
@@ -127,20 +111,6 @@ namespace WolfCurses.Apps.WordProcessor
                 return (0, 0);
 
             return (buffer.Caret.Column, buffer.Caret.Column + 1);
-        }
-
-        /// <summary>Takes the visible window out of a line, tolerating a start past its end.</summary>
-        /// <param name="line">The whole line.</param>
-        /// <param name="start">First visible column.</param>
-        /// <param name="width">How many columns are visible.</param>
-        /// <returns>The visible slice, which may be empty.</returns>
-        private static string Clip(string line, int start, int width)
-        {
-            if (start >= line.Length)
-                return string.Empty;
-
-            var available = line.Length - start;
-            return line.Substring(start, Math.Min(width, available));
         }
     }
 }

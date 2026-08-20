@@ -32,6 +32,13 @@ namespace WolfCurses.Window.Control
         public IReadOnlyList<MenuBarEntry> Entries => _entries;
 
         /// <summary>
+        ///     Whether this menu sits at the right-hand end of the bar rather than following the one before it. Help
+        ///     traditionally does, and the arrow keys still walk through it in declared order, because where a title
+        ///     is drawn is a matter of layout and not of what comes next.
+        /// </summary>
+        public bool AlignRight { get; set; }
+
+        /// <summary>
         ///     The letter that opens this menu, which is its first. Deliberately not a marked letter elsewhere in the
         ///     title: a menu bar whose access keys are scattered through the words needs every title to declare one,
         ///     and getting that wrong gives two menus the same key with no complaint from anything.

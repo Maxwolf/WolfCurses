@@ -72,6 +72,11 @@ namespace WolfCurses.Apps
         {
             if (key == ConsoleKey.Escape && CurrentForm != null)
             {
+                // The application gets first refusal, because only it knows whether it has a menu open that ESC
+                // should shut instead. Everything that has nothing nested says no and is backed out of as before.
+                if (CurrentForm is IHandlesEscape handler && handler.TryHandleEscape())
+                    return;
+
                 ClearForm();
                 return;
             }

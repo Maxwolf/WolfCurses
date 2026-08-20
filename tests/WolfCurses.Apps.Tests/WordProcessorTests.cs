@@ -154,8 +154,28 @@ namespace WolfCurses.Apps.Tests
             var caret = ReportedCaret(suite.Screen);
             Assert.Equal(10, caret.Column);
 
+            // Measured from the left edge of the field rather than of the screen, since the document sits inside a
+            // frame now and its first column is one past the border. Anchoring to the border keeps this about the
+            // tab arithmetic instead of about how much chrome happens to be drawn.
             var row = FirstRowContaining(suite.Screen, 'Z');
-            Assert.Equal(8, row.IndexOf('Z', StringComparison.Ordinal));
+            var fieldStart = row.IndexOf('│', StringComparison.Ordinal) + 1;
+            Assert.True(fieldStart > 0, "the document field's left edge was not drawn:\n" + row);
+
+            Assert.Equal(8, row.IndexOf('Z', StringComparison.Ordinal) - fieldStart);
+        }
+
+        /// <summary>Which rendered row a character first appears on, for asserting that something moved.</summary>
+        private static int IndexOfRowContaining(string screen, char character)
+        {
+            var rows = screen.Split('\n');
+            for (var i = 0; i < rows.Length; i++)
+            {
+                if (rows[i].IndexOf(character) >= 0)
+                    return i;
+            }
+
+            Assert.Fail($"no rendered row contained '{character}':\n{screen}");
+            return -1;
         }
 
         /// <summary>The first rendered row containing a character, for asserting where something was drawn.</summary>
@@ -241,6 +261,94 @@ namespace WolfCurses.Apps.Tests
 
             Assert.DoesNotContain("ESC returns to the menu: hi", suite.Screen, StringComparison.Ordinal);
             Assert.Equal(string.Empty, suite.App.InputManager.InputBuffer);
+        }
+
+        [Fact]
+        public void TheScreenIsLaidOutLikeTheDosEditor()
+        {
+            // Menu bar across the top with Help at the far right, and the file name notched into the top of a frame
+            // around the field.
+            using var suite = OpenEditor();
+            var rows = suite.Screen.Split('\n');
+
+            var bar = Array.Find(rows, row => row.Contains("File", StringComparison.Ordinal));
+            Assert.NotNull(bar);
+            Assert.Contains("Edit", bar, StringComparison.Ordinal);
+            Assert.Contains("Search", bar, StringComparison.Ordinal);
+            Assert.Contains("Options", bar, StringComparison.Ordinal);
+
+            // Help is laid from the right edge, so it comes after every left-hand title on the row.
+            Assert.True(bar.IndexOf("Help", StringComparison.Ordinal) >
+                        bar.IndexOf("Options", StringComparison.Ordinal),
+                "Help was not at the right-hand end of the bar: " + bar);
+
+            var top = Array.Find(rows, row => row.Contains('┌', StringComparison.Ordinal));
+            Assert.NotNull(top);
+            Assert.Contains("rfc1149.txt", top, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void TheFieldHasAScrollBarShowingHowFarThroughTheDocumentItIs()
+        {
+            using var suite = OpenEditor();
+            Assert.Contains('↑', suite.Screen);
+            Assert.Contains('↓', suite.Screen);
+
+            // Compared by row INDEX rather than by row text: the thumb really does move, but both ends of this
+            // document are blank lines, so the two rows read identically and comparing their contents would pass
+            // whether the thumb moved or not.
+            var top = IndexOfRowContaining(suite.Screen, '█');
+
+            suite.Press(ConsoleKey.End, ConsoleModifiers.Control);
+            var bottom = IndexOfRowContaining(suite.Screen, '█');
+
+            Assert.True(bottom > top, $"the scrollbar thumb did not move down: row {top} then row {bottom}");
+        }
+
+        [Fact]
+        public void EscapeShutsAnOpenMenuRatherThanLeavingTheEditor()
+        {
+            // The hand-off: AppsWindow claims ESC for every application, but asks the application first, so a menu
+            // that is open is what gets dismissed. Without it, opening a menu and pressing ESC drops you out of the
+            // program entirely.
+            using var suite = OpenEditor();
+
+            suite.Press(ConsoleKey.F, ConsoleModifiers.Alt);
+            Assert.Contains("New", suite.Screen, StringComparison.Ordinal);
+
+            suite.Escape();
+
+            Assert.DoesNotContain("Which application?", suite.Screen, StringComparison.Ordinal);
+            Assert.Contains("rfc1149.txt", suite.Screen, StringComparison.Ordinal);
+
+            // And with nothing open it leaves, exactly as before.
+            suite.Escape();
+            Assert.Contains("Which application?", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void WhileAMenuIsOpenTypingDoesNotReachTheDocument()
+        {
+            using var suite = OpenEditor();
+            suite.Press(ConsoleKey.F, ConsoleModifiers.Alt);
+
+            suite.PressChar('X', ConsoleKey.X);
+
+            Assert.DoesNotContain("rfc1149.txt *", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void AMenuItemRunsWhenItIsChosen()
+        {
+            // Options carries the two entries that do something without needing a file dialog, so this proves the
+            // whole path: open, walk, choose, act.
+            using var suite = OpenEditor();
+
+            suite.Press(ConsoleKey.O, ConsoleModifiers.Alt);
+            suite.Press(ConsoleKey.DownArrow);
+            suite.Press(ConsoleKey.Enter);
+
+            Assert.Contains("Tab width is now 8", suite.Screen, StringComparison.Ordinal);
         }
 
         [Fact]

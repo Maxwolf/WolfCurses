@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using WolfCurses.Graphics;
 
 namespace WolfCurses.Window.Control
 {
@@ -64,6 +65,32 @@ namespace WolfCurses.Window.Control
         ///     row is off by exactly however much chrome the owner drew and is silently wrong rather than broken.
         /// </summary>
         public int BarRow { get; set; }
+
+        /// <summary>
+        ///     How wide the bar is, remembered from the last <see cref="Render" /> so that hit-testing a
+        ///     right-aligned title uses the same edge the drawing did. Set it directly only when hit-testing before
+        ///     anything has been drawn.
+        /// </summary>
+        public int Width { get; set; } = 80;
+
+        /// <summary>How the bar itself is painted. Left at none, the bar is plain text exactly as before.</summary>
+        public TextStyle BarStyle { get; set; } = TextStyle.None;
+
+        /// <summary>How the open menu's title is painted; falls back to inverse video when left unset.</summary>
+        public TextStyle HighlightStyle { get; set; } = TextStyle.None;
+
+        /// <summary>How the dropped panel is painted.</summary>
+        public TextStyle PanelStyle { get; set; } = TextStyle.None;
+
+        /// <summary>How the entry under the cursor is painted; falls back to inverse video when left unset.</summary>
+        public TextStyle PanelHighlightStyle { get; set; } = TextStyle.None;
+
+        /// <summary>
+        ///     Which colour vocabulary the styles resolve through, pinnable per instance for the same reason every
+        ///     other styled control here has one: <see cref="AnsiColorModeEnum.Auto" /> consults a process-wide
+        ///     cache that a test must not move.
+        /// </summary>
+        public AnsiColorModeEnum ColorMode { get; set; } = AnsiColorModeEnum.Auto;
 
         /// <summary>How many rows the open menu's panel occupies, or zero when nothing is open.</summary>
         public int DropdownHeight => IsOpen ? _menus[OpenIndex].Entries.Count + 2 : 0;
@@ -224,7 +251,7 @@ namespace WolfCurses.Window.Control
             for (var i = 0; i < _menus.Count; i++)
             {
                 var start = _titleColumns[i];
-                if (column >= start && column < start + _menus[i].Title.Length + TitlePadding * 2)
+                if (column >= start && column < start + CellWidth(_menus[i]))
                     return i;
             }
 
@@ -268,6 +295,7 @@ namespace WolfCurses.Window.Control
         /// <returns>The bar row followed by the panel's rows, each newline terminated.</returns>
         public string Render(int width)
         {
+            Width = width;
             Layout();
 
             var sb = new StringBuilder();
@@ -287,20 +315,65 @@ namespace WolfCurses.Window.Control
         /// <returns>The bar row.</returns>
         private string RenderBar(int width)
         {
-            var sb = new StringBuilder();
-
+            // Walked in column order rather than in declared order, because a right-aligned title is drawn after the
+            // left-hand ones but sits past them; and emitted as runs rather than spliced into a padded string,
+            // because a styled title is far longer than it is wide and indexing into it by column would cut an
+            // escape in half.
+            var order = new List<int>();
             for (var i = 0; i < _menus.Count; i++)
+                order.Add(i);
+
+            order.Sort((a, b) => _titleColumns[a].CompareTo(_titleColumns[b]));
+
+            var sb = new StringBuilder();
+            var column = 0;
+
+            foreach (var index in order)
             {
-                var title = new string(' ', TitlePadding) + _menus[i].Title + new string(' ', TitlePadding);
-                sb.Append(i == OpenIndex ? ListNavigator.Emphasize(title) : title);
+                var start = _titleColumns[index];
+                if (start > column)
+                {
+                    sb.Append(Paint(new string(' ', start - column), BarStyle));
+                    column = start;
+                }
+
+                var title = new string(' ', TitlePadding) + _menus[index].Title + new string(' ', TitlePadding);
+                sb.Append(index == OpenIndex ? Emphasis(title, HighlightStyle) : Paint(title, BarStyle));
+                column += title.Length;
             }
 
-            // Padded to the full width so the bar reads as a bar rather than as a few words floating on the top row.
-            var used = BarWidth();
-            if (used < width)
-                sb.Append(' ', width - used);
+            // Padded to the full width so the bar reads as a bar rather than as a few words floating on the top row,
+            // and so a background colour covers the whole row rather than stopping after the last word.
+            if (column < width)
+                sb.Append(Paint(new string(' ', width - column), BarStyle));
 
             return sb.ToString();
+        }
+
+        /// <summary>
+        ///     Paints text in a style, or hands it back untouched when there is no style. The untouched path is the
+        ///     compatibility one: a menu bar nobody has coloured renders as plain text with no escapes at all, the
+        ///     same stance every other control in this namespace takes.
+        /// </summary>
+        /// <param name="text">The text to paint.</param>
+        /// <param name="style">The style to paint it in.</param>
+        /// <returns>The painted text.</returns>
+        private string Paint(string text, TextStyle style)
+        {
+            return style.IsEmpty ? text : style.Apply(text, ColorMode);
+        }
+
+        /// <summary>
+        ///     Marks the highlighted title or entry: in the given style when one was set, and otherwise in inverse
+        ///     video through the same gate every other highlight in the library uses, so a bar nobody styled still
+        ///     shows which menu is open and still says nothing at all when colour is switched off.
+        /// </summary>
+        /// <param name="text">The text to emphasize.</param>
+        /// <param name="style">The style to use, when there is one.</param>
+        /// <returns>The emphasized text.</returns>
+        private string Emphasis(string text, TextStyle style)
+        {
+            return style.IsEmpty ? ListNavigator.Emphasize(text) : style.Apply(text, ColorMode);
         }
 
         /// <summary>Draws the open panel, indented to sit under its own title.</summary>
@@ -311,7 +384,7 @@ namespace WolfCurses.Window.Control
             var indent = new string(' ', _titleColumns[OpenIndex]);
             var inner = menu.ContentWidth + 2;
 
-            yield return indent + "┌" + new string('─', inner) + "┐";
+            yield return indent + Paint("┌" + new string('─', inner) + "┐", PanelStyle);
 
             for (var i = 0; i < menu.Entries.Count; i++)
             {
@@ -319,16 +392,17 @@ namespace WolfCurses.Window.Control
 
                 if (entry.IsSeparator)
                 {
-                    yield return indent + "├" + new string('─', inner) + "┤";
+                    yield return indent + Paint("├" + new string('─', inner) + "┤", PanelStyle);
                     continue;
                 }
 
                 var text = " " + entry.Label.PadRight(menu.ContentWidth - entry.Shortcut.Length) + entry.Shortcut + " ";
-                yield return indent + "│" + (i == HighlightIndex ? ListNavigator.Emphasize(text) : text) +
-                             "│";
+                var body = i == HighlightIndex ? Emphasis(text, PanelHighlightStyle) : Paint(text, PanelStyle);
+
+                yield return indent + Paint("│", PanelStyle) + body + Paint("│", PanelStyle);
             }
 
-            yield return indent + "└" + new string('─', inner) + "┘";
+            yield return indent + Paint("└" + new string('─', inner) + "┘", PanelStyle);
         }
 
         /// <summary>
@@ -339,24 +413,37 @@ namespace WolfCurses.Window.Control
         private void Layout()
         {
             _titleColumns.Clear();
+            for (var i = 0; i < _menus.Count; i++)
+                _titleColumns.Add(0);
 
-            var column = 0;
-            foreach (var menu in _menus)
+            var left = 0;
+            var right = Math.Max(0, Width);
+
+            for (var i = 0; i < _menus.Count; i++)
             {
-                _titleColumns.Add(column);
-                column += menu.Title.Length + TitlePadding * 2;
+                var cells = CellWidth(_menus[i]);
+
+                if (_menus[i].AlignRight)
+                {
+                    // Laid from the right edge inward, so several right-aligned menus keep their declared order
+                    // reading left to right rather than coming out reversed.
+                    right -= cells;
+                    _titleColumns[i] = Math.Max(left, right);
+                }
+                else
+                {
+                    _titleColumns[i] = left;
+                    left += cells;
+                }
             }
         }
 
-        /// <summary>How many columns the titles occupy in total.</summary>
-        /// <returns>The used width of the bar.</returns>
-        private int BarWidth()
+        /// <summary>How many columns a title occupies on the bar, padding included.</summary>
+        /// <param name="menu">The menu whose title to measure.</param>
+        /// <returns>The width of its cell on the bar.</returns>
+        private static int CellWidth(MenuBarMenu menu)
         {
-            var used = 0;
-            foreach (var menu in _menus)
-                used += menu.Title.Length + TitlePadding * 2;
-
-            return used;
+            return menu.Title.Length + TitlePadding * 2;
         }
 
         /// <summary>Opens whichever menu answers to a letter, when one does.</summary>
