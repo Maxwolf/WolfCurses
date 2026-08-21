@@ -22,6 +22,8 @@ Menus across the top, a framed blue field with the file name in its top edge, sc
 
 **Mouse.** Click to place the caret, drag to sweep a selection, click a menu title or entry, drag the scrollbar thumb or click its arrows, and roll the wheel to scroll. The editor draws its own pointer, because a terminal stops drawing one the moment mouse reporting is switched on.
 
+**Search.** CTRL+F asks what to find and selects the first match; F3 and SHIFT+F3 walk to the next and previous, coming round the ends rather than stopping; CTRL+H asks what to change and what to change it to, and changes every one. Match Case and Whole Word are ticked entries on the Search menu rather than checkboxes in a dialog, so the setting is readable without opening anything.
+
 **File.** Opens on `documents/rfc1149.txt`; Open browses that folder, and Save and Save As write back.
 
 Five pieces of it are in the library rather than here, which is the point of these examples: `TextBuffer` and `TextViewport` (the document and the window onto it), `TabStops` (a tab is one character and several columns, and keeping those in step is most of what makes a caret land correctly), `MenuBar`, and `ScrollBar`.

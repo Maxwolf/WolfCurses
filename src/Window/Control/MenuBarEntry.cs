@@ -82,6 +82,28 @@ namespace WolfCurses.Window.Control
         public Func<bool> EnabledWhen { get; set; }
 
         /// <summary>
+        ///     Asked, each time, whether the entry should be drawn with a mark beside it: word wrap being on, which
+        ///     of several tab widths is in force, whether a search is case sensitive.
+        ///     <para>
+        ///         There is no settable <c>IsChecked</c> to go with it, deliberately. A mark that never changes says
+        ///         nothing, so an entry worth marking is one whose answer moves, and "always ticked" is still
+        ///         expressible as a predicate that returns true. One way to express it means no question about which
+        ///         of two wins.
+        ///     </para>
+        /// </summary>
+        public Func<bool> CheckedWhen { get; set; }
+
+        /// <summary>Whether a mark is drawn beside this entry right now.</summary>
+        public bool IsChecked => CheckedWhen != null && CheckedWhen();
+
+        /// <summary>
+        ///     Whether this entry can carry a mark at all, which is what makes its whole menu reserve the column
+        ///     they are drawn in. An entry that is merely unticked still needs the space, or the labels in one menu
+        ///     would sit at two different indents depending on the answer.
+        /// </summary>
+        public bool IsCheckable => CheckedWhen != null;
+
+        /// <summary>
         ///     Whether the highlight may land here at all. Separators and entries with nothing to run are skipped
         ///     over by the arrow keys rather than being selectable dead ends.
         /// </summary>

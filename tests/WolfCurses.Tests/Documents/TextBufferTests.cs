@@ -14,6 +14,37 @@ namespace WolfCurses.Tests.Documents
     public class TextBufferTests
     {
         [Fact]
+        public void SelectingARangeReplacesWhateverWasSelectedRatherThanStretchingIt()
+        {
+            // THE trap this method exists to avoid. MoveTo with an extend flag keeps whatever anchor is already
+            // there, so selecting a search result that way would quietly stretch the previous selection over the
+            // new one and every Find would select more of the document than the last.
+            var buffer = TextBuffer.FromText("alpha beta gamma");
+
+            buffer.Select(new TextPosition(0, 0), new TextPosition(0, 5));
+            Assert.Equal("alpha", buffer.GetSelectedText(), StringComparer.Ordinal);
+
+            buffer.Select(new TextPosition(0, 11), new TextPosition(0, 16));
+            Assert.Equal("gamma", buffer.GetSelectedText(), StringComparer.Ordinal);
+        }
+
+        [Fact]
+        public void SelectingLeavesTheCaretOnTheSecondPositionAndClampsBothInside()
+        {
+            var buffer = TextBuffer.FromText("one\ntwo");
+
+            buffer.Select(new TextPosition(0, 1), new TextPosition(1, 2));
+
+            Assert.Equal(new TextPosition(1, 2), buffer.Caret);
+            Assert.True(buffer.HasSelection);
+
+            buffer.Select(new TextPosition(-5, -5), new TextPosition(99, 99));
+
+            Assert.Equal(buffer.EndPosition(), buffer.Caret);
+            Assert.Equal(TextPosition.Start, buffer.SelectionStart);
+        }
+
+        [Fact]
         public void AnEmptyDocumentIsOneEmptyLineSoThereIsAlwaysSomewhereToBe()
         {
             // Not zero lines. Every method here indexes a line, and "no lines" would make the caret a position that

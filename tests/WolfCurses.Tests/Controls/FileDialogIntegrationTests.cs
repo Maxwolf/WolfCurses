@@ -150,16 +150,30 @@ namespace WolfCurses.Tests.Controls
         }
 
         [Fact]
-        public void Show_WhenADialogIsAlreadyClosing_ThrowsInsteadOfSilentlyFailing()
+        public void Show_WhenTheOldDialogIsSpent_OpensAFreshOneInstead()
         {
             var app = new FileDialogHostApp();
             FileDialog.OpenFile(app, _root, null, _ => { });
             app.OnTick(false);
 
-            // Simulate the dialog mid-close (as it is while inside a confirm/cancel callback).
-            app.WindowManager.FocusedWindow.RemoveWindowNextTick();
+            // Mid-close, which is exactly how a dialog looks from inside its own confirm or cancel callback.
+            var spent = app.WindowManager.FocusedWindow;
+            spent.RemoveWindowNextTick();
 
-            Assert.Throws<InvalidOperationException>(() => FileDialog.OpenFile(app, _root, null, _ => { }));
+            // This used to throw, and the change is deliberate. The guard existed because opening a dialog while
+            // one was mid-close did not work: WindowManager re-activated the spent window, so the new caller was
+            // handed the old caller's state and then lost the window to the removal the old one had already asked
+            // for. Throwing was better than failing silently, but it also ruled out opening a dialog from inside
+            // another one's callback, which is the one place these controls document as the right place to do it,
+            // and a callback always runs with its own window mid-close.
+            //
+            // A spent window is now replaced rather than re-activated, so what comes back is a genuinely new
+            // window with the new caller's configuration. The guard that matters is untouched: opening a second
+            // dialog while the first is really open still throws.
+            FileDialog.OpenFile(app, _root, null, _ => { });
+
+            Assert.NotSame(spent, app.WindowManager.FocusedWindow);
+            Assert.False(app.WindowManager.FocusedWindow.ShouldRemoveMode);
 
             app.Destroy();
         }

@@ -46,19 +46,43 @@ namespace WolfCurses.Window.Control
         public char AccessKey => Title.Length > 0 ? char.ToUpperInvariant(Title[0]) : '\0';
 
         /// <summary>
+        ///     Whether any entry here can carry a check mark, which is what makes the whole menu reserve the column
+        ///     it is drawn in. Asked of the menu rather than of each entry, because the labels have to line up with
+        ///     each other whatever the individual answers are.
+        /// </summary>
+        public bool HasCheckMarks
+        {
+            get
+            {
+                foreach (var entry in _entries)
+                {
+                    if (entry.IsCheckable)
+                        return true;
+                }
+
+                return false;
+            }
+        }
+
+        /// <summary>How many columns the check mark and the space after it take, or none when nothing is marked.</summary>
+        public int CheckColumns => HasCheckMarks ? 2 : 0;
+
+        /// <summary>
         ///     How wide the dropped panel is: the widest entry, counting the gap between a label and its shortcut
-        ///     reminder, and never narrower than the title above it.
+        ///     reminder and the check column when there is one, and never narrower than the title above it.
         /// </summary>
         public int ContentWidth
         {
             get
             {
                 var widest = Title.Length;
+                var indent = CheckColumns;
+
                 foreach (var entry in _entries)
                 {
                     var width = entry.IsSeparator
                         ? 0
-                        : entry.Label.Length + (entry.Shortcut.Length > 0 ? entry.Shortcut.Length + 2 : 0);
+                        : indent + entry.Label.Length + (entry.Shortcut.Length > 0 ? entry.Shortcut.Length + 2 : 0);
 
                     widest = Math.Max(widest, width);
                 }

@@ -132,15 +132,29 @@ namespace WolfCurses.Tests.Controls
         }
 
         [Fact]
-        public void Show_WhenAlreadyClosing_Throws()
+        public void Show_WhenTheOldDialogIsSpent_OpensAFreshOneInstead()
         {
             var app = new ControlsHostApp();
             MessageBox.Show(app, "Hi", () => { });
             app.OnTick(false);
 
-            app.WindowManager.FocusedWindow.RemoveWindowNextTick();
+            var spent = app.WindowManager.FocusedWindow;
+            spent.RemoveWindowNextTick();
 
-            Assert.Throws<InvalidOperationException>(() => MessageBox.Show(app, "Hi", () => { }));
+            // This used to throw, and the change is deliberate. The guard existed because opening a dialog while
+            // one was mid-close did not work: WindowManager re-activated the spent window, so the new caller was
+            // handed the old caller's state and then lost the window to the removal the old one had already asked
+            // for. Throwing was better than failing silently, but it also ruled out opening a dialog from inside
+            // another one's callback, which is the one place these controls document as the right place to do it,
+            // and a callback always runs with its own window mid-close.
+            //
+            // A spent window is now replaced rather than re-activated, so what comes back is a genuinely new
+            // window with the new caller's configuration. The guard that matters is untouched: opening a second
+            // dialog while the first is really open still throws.
+            MessageBox.Show(app, "Second", () => { });
+
+            Assert.NotSame(spent, app.WindowManager.FocusedWindow);
+            Assert.False(app.WindowManager.FocusedWindow.ShouldRemoveMode);
 
             app.Destroy();
         }

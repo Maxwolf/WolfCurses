@@ -100,6 +100,13 @@ namespace WolfCurses.Window.Control
         public bool ShowAccessKeys { get; set; } = true;
 
         /// <summary>
+        ///     What is drawn beside a ticked entry. Settable because which glyph reads as a tick is a question about
+        ///     the look being imitated and about the font it will land in, not about menus: an MS-DOS editor drew a
+        ///     square root sign and an ASCII-only terminal would rather have an <c>x</c>.
+        /// </summary>
+        public char CheckMark { get; set; } = '\u2713';
+
+        /// <summary>
         ///     Which screen row the open panel's own top border is drawn on. Negative means "directly under the
         ///     bar", which is where it hangs when nothing is between them.
         ///     <para>
@@ -508,7 +515,14 @@ namespace WolfCurses.Window.Control
                     continue;
                 }
 
-                var text = " " + entry.Label.PadRight(menu.ContentWidth - entry.Shortcut.Length) + entry.Shortcut + " ";
+                // The check column is reserved for the whole menu or for none of it, so an entry that happens to
+                // be unticked still gets the space and every label in the panel starts at the same indent.
+                var mark = menu.HasCheckMarks
+                    ? (entry.IsChecked ? CheckMark + " " : "  ")
+                    : string.Empty;
+
+                var label = entry.Label.PadRight(menu.ContentWidth - mark.Length - entry.Shortcut.Length);
+                var text = " " + mark + label + entry.Shortcut + " ";
                 var body = i == HighlightIndex ? Emphasis(text, PanelHighlightStyle) : Paint(text, PanelStyle);
 
                 yield return Paint("│", PanelStyle) + body + Paint("│", PanelStyle);

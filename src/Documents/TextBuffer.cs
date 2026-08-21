@@ -203,6 +203,23 @@ namespace WolfCurses.Documents
         }
 
         /// <summary>
+        ///     Selects a stated range, leaving the caret on the second position. What a search result needs: the
+        ///     match is known outright rather than arrived at by moving, so there is nothing to drag a selection
+        ///     behind.
+        ///     <para>
+        ///         The anchor is assigned rather than left to <c>MoveTo</c> with an extend flag, which keeps
+        ///         whatever anchor was already there and would quietly stretch the previous selection over this one.
+        ///     </para>
+        /// </summary>
+        /// <param name="anchor">One end of the selection.</param>
+        /// <param name="caret">The other end, where the caret comes to rest.</param>
+        public void Select(TextPosition anchor, TextPosition caret)
+        {
+            _anchor = Clamp(anchor);
+            SetCaret(Clamp(caret), true, false);
+        }
+
+        /// <summary>
         ///     Moves the caret somewhere, optionally dragging a selection behind it. This is the one place a caller
         ///     names a position, so every other movement method is a way of working one out.
         /// </summary>

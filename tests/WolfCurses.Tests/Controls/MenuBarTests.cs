@@ -469,6 +469,81 @@ namespace WolfCurses.Tests.Controls
         }
 
         [Fact]
+        public void ACheckedEntryIsMarkedAndAnUncheckedOneStillReservesTheColumn()
+        {
+            // The second half is the one that matters. If only the ticked entry were indented, the labels in one
+            // menu would sit at two different places and would move as the setting changed.
+            var wrap = true;
+            var bar = new MenuBar(new MenuBarMenu("Options",
+                new MenuBarEntry("Word Wrap", () => { }) {CheckedWhen = () => wrap},
+                new MenuBarEntry("Match Case", () => { }) {CheckedWhen = () => false}));
+
+            bar.Open(0);
+
+            var rows = StripSgr(bar.Render(40)).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var wrapRow = rows.Single(row => row.Contains("Word Wrap", StringComparison.Ordinal));
+            var caseRow = rows.Single(row => row.Contains("Match Case", StringComparison.Ordinal));
+
+            Assert.Contains(bar.CheckMark, wrapRow);
+            Assert.DoesNotContain(bar.CheckMark, caseRow);
+
+            Assert.Equal(wrapRow.IndexOf("Word Wrap", StringComparison.Ordinal),
+                caseRow.IndexOf("Match Case", StringComparison.Ordinal));
+        }
+
+        [Fact]
+        public void TheMarkIsAskedForEachTimeRatherThanRememberedFromWhenTheMenuWasBuilt()
+        {
+            var wrap = false;
+            var bar = new MenuBar(new MenuBarMenu("Options",
+                new MenuBarEntry("Word Wrap", () => { }) {CheckedWhen = () => wrap}));
+
+            bar.Open(0);
+            Assert.DoesNotContain(bar.CheckMark, StripSgr(bar.Render(40)));
+
+            wrap = true;
+            Assert.Contains(bar.CheckMark, StripSgr(bar.Render(40)));
+        }
+
+        [Fact]
+        public void APanelWithCheckMarksIsStillARectangleAndStillFitsItsShortcuts()
+        {
+            // The check column is added to the menu's content width rather than taken out of it, or a marked entry
+            // would push its own shortcut past the border it is supposed to sit inside.
+            var bar = new MenuBar(new MenuBarMenu("Search",
+                new MenuBarEntry("Find Next", () => { }, "F3") {CheckedWhen = () => true},
+                new MenuBarEntry("Change All", () => { }, "Ctrl+H")));
+
+            bar.Open(0);
+
+            var rows = StripSgr(bar.Render(60)).Split('\n', StringSplitOptions.RemoveEmptyEntries).Skip(1).ToArray();
+
+            Assert.All(rows, row => Assert.Equal(rows[0].Length, row.Length));
+            Assert.Contains(rows, row => row.Contains("F3", StringComparison.Ordinal));
+            Assert.Contains(rows, row => row.Contains("Ctrl+H", StringComparison.Ordinal));
+        }
+
+        [Fact]
+        public void AMenuWithNothingCheckableReservesNoColumnAtAll()
+        {
+            // The compatibility half: check marks are an addition, so a menu that never asked for one is drawn
+            // exactly as wide as it always was, with its labels exactly where they were.
+            var plain = new MenuBar(new MenuBarMenu("Edit", new MenuBarEntry("Cut", () => { }, "Ctrl+X")));
+            var checkable = new MenuBar(new MenuBarMenu("Edit",
+                new MenuBarEntry("Cut", () => { }, "Ctrl+X") {CheckedWhen = () => false}));
+
+            plain.Open(0);
+            checkable.Open(0);
+
+            var plainRow = StripSgr(plain.Render(40)).Split('\n')[1];
+            var checkableRow = StripSgr(checkable.Render(40)).Split('\n')[1];
+
+            Assert.Equal(0, plain.Menus[0].CheckColumns);
+            Assert.Equal(2, checkable.Menus[0].CheckColumns);
+            Assert.Equal(plainRow.Length + 2, checkableRow.Length);
+        }
+
+        [Fact]
         public void AnEntryWithNoPredicateStillAnswersToItsFlag()
         {
             // The compatibility half: EnabledWhen is an addition, so an entry that was never given one behaves

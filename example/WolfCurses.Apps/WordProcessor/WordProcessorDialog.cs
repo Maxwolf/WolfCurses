@@ -56,6 +56,18 @@ namespace WolfCurses.Apps.WordProcessor
         /// <summary>The file the document came from, or null for one that has never been on disk.</summary>
         private string _path;
 
+        /// <summary>What was last searched for, which is what Find Next repeats.</summary>
+        private string _searchText;
+
+        /// <summary>What was last put in its place.</summary>
+        private string _replaceText;
+
+        /// <summary>Whether a search tells upper and lower case apart.</summary>
+        private bool _matchCase;
+
+        /// <summary>Whether a search refuses a match with a word character against either end of it.</summary>
+        private bool _wholeWord;
+
         /// <summary>Whether the left button is down and sweeping a selection through the document.</summary>
         private bool _draggingText;
 
@@ -363,6 +375,26 @@ namespace WolfCurses.Apps.WordProcessor
                 case ConsoleKey.Insert when control:
                     Copy();
                     return;
+
+                // The search keys return for the same reason the clipboard ones do: each has something to say and
+                // the tail below this switch clears the status line.
+                case ConsoleKey.F when control:
+                    AskWhatToFind();
+                    return;
+                case ConsoleKey.H when control:
+                    AskWhatToChange();
+                    return;
+                case ConsoleKey.F3 when shift:
+                    FindNext(true);
+                    return;
+                case ConsoleKey.F3:
+                    FindNext(false);
+                    return;
+
+                // The File menu has advertised this one all along without anything answering it.
+                case ConsoleKey.F2:
+                    SaveDocument();
+                    return;
                 case ConsoleKey.V when control:
                 case ConsoleKey.Insert when shift:
                     Paste();
@@ -471,13 +503,145 @@ namespace WolfCurses.Apps.WordProcessor
                 : string.Format(CultureInfo.InvariantCulture, "{0} {1} characters.", verb, text.Length);
         }
 
+        /// <summary>Asks what to look for, then looks for it.</summary>
+        private void AskWhatToFind()
+        {
+            TextInputDialog.Prompt(
+                SimUnit,
+                "Find what?",
+                text =>
+                {
+                    _searchText = text;
+                    FindNext(false);
+                },
+                () => _message = "Find cancelled.",
+                _searchText);
+        }
+
+        /// <summary>
+        ///     Finds the next occurrence and selects it, or says it could not.
+        ///     <para>
+        ///         Where it searches from is the whole of making this work twice running. With a match selected it
+        ///         resumes from the far end of that match rather than from the caret, which is what stops Find Next
+        ///         from finding the same match forever; going backwards it starts from the near end for the mirror
+        ///         of the same reason.
+        ///     </para>
+        /// </summary>
+        /// <param name="backwards">TRUE to look towards the start of the document.</param>
+        private void FindNext(bool backwards)
+        {
+            if (string.IsNullOrEmpty(_searchText))
+            {
+                AskWhatToFind();
+                return;
+            }
+
+            var from = _buffer.HasSelection
+                ? backwards ? _buffer.SelectionStart : _buffer.SelectionEnd
+                : _buffer.Caret;
+
+            var hit = TextSearch.Next(_buffer.Lines, _searchText, from, _matchCase, _wholeWord, backwards);
+            if (hit == null)
+            {
+                _message = $"Cannot find \"{_searchText}\".";
+                return;
+            }
+
+            SelectMatch(hit.Value);
+            _message = null;
+        }
+
+        /// <summary>Selects a match and brings it on screen, start first so a long line does not hide it.</summary>
+        /// <param name="start">Where the match begins.</param>
+        private void SelectMatch(TextPosition start)
+        {
+            var end = new TextPosition(start.Line, start.Column + _searchText.Length);
+
+            _buffer.Select(start, end);
+
+            // Revealed from both ends. Revealing only the caret would scroll a wide line so that the end of the
+            // match is on screen and its beginning is off the left edge, which is the half a person is reading.
+            _viewport.EnsureVisible(OnScreen(start));
+            _viewport.EnsureVisible(CaretOnScreen());
+        }
+
+        /// <summary>Asks what to change and what to change it to, then changes every one of them.</summary>
+        private void AskWhatToChange()
+        {
+            // Two prompts because the library has no dialog that asks two things, exactly as Save As composes a
+            // folder picker with a name prompt. Nested rather than sequential: the second only means anything once
+            // the first has been answered.
+            TextInputDialog.Prompt(
+                SimUnit,
+                "Change what?",
+                find =>
+                {
+                    _searchText = find;
+
+                    TextInputDialog.Prompt(
+                        SimUnit,
+                        "Change to what?",
+                        ChangeAll,
+                        () => _message = "Change cancelled.",
+                        _replaceText);
+                },
+                () => _message = "Change cancelled.",
+                _searchText);
+        }
+
+        /// <summary>
+        ///     Replaces every occurrence, walking forward from the start of the document.
+        ///     <para>
+        ///         It searches without wrapping and resumes past what it just wrote, which is what makes it
+        ///         terminate: changing "a" into "aa" would otherwise find its own output and keep going until the
+        ///         document filled the machine.
+        ///     </para>
+        /// </summary>
+        /// <param name="replacement">What to put in each occurrence's place.</param>
+        private void ChangeAll(string replacement)
+        {
+            _replaceText = replacement ?? string.Empty;
+
+            if (string.IsNullOrEmpty(_searchText))
+                return;
+
+            var changed = 0;
+            var at = TextPosition.Start;
+
+            while (true)
+            {
+                var hit = TextSearch.Next(_buffer.Lines, _searchText, at, _matchCase, _wholeWord, false, false);
+                if (hit == null)
+                    break;
+
+                var start = hit.Value;
+                _buffer.Select(start, new TextPosition(start.Line, start.Column + _searchText.Length));
+
+                // Insert does nothing at all with empty text, so deleting the selection is the only way to say
+                // "change this into nothing", which is a thing people really do want a Change All to do.
+                if (_replaceText.Length == 0)
+                    _buffer.DeleteSelection();
+                else
+                    _buffer.Insert(_replaceText);
+
+                changed++;
+                at = _buffer.Caret;
+            }
+
+            _message = changed == 0
+                ? $"Cannot find \"{_searchText}\"."
+                : $"Changed {changed} occurrence{(changed == 1 ? string.Empty : "s")}.";
+
+            _viewport.EnsureVisible(CaretOnScreen());
+        }
+
         /// <summary>Builds the pull-downs, styled to match the field they sit over.</summary>
         private void BuildMenus()
         {
             _menuBar = new MenuBar(
                 new MenuBarMenu("File",
                     new MenuBarEntry("New", NewDocument),
-                    new MenuBarEntry("Open...", OpenDocument, "F3"),
+                    new MenuBarEntry("Open...", OpenDocument),
                     new MenuBarEntry("Save", SaveDocument, "F2"),
                     new MenuBarEntry("Save As...", SaveDocumentAs),
                     MenuBarEntry.Separator(),
@@ -499,10 +663,32 @@ namespace WolfCurses.Apps.WordProcessor
                     new MenuBarEntry("Select All", _buffer.SelectAll, "Ctrl+A"),
                     new MenuBarEntry("Clear", ClearSelection, "Del") {EnabledWhen = () => _buffer.HasSelection}),
                 new MenuBarMenu("Search",
-                    new MenuBarEntry("Find...", null, "Ctrl+F") {IsEnabled = false}),
+                    new MenuBarEntry("Find...", AskWhatToFind, "Ctrl+F"),
+
+                    // F3 rather than the F3 that used to sit beside Open, which was never wired to anything. It is
+                    // also what the editor this imitates bound it to.
+                    new MenuBarEntry("Find Next", () => FindNext(false), "F3")
+                        {EnabledWhen = () => !string.IsNullOrEmpty(_searchText)},
+                    new MenuBarEntry("Find Previous", () => FindNext(true), "Shift+F3")
+                        {EnabledWhen = () => !string.IsNullOrEmpty(_searchText)},
+                    MenuBarEntry.Separator(),
+                    new MenuBarEntry("Change All...", AskWhatToChange, "Ctrl+H"),
+                    MenuBarEntry.Separator(),
+
+                    // Toggles rather than another dialog. The library has no dialog that asks a question and offers
+                    // two checkboxes beside it, and a menu that shows its own state is the better answer anyway:
+                    // the setting is visible without opening anything, which a checkbox in a dialog is not.
+                    new MenuBarEntry("Match Case", () => _matchCase = !_matchCase)
+                        {CheckedWhen = () => _matchCase},
+                    new MenuBarEntry("Whole Word", () => _wholeWord = !_wholeWord)
+                        {CheckedWhen = () => _wholeWord}),
                 new MenuBarMenu("Options",
-                    new MenuBarEntry("Tab width 4", () => SetTabWidth(4)),
-                    new MenuBarEntry("Tab width 8", () => SetTabWidth(8))),
+                    // Marked, because two entries offering a choice with no sign of which one is in force is a menu
+                    // that makes you change the setting to find out what it was.
+                    new MenuBarEntry("Tab width 4", () => SetTabWidth(4))
+                        {CheckedWhen = () => _buffer.TabWidth == 4},
+                    new MenuBarEntry("Tab width 8", () => SetTabWidth(8))
+                        {CheckedWhen = () => _buffer.TabWidth == 8}),
                 new MenuBarMenu("Help",
                     new MenuBarEntry("About", ShowAbout)) {AlignRight = true})
             {
@@ -510,6 +696,10 @@ namespace WolfCurses.Apps.WordProcessor
                 HighlightStyle = DosTheme.MenuHighlight,
                 PanelStyle = DosTheme.MenuPanel,
                 PanelHighlightStyle = DosTheme.MenuHighlight,
+
+                // The square root sign is what an MS-DOS editor ticked a menu entry with, and the console's own
+                // code page is where that glyph came from.
+                CheckMark = '\u221A',
 
                 // The bar is the first row this form draws, and the scene graph puts its own status line above it.
                 BarRow = 1,
@@ -681,10 +871,17 @@ namespace WolfCurses.Apps.WordProcessor
         /// <returns>The caret's position in screen coordinates.</returns>
         private TextPosition CaretOnScreen()
         {
-            var caret = _buffer.Caret;
-            var column = TabStops.ToDisplayColumn(_buffer.GetLine(caret.Line), caret.Column, _buffer.TabWidth);
+            return OnScreen(_buffer.Caret);
+        }
 
-            return new TextPosition(caret.Line, column);
+        /// <summary>Where a stored position is drawn, which is a different column as soon as the line has a tab.</summary>
+        /// <param name="position">The position as it is stored.</param>
+        /// <returns>The same position in screen columns.</returns>
+        private TextPosition OnScreen(TextPosition position)
+        {
+            var column = TabStops.ToDisplayColumn(_buffer.GetLine(position.Line), position.Column, _buffer.TabWidth);
+
+            return new TextPosition(position.Line, column);
         }
 
         /// <summary>What the frame's tab reads: the file, and whether it has been touched.</summary>

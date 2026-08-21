@@ -869,6 +869,127 @@ namespace WolfCurses.Apps.Tests
         }
 
         [Fact]
+        public void FindSelectsTheFirstMatchAndFindNextMovesOnToTheNextOne()
+        {
+            // The pair of them together, because the interesting half is not that a search can match: it is that
+            // pressing the key again does not land on the same match forever.
+            using var suite = EditorWithText("one two one");
+
+            suite.Press(ConsoleKey.F, ConsoleModifiers.Control);
+            suite.Type("one");
+
+            Assert.Contains("3 selected", suite.Screen, StringComparison.Ordinal);
+            Assert.Contains("Ln 1, Col 4", suite.Screen, StringComparison.Ordinal);
+
+            suite.Press(ConsoleKey.F3);
+
+            Assert.Contains("3 selected", suite.Screen, StringComparison.Ordinal);
+            Assert.Contains("Ln 1, Col 12", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void FindNextComesRoundTheEndRatherThanStopping()
+        {
+            using var suite = EditorWithText("one two one");
+
+            suite.Press(ConsoleKey.F, ConsoleModifiers.Control);
+            suite.Type("one");
+            suite.Press(ConsoleKey.F3);
+            suite.Press(ConsoleKey.F3);
+
+            // Back on the first one. Without wrapping this would say it could not be found, on a document that
+            // visibly contains it twice.
+            Assert.Contains("Ln 1, Col 4", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void FindPreviousWalksTheOtherWay()
+        {
+            using var suite = EditorWithText("one two one");
+
+            suite.Press(ConsoleKey.F, ConsoleModifiers.Control);
+            suite.Type("one");
+            suite.Press(ConsoleKey.F3, ConsoleModifiers.Shift);
+
+            // Nothing lies before the first match, so it wraps to the last.
+            Assert.Contains("Ln 1, Col 12", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void ASearchThatMatchesNothingSaysSoAndLeavesTheCaretAlone()
+        {
+            using var suite = EditorWithText("one two one");
+            suite.Press(ConsoleKey.Home);
+
+            suite.Press(ConsoleKey.F, ConsoleModifiers.Control);
+            suite.Type("zzz");
+
+            Assert.Contains("Cannot find", suite.Screen, StringComparison.Ordinal);
+            Assert.Contains("Ln 1, Col 1", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void ChangeAllReplacesEveryOccurrenceAndCountsThem()
+        {
+            using var suite = EditorWithText("one two one");
+
+            suite.Press(ConsoleKey.H, ConsoleModifiers.Control);
+            suite.Type("one");
+            suite.Type("ONE");
+
+            Assert.Contains("Changed 2 occurrences", suite.Screen, StringComparison.Ordinal);
+            Assert.Contains("ONE two ONE", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void ChangeAllDoesNotFindWhatItJustWroteAndSoTerminates()
+        {
+            // Changing something into a longer version of itself is where a naive Replace All runs until the
+            // machine gives out. It resumes past what it wrote, so this finishes with two changes and not more.
+            using var suite = EditorWithText("aa");
+
+            suite.Press(ConsoleKey.H, ConsoleModifiers.Control);
+            suite.Type("a");
+            suite.Type("aa");
+
+            Assert.Contains("Changed 2 occurrences", suite.Screen, StringComparison.Ordinal);
+            Assert.Contains("aaaa", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void TheOptionsMenuMarksWhichTabWidthIsInForceAndTheMarkMoves()
+        {
+            // What the check mark is for. Two entries offering a choice with no sign of which one is in force is a
+            // menu you have to change the setting to read.
+            using var suite = EditorWithText("x");
+
+            suite.Press(ConsoleKey.O, ConsoleModifiers.Alt);
+
+            Assert.Contains("\u221A Tab width 8", suite.Screen, StringComparison.Ordinal);
+            Assert.DoesNotContain("\u221A Tab width 4", suite.Screen, StringComparison.Ordinal);
+
+            // A menu opens on its FIRST entry rather than on the ticked one, which is what every menu does and is
+            // worth knowing here: the highlight is already sitting on Tab width 4, so ENTER alone chooses it.
+            suite.Press(ConsoleKey.Enter);
+            suite.Press(ConsoleKey.O, ConsoleModifiers.Alt);
+
+            Assert.Contains("\u221A Tab width 4", suite.Screen, StringComparison.Ordinal);
+            Assert.DoesNotContain("\u221A Tab width 8", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void SavingWithF2AsksWhereToPutADocumentThatHasNeverBeenSaved()
+        {
+            // F2 has been printed beside Save in the File menu since the menu existed, with nothing answering it.
+            // Asserted against an untitled document so the test opens a dialog rather than writing to the disk.
+            using var suite = EditorWithText("x");
+
+            suite.Press(ConsoleKey.F2);
+
+            Assert.Contains("ENTER opens the highlighted", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
         public void ReopeningTheEditorStartsFromTheFileAgain()
         {
             // A form is created fresh each time it is set, so an edited-then-abandoned document does not come back.

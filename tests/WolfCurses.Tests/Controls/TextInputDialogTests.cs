@@ -166,6 +166,59 @@ namespace WolfCurses.Tests.Controls
         }
 
         [Fact]
+        public void Prompt_OpenedFromTheFirstPromptsCallback_AsksTheSecondQuestion()
+        {
+            // Asking for two values in a row is the composition these controls exist for, and the callback is the
+            // place every one of them documents as the right place to do it. It could not be done until a window
+            // that had already asked to be removed stopped being re-activated: the second prompt was handed the
+            // first one's spent window, and the removal the first had already asked for then took it away.
+            var app = new ControlsHostApp();
+            string first = null;
+            string second = null;
+
+            TextInputDialog.Prompt(app, "Find what?", find =>
+            {
+                first = find;
+                TextInputDialog.Prompt(app, "Change to what?", to => second = to);
+            });
+
+            app.OnTick(false);
+            Send(app, "alpha");
+            app.OnTick(false);
+
+            Assert.Equal("alpha", first, StringComparer.Ordinal);
+            Assert.Null(second);
+
+            Send(app, "beta");
+            app.OnTick(false);
+
+            Assert.Equal("beta", second, StringComparer.Ordinal);
+
+            app.Destroy();
+        }
+
+        [Fact]
+        public void Prompt_ChainedSecondPrompt_StillPreFillsItsOwnDefault()
+        {
+            // The second prompt is opened part way through the tick that is processing the first one's ENTER, so
+            // its pre-filled default is written into a buffer that command handling is still walking away from.
+            // Asserted rather than assumed, since a default silently going missing is invisible until somebody
+            // relies on it.
+            var app = new ControlsHostApp();
+
+            TextInputDialog.Prompt(app, "Find what?", _ =>
+                TextInputDialog.Prompt(app, "Change to what?", _ => { }, defaultValue: "suggested"));
+
+            app.OnTick(false);
+            Send(app, "alpha");
+            app.OnTick(false);
+
+            Assert.Equal("suggested", app.InputManager.InputBuffer, StringComparer.Ordinal);
+
+            app.Destroy();
+        }
+
+        [Fact]
         public void Prompt_WindowNotAllowed_ThrowsHelpfully()
         {
             var app = new TestSimulationApp();

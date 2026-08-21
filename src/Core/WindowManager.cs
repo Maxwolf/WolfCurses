@@ -265,11 +265,28 @@ namespace WolfCurses.Core
             lock (_windowList)
             {
                 // Check if any other modes match the one we are adding.
-                if (_windowList.ContainsKey(window))
+                if (_windowList.TryGetValue(window, out var existing))
                 {
-                    // If Windows is attempted to be added we will fire activate for it so Windows knows it was added again without having to call post create.
-                    _windowList[window].OnWindowActivate();
-                    return;
+                    // A window that has already asked to be removed is spent: its forms have fired their callbacks
+                    // and its data is the previous caller's. Re-activating it would hand a new caller that stale
+                    // state and then take the window away a tick later, when the removal it already asked for
+                    // finally happened. So it goes now, exactly as CleanWindows would have taken it, and a fresh
+                    // one is built below.
+                    //
+                    // This is what lets a modal control be opened from another one's callback, which is the place
+                    // every one of them documents as the right place to open the next thing: by the time a callback
+                    // runs, its own window is always mid-removal. Without this the two-prompt flows the controls
+                    // exist to be composed into (find and replace, or anything else asking for two values) could
+                    // not be written at all.
+                    if (!existing.ShouldRemoveMode)
+                    {
+                        // If Windows is attempted to be added we will fire activate for it so Windows knows it was added again without having to call post create.
+                        existing.OnWindowActivate();
+                        return;
+                    }
+
+                    _windowList.Remove(window);
+                    _windowOrder.Remove(window);
                 }
 
                 // Create the game Windows using factory.
