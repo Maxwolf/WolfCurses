@@ -77,19 +77,40 @@ namespace WolfCurses.Apps.WordProcessor
 
             var cells = vertical.Cells();
 
-            sb.Append(TopBorder(title, width)).Append(Environment.NewLine);
+            // The panel hangs from the bar, so its first row covers the frame's top edge rather than starting under
+            // it. Anything else leaves the frame's border showing between the bar and the menu, which reads as the
+            // menu floating loose rather than dropping out of the title it belongs to.
+            var plain = TopBorderPlain(title, width, out var titleStart, out var titleEnd);
+            var panelScreenColumn = panelColumn + 1;
+
+            if (panel.Count > 0 && panelWidth > 0)
+            {
+                sb.Append(Border(plain, titleStart, titleEnd, 0, panelScreenColumn))
+                    .Append(panel[0])
+                    .Append(Border(plain, titleStart, titleEnd, panelScreenColumn + panelWidth,
+                        width - panelScreenColumn - panelWidth));
+            }
+            else
+            {
+                sb.Append(Border(plain, titleStart, titleEnd, 0, width));
+            }
+
+            sb.Append(Environment.NewLine);
 
             for (var row = 0; row < viewport.Height; row++)
             {
+                // The panel's first row went on the frame's top edge, so this row's share of it is one further on.
+                var panelRow = row + 1;
+
                 sb.Append(DosTheme.Frame.Apply("│"));
 
-                if (row < panel.Count && panelWidth > 0)
+                if (panelRow < panel.Count && panelWidth > 0)
                 {
                     // The document either side of the panel, and the panel itself in between. Composed from three
                     // runs rather than spliced into a finished row, because a styled row is far longer than it is
                     // wide and cutting it by column would cut an escape in half.
                     sb.Append(Field(buffer, viewport, row, 0, panelColumn))
-                        .Append(panel[row])
+                        .Append(panel[panelRow])
                         .Append(Field(buffer, viewport, row, panelColumn + panelWidth,
                             viewport.Width - panelColumn - panelWidth));
                 }
@@ -137,8 +158,12 @@ namespace WolfCurses.Apps.WordProcessor
                 DosTheme.Selection);
         }
 
-        /// <summary>The frame's top edge, with the file name in a lit tab centred over it.</summary>
-        private static string TopBorder(string title, int width)
+        /// <summary>
+        ///     The frame's top edge as plain text, with the file name in a tab centred over it, and where that tab
+        ///     sits. Built unstyled first so a range of it can be drawn on its own: the menu panel hangs from the bar
+        ///     and covers part of this row, and a styled string cannot be cut by column without cutting an escape.
+        /// </summary>
+        private static string TopBorderPlain(string title, int width, out int titleStart, out int titleEnd)
         {
             var inner = Math.Max(0, width - 2);
             var tab = " " + (title ?? string.Empty) + " ";
@@ -149,9 +174,36 @@ namespace WolfCurses.Apps.WordProcessor
             var before = Math.Max(0, (inner - tab.Length) / 2);
             var after = Math.Max(0, inner - tab.Length - before);
 
-            return DosTheme.Frame.Apply("┌" + new string('─', before)) +
-                   DosTheme.Title.Apply(tab) +
-                   DosTheme.Frame.Apply(new string('─', after) + "┐");
+            titleStart = 1 + before;
+            titleEnd = titleStart + tab.Length;
+
+            return "┌" + new string('─', before) + tab + new string('─', after) + "┐";
+        }
+
+        /// <summary>Draws part of the top edge, switching to the tab's colours where the file name sits.</summary>
+        private static string Border(string plain, int titleStart, int titleEnd, int from, int count)
+        {
+            if (count <= 0 || from >= plain.Length)
+                return string.Empty;
+
+            var end = Math.Min(plain.Length, from + count);
+            var sb = new StringBuilder();
+            var runStart = from;
+
+            for (var i = from; i <= end; i++)
+            {
+                var here = i < end && i >= titleStart && i < titleEnd;
+                var previous = runStart >= titleStart && runStart < titleEnd;
+
+                if (i != end && here == previous)
+                    continue;
+
+                var style = previous ? DosTheme.Title : DosTheme.Frame;
+                sb.Append(style.Apply(plain.Substring(runStart, i - runStart)));
+                runStart = i;
+            }
+
+            return sb.ToString();
         }
 
         /// <summary>The frame's bottom edge, which is where the sideways scrollbar lives.</summary>

@@ -130,6 +130,18 @@ namespace WolfCurses.Apps.Tests.Support
             App.PumpInput();
         }
 
+        /// <summary>Turns the wheel. Positive notches are away from the user, which means scrolling up.</summary>
+        /// <param name="row">The row the pointer is over.</param>
+        /// <param name="column">The column the pointer is over.</param>
+        /// <param name="notches">How far it turned; negative scrolls down.</param>
+        public void Wheel(int row, int column, int notches)
+        {
+            App.InputManager.SendMousePress(
+                new MouseEvent(column, row, MouseButtonEnum.None, 0, MouseEventKindEnum.Wheel, notches));
+
+            App.PumpInput();
+        }
+
         /// <summary>Lets a button back up, which is what ends a drag.</summary>
         /// <param name="row">The row released at.</param>
         /// <param name="column">The column released at.</param>

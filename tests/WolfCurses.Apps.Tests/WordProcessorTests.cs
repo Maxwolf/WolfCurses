@@ -576,6 +576,65 @@ namespace WolfCurses.Apps.Tests
         }
 
         [Fact]
+        public void AnOpenMenuHangsDirectlyFromTheBarRatherThanFloatingBelowIt()
+        {
+            // Row 1 is the bar and row 2 is the frame's top edge, so the panel's first choice belongs on row 3. An
+            // earlier version started the panel a row lower and left the frame's border showing between the menu
+            // and its own title, which read as the menu floating loose.
+            using var suite = OpenEditor();
+
+            suite.Press(ConsoleKey.F10);
+
+            Assert.Equal(3, RowOf(suite.Screen, "New"));
+        }
+
+        [Fact]
+        public void TheWheelScrollsTheDocumentAndLeavesTheCaretAlone()
+        {
+            // What a wheel means everywhere: you are looking somewhere else, not typing somewhere else.
+            // Asserted on the text rather than on the scrollbar thumb: two notches is six lines of a hundred and
+            // fifteen, which rounds to the same thumb cell. The thumb is a summary, and a summary is the wrong
+            // thing to measure a small movement with.
+            using var suite = OpenEditor();
+            var before = suite.ScreenBelowStatusLine;
+
+            suite.Wheel(10, 20, -2);
+
+            Assert.NotEqual(before, suite.ScreenBelowStatusLine);
+            Assert.Equal((1, 1), ReportedCaret(suite.Screen));
+        }
+
+        [Fact]
+        public void TheWheelScrollsBackUpAndStopsAtTheTop()
+        {
+            using var suite = OpenEditor();
+
+            suite.Wheel(10, 20, -5);
+            var scrolled = IndexOfRowContaining(suite.Screen, '█');
+
+            suite.Wheel(10, 20, 5);
+            Assert.True(IndexOfRowContaining(suite.Screen, '█') < scrolled, "the wheel did not scroll back up");
+
+            // And winding it further up parks at the start rather than running off into empty space.
+            suite.Wheel(10, 20, 50);
+            Assert.Equal(3 + 1, IndexOfRowContaining(suite.Screen, '█'));
+        }
+
+        [Fact]
+        public void TheWheelNeverFiresWhateverAClickWouldHaveDone()
+        {
+            // The reason the wheel is its own kind rather than a button: a wheel record carries a button bit, so
+            // anything treating it as a press acts on every scroll. Here that would move the caret.
+            using var suite = OpenEditor();
+
+            suite.Wheel(3 + 4, 1 + 6, -1);
+            suite.Wheel(3 + 4, 1 + 6, 1);
+
+            Assert.Equal((1, 1), ReportedCaret(suite.Screen));
+            Assert.DoesNotContain("selected", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
         public void EscapeShutsAnOpenMenuRatherThanLeavingTheEditor()
         {
             // The hand-off: AppsWindow claims ESC for every application, but asks the application first, so a menu

@@ -32,6 +32,20 @@ namespace WolfCurses
         Move = 1,
 
         /// <summary>A button came back up.</summary>
-        Release = 2
+        Release = 2,
+
+        /// <summary>
+        ///     The wheel turned. <see cref="MouseEvent.WheelDelta" /> says how far and which way; positive is away
+        ///     from the user, which every platform treats as scrolling up.
+        ///     <para>
+        ///         <b>A kind rather than a button, and that is the whole point.</b> Every protocol encodes a wheel
+        ///         notch as a button press, which is why this library refused wheel records outright for so long: a
+        ///         fire-on-click game would empty its magazine on a scroll. Giving the wheel its own kind removes
+        ///         the hazard at the root instead of leaving it unrepresentable, because nothing that handles a
+        ///         press can now be reached by one. <see cref="MouseButtonEnum" /> still has no wheel member and
+        ///         still should not.
+        ///     </para>
+        /// </summary>
+        Wheel = 3
     }
 }

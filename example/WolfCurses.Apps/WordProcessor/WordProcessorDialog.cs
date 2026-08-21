@@ -38,6 +38,9 @@ namespace WolfCurses.Apps.WordProcessor
         /// <summary>Rows outside this screen: the scene graph's status line above and the input prompt below.</summary>
         private const int ReservedRows = 3;
 
+        /// <summary>Lines the view moves for one notch of the wheel, which is what every other program uses.</summary>
+        private const int WheelLines = 3;
+
         /// <summary>The document being edited.</summary>
         private readonly TextBuffer _buffer = new();
 
@@ -140,6 +143,15 @@ namespace WolfCurses.Apps.WordProcessor
             if (mouse.Kind == MouseEventKindEnum.Press)
             {
                 OnMousePressed(mouse);
+                return;
+            }
+
+            if (mouse.Kind == MouseEventKindEnum.Wheel)
+            {
+                // Scrolls the view and leaves the caret alone, which is what a wheel means everywhere: you are
+                // looking somewhere else, not typing somewhere else. Three lines a notch is the usual step.
+                _viewport.ScrollTo(_viewport.FirstLine - mouse.WheelDelta * WheelLines, _viewport.FirstColumn);
+                _viewport.ClampToDocument(_buffer.LineCount);
                 return;
             }
 
@@ -397,9 +409,9 @@ namespace WolfCurses.Apps.WordProcessor
                 // The bar is the first row this form draws, and the scene graph puts its own status line above it.
                 BarRow = 1,
 
-                // The panel is drawn over the field rather than under the bar, so the frame's top edge sits between
-                // them and the panel's own first row is the field's.
-                PanelRow = FieldTopRow
+                // The panel hangs from the bar and its first row covers the frame's top edge, one above the field.
+                // A menu that started lower would leave the frame's border showing between it and its own title.
+                PanelRow = FieldTopRow - 1
             };
         }
 

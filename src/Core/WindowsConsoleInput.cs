@@ -353,7 +353,29 @@ namespace WolfCurses.Core
         {
             mouse = default;
 
-            if ((eventFlags & (MouseWheeled | MouseHorizontalWheeled)) != 0)
+            // The wheel is settled first and separately, because a wheel record arrives with a button bit set and
+            // would otherwise read as a click. It is reported as its own kind rather than as a button, which is what
+            // makes it safe to report at all; the notch count rides in the HIGH word of the same field the buttons
+            // are in, which is why everything below masks before it compares.
+            if ((eventFlags & MouseWheeled) != 0)
+            {
+                var notches = (short) (buttonState >> 16) / 120;
+                if (notches == 0)
+                    return false;
+
+                var wheelRow = bufferY - windowTop;
+                if (wheelRow < 0 || bufferX < 0)
+                    return false;
+
+                mouse = new MouseEvent(bufferX, wheelRow, MouseButtonEnum.None, Modifiers(controlKeyState),
+                    MouseEventKindEnum.Wheel, notches);
+
+                return true;
+            }
+
+            // The sideways wheel is still refused. Reporting it in the same field as the vertical one would make a
+            // horizontal flick scroll a document up and down, which is worse than it doing nothing.
+            if ((eventFlags & MouseHorizontalWheeled) != 0)
                 return false;
 
             var now = buttonState & 0x1F;
@@ -399,16 +421,30 @@ namespace WolfCurses.Core
             if (row < 0 || bufferX < 0)
                 return false;
 
+            mouse = new MouseEvent(bufferX, row, button, Modifiers(controlKeyState), kind);
+            return true;
+        }
+
+        /// <summary>
+        ///     The modifier keys held during a mouse event. One copy shared by every kind, so a wheel notch and a
+        ///     click cannot come to different conclusions about whether SHIFT was down.
+        /// </summary>
+        /// <param name="controlKeyState">The modifier bits from the record.</param>
+        /// <returns>The modifiers, as the rest of the library spells them.</returns>
+        private static ConsoleModifiers Modifiers(uint controlKeyState)
+        {
             var modifiers = (ConsoleModifiers) 0;
+
             if ((controlKeyState & ShiftPressed) != 0)
                 modifiers |= ConsoleModifiers.Shift;
+
             if ((controlKeyState & (LeftAltPressed | RightAltPressed)) != 0)
                 modifiers |= ConsoleModifiers.Alt;
+
             if ((controlKeyState & (LeftCtrlPressed | RightCtrlPressed)) != 0)
                 modifiers |= ConsoleModifiers.Control;
 
-            mouse = new MouseEvent(bufferX, row, button, modifiers, kind);
-            return true;
+            return modifiers;
         }
 
         /// <summary>Which buffer row is at the top of the window, or zero when that cannot be asked.</summary>

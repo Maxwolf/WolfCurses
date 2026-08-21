@@ -35,15 +35,17 @@ namespace WolfCurses
         /// <param name="row">Cell row, counted from the top of the terminal window.</param>
         /// <param name="button">Which button went down.</param>
         /// <param name="modifiers">Which of shift, alt and control were held.</param>
-        /// <param name="kind">Whether a button went down, the pointer moved, or a button came up.</param>
+        /// <param name="kind">Whether a button went down, the pointer moved, a button came up, or the wheel turned.</param>
+        /// <param name="wheelDelta">How many notches the wheel turned; positive is away from the user.</param>
         public MouseEvent(int column, int row, MouseButtonEnum button, ConsoleModifiers modifiers = 0,
-            MouseEventKindEnum kind = MouseEventKindEnum.Press)
+            MouseEventKindEnum kind = MouseEventKindEnum.Press, int wheelDelta = 0)
         {
             Column = column;
             Row = row;
             Button = button;
             Modifiers = modifiers;
             Kind = kind;
+            WheelDelta = wheelDelta;
         }
 
         /// <summary>Cell column, counted from the left edge of the terminal window.</summary>
@@ -61,6 +63,17 @@ namespace WolfCurses
         ///     and is what keeps code written against the old shape meaning what it meant.
         /// </summary>
         public MouseEventKindEnum Kind { get; }
+
+        /// <summary>
+        ///     How far the wheel turned, in notches, and which way: positive is away from the user, which every
+        ///     platform treats as scrolling up. Zero for every kind that is not
+        ///     <see cref="MouseEventKindEnum.Wheel" />.
+        ///     <para>
+        ///         Notches rather than raw units, because the raw number is a platform detail (Windows counts in
+        ///         120ths of a notch) and every caller would otherwise divide it by the same constant.
+        ///     </para>
+        /// </summary>
+        public int WheelDelta { get; }
 
         /// <summary>
         ///     Which of shift, alt and control were held. The BCL's own <see cref="ConsoleModifiers" /> rather than a

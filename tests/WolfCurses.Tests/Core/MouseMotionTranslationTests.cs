@@ -75,12 +75,57 @@ namespace WolfCurses.Tests.Core
         }
 
         [Fact]
-        public void AWheelNotchIsStillRefusedOutright()
+        public void AWheelNotchIsItsOwnKindAndNeverAButton()
         {
-            // A wheel record arrives with a button bit set and would read as a click. That was true before motion
-            // existed and is the reason MouseButtonEnum has no wheel member; adding kinds must not reopen it.
-            Assert.False(Translate(Left, 0, Wheeled, out _));
-            Assert.False(Translate(0, 0, Wheeled | Moved, out _));
+            // The hazard that kept the wheel out of this library for so long: a wheel record arrives with a button
+            // bit set in the low word, so anything treating it as a press fires on a scroll. Reported as its own
+            // kind with no button, nothing that handles a press can be reached by one.
+            Assert.True(Translate(Notches(1), 0, Wheeled, out var mouse));
+
+            Assert.Equal(MouseEventKindEnum.Wheel, mouse.Kind);
+            Assert.Equal(MouseButtonEnum.None, mouse.Button);
+            Assert.Equal(1, mouse.WheelDelta);
+        }
+
+        [Fact]
+        public void TheWheelReportsWhichWayItTurned()
+        {
+            Assert.True(Translate(Notches(-1), 0, Wheeled, out var down));
+            Assert.Equal(-1, down.WheelDelta);
+
+            Assert.True(Translate(Notches(3), 0, Wheeled, out var fast));
+            Assert.Equal(3, fast.WheelDelta);
+        }
+
+        [Fact]
+        public void TheWheelIsCountedInNotchesRatherThanRawUnits()
+        {
+            // Windows counts in 120ths of a notch. Dividing here rather than in every caller is the difference
+            // between one constant and the same constant repeated everywhere.
+            Assert.True(Translate(Notches(1), 0, Wheeled, out var mouse));
+
+            Assert.Equal(1, mouse.WheelDelta);
+            Assert.NotEqual(120, mouse.WheelDelta);
+        }
+
+        [Fact]
+        public void AWheelRecordCarryingNoNotchesIsNotAnEvent()
+        {
+            Assert.False(Translate(0, 0, Wheeled, out _));
+        }
+
+        [Fact]
+        public void TheSidewaysWheelIsStillRefused()
+        {
+            // Reported in the same field as the vertical one, a horizontal flick would scroll a document up and
+            // down, which is worse than it doing nothing at all.
+            Assert.False(Translate(Notches(1), 0, 0x0008, out _));
+        }
+
+        /// <summary>A wheel record's notch count, which rides in the high word of the button field.</summary>
+        private static uint Notches(int count)
+        {
+            return unchecked((uint) (count * 120 << 16));
         }
 
         [Fact]
