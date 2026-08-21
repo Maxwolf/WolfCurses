@@ -113,7 +113,7 @@ Every widget takes colours and ramps, and colour is entirely opt-in: with styles
 
 **[Input](https://github.com/Maxwolf/WolfCurses#input).** Mouse support is opt-in through `AnsiConsole.EnableMouse()` and Windows-only for now; presses, releases, wheel notches and (with a further opt-in) pointer motion, which is what click-and-drag is built from. `HeldAxis` recovers a held direction from the burst of presses a terminal actually delivers, since a terminal never reports a key being let go.
 
-**[Editable text](https://github.com/Maxwolf/WolfCurses#editable-documents).** `TextBuffer`, `TextViewport` and `TabStops` in `WolfCurses.Documents` are a document, the window onto it and the translation between where a character is stored and where it is drawn, so an editor-shaped screen does not start by writing all three. `MenuBar` and `ScrollBar` are the pull-down bar and the bar down the side.
+**[Editable text](https://github.com/Maxwolf/WolfCurses#editable-documents).** `TextBuffer`, `TextViewport`, `TabStops` and `ControlPictures` in `WolfCurses.Documents` are a document, the window onto it, and the two halves of the translation between where a character is stored and where it is drawn, so an editor-shaped screen does not start by writing all four. The last of those is the one nobody expects: a terminal obeys a control character rather than drawing it, and a form feed used as a page break moves the cursor mid-row. `MenuBar` and `ScrollBar` are the pull-down bar and the bar down the side.
 
 **Real-time screens.** `IntervalTimer` paces anything that moves on its own, off the system tick rather than the once-a-second simulation tick. A late period is dropped rather than banked, so a slow frame is never repaid as a burst of instant ones.
 

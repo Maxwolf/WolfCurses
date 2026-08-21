@@ -25,7 +25,9 @@ namespace WolfCurses.Documents
     ///         most likely to be editing.
     ///     </para>
     ///     <para>
-    ///         Tabs are the case handled here and the case that matters for a terminal document. Characters that are
+    ///         Tabs are the case handled here, and they are only half of turning a stored line into a printable
+    ///         one: every other control character a file contains is <i>obeyed</i> by a terminal rather than drawn,
+    ///         which is <see cref="ControlPictures" />. Characters that are
     ///         two columns wide (most CJK) or zero (combining marks) are the same class of problem and are
     ///         deliberately <b>not</b> solved: doing them properly needs a width table, and pretending otherwise
     ///         would be worse than the honest limitation.

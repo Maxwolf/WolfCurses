@@ -92,7 +92,13 @@ namespace WolfCurses.Apps.WordProcessor
             // the indented lines somebody is most likely to be editing.
             var highlightStart = TabStops.ToDisplayColumn(stored, documentStart, buffer.TabWidth);
             var highlightEnd = TabStops.ToDisplayColumn(stored, documentEnd, buffer.TabWidth);
-            var line = TabStops.Expand(stored, buffer.TabWidth);
+
+            // Both halves of turning a stored line into a drawable one, and the second is the one that is easy to
+            // leave out. Tabs are the control character everybody thinks of; a real text file also carries form
+            // feeds as page breaks, and a form feed written to a console is obeyed rather than drawn, so it moves
+            // the cursor down part way through writing a row and everything after it lands on the row below. The
+            // substitution is one character for one, which is why the column arithmetic above still holds.
+            var line = ControlPictures.Replace(TabStops.Expand(stored, buffer.TabWidth));
 
             // Padded to cover the whole row before anything is clipped, so the caret has a cell to sit in past the
             // end of the text and the field colour reaches the frame on the right.

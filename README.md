@@ -253,6 +253,17 @@ FileDialog.OpenFile(SimUnit, startDirectory: "C:\\", extensions: new[] { ".jpg",
 
 All of them ship inside the library and are discovered automatically. (If you override `AllowedWindows` to curate your window list, include the ones you use.)
 
+## Editable documents
+
+`WolfCurses.Documents` is what an editor-shaped screen would otherwise start by writing. The input buffer is append-only with no caret, which is right for a command prompt and useless for anything you can move around inside.
+
+- **`TextBuffer`** holds the lines, the caret and the selection. Vertical movement remembers the column it started in, so walking down through a short line and back does not drag the caret in with it. The file's line ending is remembered rather than normalized, so opening a file and saving it untouched gives back the same bytes.
+- **`TextViewport`** is the scrolling window onto it: `EnsureVisible` scrolls the least it can and reports whether it moved, `ToDocument` turns a click into a position, and `TryToScreen` says when a position is not on screen at all.
+- **`TabStops`** translates between where a character is stored and where it is drawn. A tab advances to the next stop; it is not a fixed number of spaces, and treating it as one misaligns every table from its second row on.
+- **`ControlPictures`** is the other half of that translation and the half that is easy to miss. A terminal does not *draw* a control character, it obeys it: a form feed, which text files have used as a page break for fifty years, moves the cursor down a row part way through writing one, and everything after it lands on the line below. Substituting one visible character for one keeps every column, caret and hit test exactly where it was. It applies to drawing only, so a page break still survives being opened and saved again.
+
+`MenuBar` and `ScrollBar` are the pull-down bar across the top and the bar down the side, both of which keep their layout so that what is drawn and what a click lands on cannot disagree.
+
 ## Input
 
 - **Keys arrive as you'd expect.** ENTER submits the typed command, BACKSPACE edits it, everything else both fills the prompt and reaches the focused form.
