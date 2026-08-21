@@ -34,9 +34,9 @@ Five pieces of it are in the library rather than here, which is the point of the
 
 A program in an editor, and the screen it draws on when you run it. **F5 runs**, ESC stops a running program and goes back to the listing, ESC again leaves; F3 opens another `.bas` from disk.
 
-The language covers expressions with BASIC's own precedence, variables and arrays, `PRINT` with its layout punctuation, `INPUT`, `IF` in both forms with `ELSEIF`, `FOR`/`NEXT` with `STEP`, `WHILE`/`WEND`, all four shapes of `DO`/`LOOP`, `SELECT CASE` with `IS` and `TO`, `GOTO`/`GOSUB`/`RETURN`, `DIM`, and the usual string and maths functions. Errors name the line they happened on. `SUB` and `FUNCTION`, graphics and sound are not there yet.
+The language covers expressions with BASIC's own precedence, variables and arrays, `PRINT` with its layout punctuation, `INPUT`, `IF` in both forms with `ELSEIF`, `FOR`/`NEXT` with `STEP`, `WHILE`/`WEND`, all four shapes of `DO`/`LOOP`, `SELECT CASE` with `IS` and `TO`, `GOTO`/`GOSUB`/`RETURN`, `DIM`, `SUB` and `FUNCTION` with `SHARED` and recursion, and the usual string and maths functions. Errors name the line they happened on. Graphics and sound are not there yet.
 
-Three sample programs ship, all written for this repository: `welcome.bas` walks through the language, `greet.bas` asks questions, `shapes.bas` draws with `LOCATE`. **The QBasic samples everybody remembers are Microsoft's** and carry no redistribution licence, so they are not included; open your own copy with F3.
+Four sample programs ship, all written for this repository: `welcome.bas` walks through the language, `greet.bas` asks questions, `shapes.bas` draws with `LOCATE`, and `procedures.bas` shows SUBs, FUNCTIONs and recursion. **The QBasic samples everybody remembers are Microsoft's** and carry no redistribution licence, so they are not included; open your own copy with F3.
 
 ## Planned
 

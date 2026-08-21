@@ -1,6 +1,7 @@
 // Created by Maxwolf (bigmaxwolf.com)
 // Timestamp 08/21/2026
 
+using System;
 using System.Collections.Generic;
 
 namespace WolfCurses.Apps.Basic
@@ -26,10 +27,16 @@ namespace WolfCurses.Apps.Basic
 
         /// <summary>Initializes a new instance of the <see cref="BasicProgram" /> class.</summary>
         /// <param name="statements">The compiled statements.</param>
-        public BasicProgram(IReadOnlyList<BasicStatement> statements)
+        /// <param name="procedures">The SUBs and FUNCTIONs it declared.</param>
+        public BasicProgram(IReadOnlyList<BasicStatement> statements,
+            IReadOnlyDictionary<string, BasicProcedure> procedures = null)
         {
             _statements = statements;
+            Procedures = procedures ?? new Dictionary<string, BasicProcedure>(StringComparer.Ordinal);
         }
+
+        /// <summary>The SUBs and FUNCTIONs it declared, by name.</summary>
+        public IReadOnlyDictionary<string, BasicProcedure> Procedures { get; }
 
         /// <summary>How many statements it compiled to, which is not how many lines were written.</summary>
         public int Count => _statements.Count;
@@ -68,6 +75,8 @@ namespace WolfCurses.Apps.Basic
         /// <returns>Where it got to; past the end when the program finished.</returns>
         public int Step(BasicRuntime runtime, int index, int budget)
         {
+            Attach(runtime);
+
             for (var spent = 0; spent < budget && IsRunning(index); spent++)
                 index = _statements[index].Execute(runtime, index);
 
@@ -86,6 +95,7 @@ namespace WolfCurses.Apps.Basic
         /// <param name="maxSteps">The most statements to run before giving up.</param>
         public void Run(BasicRuntime runtime, int maxSteps = 2000000)
         {
+            Attach(runtime);
             var index = 0;
 
             for (var spent = 0; spent < maxSteps; spent++)
@@ -97,6 +107,17 @@ namespace WolfCurses.Apps.Basic
             }
 
             throw new BasicError("The program ran for too long without stopping", LineAt(index));
+        }
+
+        /// <summary>
+        ///     Tells the runtime which program it is running, which a FUNCTION call in the middle of an expression
+        ///     needs: it has to run the body it is calling, and an expression has no other way to reach it.
+        /// </summary>
+        /// <param name="runtime">The running program's state.</param>
+        private void Attach(BasicRuntime runtime)
+        {
+            runtime.Program = this;
+            runtime.Procedures = Procedures;
         }
     }
 }

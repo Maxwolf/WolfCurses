@@ -30,6 +30,9 @@ namespace WolfCurses.Apps.Basic
         /// <summary>Where each label and line number ended up.</summary>
         private readonly Dictionary<string, int> _labels = new(StringComparer.Ordinal);
 
+        /// <summary>The SUBs and FUNCTIONs the program declared.</summary>
+        private readonly Dictionary<string, BasicProcedure> _procedures = new(StringComparer.Ordinal);
+
         /// <summary>Jumps whose target was a name that had not been seen yet.</summary>
         private readonly List<PendingJump> _pending = new();
 
@@ -79,7 +82,7 @@ namespace WolfCurses.Apps.Basic
                 throw new BasicError("Missing " + _blocks[_blocks.Count - 1].Closer, _blocks[_blocks.Count - 1].Line);
 
             ResolveJumps();
-            return new BasicProgram(_statements);
+            return new BasicProgram(_statements, _procedures);
         }
 
         /// <summary>Reads one physical line: its number or label, then the statements on it.</summary>
@@ -185,6 +188,34 @@ namespace WolfCurses.Apps.Basic
                     _at++;
                     ParseWend(token.Line);
                     return;
+                case "SUB":
+                    _at++;
+                    ParseProcedure(token.Line, false);
+                    return;
+                case "FUNCTION":
+                    _at++;
+                    ParseProcedure(token.Line, true);
+                    return;
+                case "SHARED":
+                    _at++;
+                    ParseShared(token.Line);
+                    return;
+                case "CALL":
+                    _at++;
+                    ParseCall(token.Line);
+                    return;
+                case "EXIT":
+                    _at++;
+                    ParseExit(token.Line);
+                    return;
+                case "DECLARE":
+                    // QBasic writes DECLARE lines at the top of a saved file. Nothing here needs them, because a
+                    // call is resolved when it runs rather than when it is read, so the whole line is skipped
+                    // instead of being an error in somebody's own listing.
+                    while (Current.Kind is not (BasicTokenKindEnum.EndOfLine or BasicTokenKindEnum.EndOfFile))
+                        _at++;
+
+                    return;
                 case "SELECT":
                     _at++;
                     ParseSelect(token.Line);
@@ -236,6 +267,13 @@ namespace WolfCurses.Apps.Basic
                         return;
                     }
 
+                    if (Current.IsWord("SUB") || Current.IsWord("FUNCTION"))
+                    {
+                        _at++;
+                        ParseEndProcedure(token.Line);
+                        return;
+                    }
+
                     Emit(new BasicCommandStatement("END", Array.Empty<BasicExpression>(), token.Line));
                     return;
                 case "CLS":
@@ -248,7 +286,7 @@ namespace WolfCurses.Apps.Basic
                     Emit(new BasicCommandStatement(token.Text, ParseArgumentList(), token.Line));
                     return;
                 default:
-                    ParseAssignment();
+                    ParseAssignmentOrCall();
                     return;
             }
         }
@@ -275,7 +313,7 @@ namespace WolfCurses.Apps.Basic
             return _statements.Count - 1;
         }
 
-        /// <summary>Reads an assignment, with or without subscripts on the left.</summary>
+        /// <summary>Reads an assignment, insisting on one.</summary>
         private void ParseAssignment()
         {
             var token = Current;
@@ -286,6 +324,194 @@ namespace WolfCurses.Apps.Basic
 
             _at++;
             Emit(new BasicAssignStatement(target, ParseExpression(), token.Line));
+        }
+
+        /// <summary>
+        ///     Reads a statement that starts with a plain name, which is either an assignment or a call to a SUB
+        ///     written without CALL in front of it.
+        ///     <para>
+        ///         <b>Which one it is cannot be known until the equals sign is or is not there.</b> Not even the
+        ///         declarations help, because a program may call a SUB above the line that declares it. So the name
+        ///         and any bracket are read first and the decision is made afterwards, which also means
+        ///         <c>Foo(1, 2)</c> with no equals sign is a call whose arguments merely looked like subscripts.
+        ///     </para>
+        /// </summary>
+        private void ParseAssignmentOrCall()
+        {
+            var token = Current;
+            var target = ParseTarget();
+
+            if (Current.IsSymbol("="))
+            {
+                _at++;
+                Emit(new BasicAssignStatement(target, ParseExpression(), token.Line));
+                return;
+            }
+
+            var arguments = target.Subscripts ?? ParseCallArguments();
+            Emit(new BasicCallStatement(target.Name, arguments, token.Line));
+        }
+
+        /// <summary>Reads the comma separated arguments of a call written without brackets.</summary>
+        private List<BasicExpression> ParseCallArguments()
+        {
+            var arguments = new List<BasicExpression>();
+
+            while (!AtStatementEnd())
+            {
+                arguments.Add(ParseExpression());
+
+                if (!Current.IsSymbol(","))
+                    break;
+
+                _at++;
+            }
+
+            return arguments;
+        }
+
+        /// <summary>Reads a SUB or FUNCTION declaration and jumps the program over its body.</summary>
+        private void ParseProcedure(int line, bool isFunction)
+        {
+            foreach (var block in _blocks)
+            {
+                if (block.Kind == BlockKindEnum.Procedure)
+                    throw new BasicError("A SUB or FUNCTION cannot be declared inside another", line);
+            }
+
+            var name = Current;
+            if (name.Kind != BasicTokenKindEnum.Word)
+                throw new BasicError("Expected a name after SUB or FUNCTION", line);
+
+            _at++;
+
+            var parameters = new List<string>();
+            if (Current.IsSymbol("("))
+            {
+                _at++;
+
+                while (!Current.IsSymbol(")"))
+                {
+                    if (Current.Kind != BasicTokenKindEnum.Word)
+                        throw new BasicError("Expected a parameter name", line);
+
+                    parameters.Add(Current.Text);
+                    _at++;
+
+                    if (!Current.IsSymbol(","))
+                        break;
+
+                    _at++;
+                }
+
+                if (!Current.IsSymbol(")"))
+                    throw new BasicError("Expected )", line);
+
+                _at++;
+            }
+
+            if (_procedures.ContainsKey(name.Text))
+                throw new BasicError("There is already a SUB or FUNCTION called " + name.Text, line);
+
+            var procedure = new BasicProcedure(name.Text, isFunction, parameters, line);
+            _procedures[name.Text] = procedure;
+
+            // The body sits in the same list as everything else, so the program has to be jumped over it or it
+            // would simply run into the procedure on its way down the listing.
+            var skip = new BasicJumpStatement(null, true, line);
+            Emit(skip);
+
+            procedure.BodyIndex = _statements.Count;
+            _blocks.Add(Block.Declaration(procedure, skip, line));
+        }
+
+        /// <summary>Reads END SUB or END FUNCTION.</summary>
+        private void ParseEndProcedure(int line)
+        {
+            var block = Open(BlockKindEnum.Procedure, line);
+
+            // Every EXIT lands on the return rather than past it, so leaving early and falling off the end do the
+            // same thing: throw the locals away and go back to the caller.
+            var returnIndex = Emit(new BasicReturnFromProcedureStatement(line));
+
+            foreach (var exit in block.Exits)
+                exit.Target = returnIndex;
+
+            block.Pending.Target = _statements.Count;
+            _blocks.RemoveAt(_blocks.Count - 1);
+        }
+
+        /// <summary>Reads SHARED.</summary>
+        private void ParseShared(int line)
+        {
+            var names = new List<string>();
+
+            while (Current.Kind == BasicTokenKindEnum.Word)
+            {
+                names.Add(Current.Text);
+                _at++;
+
+                // An array is shared by writing its name with an empty bracket, which names the array rather than
+                // an element of it.
+                if (Current.IsSymbol("("))
+                {
+                    _at++;
+
+                    if (Current.IsSymbol(")"))
+                        _at++;
+                }
+
+                if (!Current.IsSymbol(","))
+                    break;
+
+                _at++;
+            }
+
+            if (names.Count == 0)
+                throw new BasicError("Expected a name after SHARED", line);
+
+            Emit(new BasicSharedStatement(names, line));
+        }
+
+        /// <summary>Reads CALL.</summary>
+        private void ParseCall(int line)
+        {
+            var name = Current;
+            if (name.Kind != BasicTokenKindEnum.Word)
+                throw new BasicError("Expected a name after CALL", line);
+
+            _at++;
+
+            var arguments = Current.IsSymbol("(")
+                ? ParseBracketedList(line)
+                : ParseCallArguments();
+
+            Emit(new BasicCallStatement(name.Text, arguments, line));
+        }
+
+        /// <summary>Reads EXIT SUB and EXIT FUNCTION.</summary>
+        private void ParseExit(int line)
+        {
+            if (!Current.IsWord("SUB") && !Current.IsWord("FUNCTION"))
+                throw new BasicError("Only EXIT SUB and EXIT FUNCTION are supported", line);
+
+            _at++;
+
+            for (var i = _blocks.Count - 1; i >= 0; i--)
+            {
+                if (_blocks[i].Kind != BlockKindEnum.Procedure)
+                    continue;
+
+                // Aimed at the procedure's own return even from inside a loop in it, which is why leaving unwinds
+                // whatever the procedure had open rather than assuming it had nothing.
+                var jump = new BasicJumpStatement(null, true, line);
+                Emit(jump);
+                _blocks[i].Exits.Add(jump);
+
+                return;
+            }
+
+            throw new BasicError("EXIT SUB is only meaningful inside a SUB or FUNCTION", line);
         }
 
         /// <summary>Reads somewhere a value can be put.</summary>
@@ -864,6 +1090,7 @@ namespace WolfCurses.Apps.Basic
                     BlockKindEnum.While => "WEND without WHILE",
                     BlockKindEnum.Do => "LOOP without DO",
                     BlockKindEnum.Select => "CASE without SELECT CASE",
+                    BlockKindEnum.Procedure => "END SUB or END FUNCTION without SUB or FUNCTION",
                     _ => "ELSE or END IF without IF"
                 }, line);
             }
@@ -1108,7 +1335,10 @@ namespace WolfCurses.Apps.Basic
             Do,
 
             /// <summary>A SELECT CASE waiting for its END SELECT.</summary>
-            Select
+            Select,
+
+            /// <summary>A SUB or FUNCTION waiting for its END.</summary>
+            Procedure
         }
 
         /// <summary>A block the parser is inside, and the jumps that still need pointing somewhere.</summary>
@@ -1125,6 +1355,9 @@ namespace WolfCurses.Apps.Basic
 
             /// <summary>The FOR statement, when this is a FOR.</summary>
             public BasicForStatement Loop { get; private init; }
+
+            /// <summary>The procedure being declared, when this is one.</summary>
+            public BasicProcedure Procedure { get; private init; }
 
             /// <summary>The jump waiting to be told where the current arm ends.</summary>
             public BasicJumpStatement Pending { get; set; }
@@ -1145,6 +1378,7 @@ namespace WolfCurses.Apps.Basic
                 BlockKindEnum.For => "NEXT",
                 BlockKindEnum.While => "WEND",
                 BlockKindEnum.Select => "END SELECT",
+                BlockKindEnum.Procedure => Procedure != null && Procedure.IsFunction ? "END FUNCTION" : "END SUB",
                 _ => "LOOP"
             };
 
@@ -1176,6 +1410,15 @@ namespace WolfCurses.Apps.Basic
             public static Block Select(int line)
             {
                 return new Block {Kind = BlockKindEnum.Select, Line = line};
+            }
+
+            /// <summary>An open SUB or FUNCTION, with the jump that carries the program over its body.</summary>
+            public static Block Declaration(BasicProcedure procedure, BasicJumpStatement skip, int line)
+            {
+                return new Block
+                {
+                    Kind = BlockKindEnum.Procedure, Procedure = procedure, Pending = skip, Line = line
+                };
             }
         }
 

@@ -15,8 +15,11 @@ namespace WolfCurses.Apps.Basic
         /// <summary>The dimensioned arrays.</summary>
         private readonly Dictionary<string, BasicArray> _arrays = new(StringComparer.Ordinal);
 
-        /// <summary>The plain variables.</summary>
+        /// <summary>The plain variables belonging to the program itself.</summary>
         private readonly Dictionary<string, BasicValue> _variables = new(StringComparer.Ordinal);
+
+        /// <summary>The procedures currently running, innermost on top.</summary>
+        private readonly Stack<BasicScope> _scopes = new();
 
         /// <summary>Initializes a new instance of the <see cref="BasicRuntime" /> class.</summary>
         /// <param name="host">The screen the program talks to.</param>
@@ -58,6 +61,133 @@ namespace WolfCurses.Apps.Basic
         /// <summary>When the program started, which is what TIMER counts from.</summary>
         public DateTime StartedAt { get; }
 
+        /// <summary>The procedure currently running, or null when the program itself is.</summary>
+        public BasicScope CurrentScope => _scopes.Count > 0 ? _scopes.Peek() : null;
+
+        /// <summary>The declared procedures, which the program hands over before it runs.</summary>
+        public IReadOnlyDictionary<string, BasicProcedure> Procedures { get; set; }
+
+        /// <summary>
+        ///     The program being run, which a FUNCTION call in the middle of an expression needs in order to run
+        ///     the body it is calling.
+        /// </summary>
+        public BasicProgram Program { get; set; }
+
+        /// <summary>
+        ///     How deeply calls may nest before it is called a mistake. A cap rather than nothing, because a
+        ///     function that calls itself without a way out would otherwise take the whole process down with a stack
+        ///     overflow, which cannot be caught and reported the way a BASIC error can.
+        /// </summary>
+        public const int MaxCallDepth = 128;
+
+        /// <summary>The procedure of a given name, or null.</summary>
+        /// <param name="name">The name, uppercased.</param>
+        /// <returns>The procedure, or null.</returns>
+        public BasicProcedure FindProcedure(string name)
+        {
+            return Procedures != null && Procedures.TryGetValue(name, out var found) ? found : null;
+        }
+
+        /// <summary>
+        ///     Works the arguments out <b>before</b> the new scope exists, which is the whole of passing them: they
+        ///     mean what they mean where they were written, not in the procedure about to receive them.
+        /// </summary>
+        /// <param name="procedure">What is being called.</param>
+        /// <param name="arguments">The expressions written at the call.</param>
+        /// <param name="runtime">The running program, still in the caller's scope.</param>
+        /// <param name="line">The line to blame.</param>
+        /// <returns>The values to bind.</returns>
+        public static IReadOnlyList<BasicValue> Bind(BasicProcedure procedure,
+            IReadOnlyList<BasicExpression> arguments, BasicRuntime runtime, int line)
+        {
+            if (arguments.Count > procedure.Parameters.Count)
+                throw new BasicError("Too many arguments to " + procedure.Name, line);
+
+            var values = new List<BasicValue>(arguments.Count);
+            foreach (var argument in arguments)
+                values.Add(argument.Evaluate(runtime));
+
+            for (var i = 0; i < values.Count; i++)
+            {
+                // The parameter's own name says whether it is a string, exactly as a variable's does, so passing a
+                // number where a name ends in a dollar is caught here rather than somewhere inside the body.
+                if (IsStringName(procedure.Parameters[i]) != values[i].IsString)
+                    throw new BasicError("Type mismatch in argument " + (i + 1) + " of " + procedure.Name, line);
+            }
+
+            return values;
+        }
+
+        /// <summary>Starts a procedure: fresh locals, with the arguments already bound into them.</summary>
+        /// <param name="procedure">What is being called.</param>
+        /// <param name="arguments">The values to bind.</param>
+        /// <param name="returnTo">Where to carry on afterwards.</param>
+        /// <param name="line">The line to blame.</param>
+        /// <returns>The scope that was pushed.</returns>
+        public BasicScope EnterProcedure(BasicProcedure procedure, IReadOnlyList<BasicValue> arguments, int returnTo,
+            int line)
+        {
+            if (_scopes.Count >= MaxCallDepth)
+                throw new BasicError("Too many nested calls to " + procedure.Name, line);
+
+            var scope = new BasicScope(procedure, returnTo)
+            {
+                LoopDepth = Loops.Count,
+                SelectDepth = SelectValues.Count
+            };
+
+            for (var i = 0; i < procedure.Parameters.Count; i++)
+            {
+                var name = procedure.Parameters[i];
+
+                // A parameter the caller left out is not an error, it is simply unset, which is the same rule every
+                // other BASIC variable follows.
+                scope.Variables[name] = i < arguments.Count
+                    ? arguments[i]
+                    : IsStringName(name) ? BasicValue.EmptyString : BasicValue.Zero;
+            }
+
+            _scopes.Push(scope);
+            return scope;
+        }
+
+        /// <summary>Finishes a procedure and throws its locals away.</summary>
+        /// <returns>The scope that was popped.</returns>
+        public BasicScope LeaveProcedure()
+        {
+            if (_scopes.Count == 0)
+                return null;
+
+            var scope = _scopes.Pop();
+
+            // Anything the procedure left open goes with it. EXIT SUB out of a FOR loop is ordinary BASIC, and a
+            // frame left behind would be stepped by the next NEXT anywhere in the program.
+            while (Loops.Count > scope.LoopDepth)
+                Loops.Pop();
+
+            while (SelectValues.Count > scope.SelectDepth)
+                SelectValues.Pop();
+
+            return scope;
+        }
+
+        /// <summary>
+        ///     Which set of variables a name means here: the procedure's own, or the program's when there is no
+        ///     procedure running or the name has been SHARED out of it.
+        /// </summary>
+        private Dictionary<string, BasicValue> VariablesFor(string name)
+        {
+            var scope = CurrentScope;
+            return scope == null || scope.IsShared(name) ? _variables : scope.Variables;
+        }
+
+        /// <summary>The same question for arrays, answered the same way.</summary>
+        private Dictionary<string, BasicArray> ArraysFor(string name)
+        {
+            var scope = CurrentScope;
+            return scope == null || scope.IsShared(name) ? _arrays : scope.Arrays;
+        }
+
         /// <summary>Whether a name means a string, which in BASIC is a fact about the name itself.</summary>
         /// <param name="name">The variable name.</param>
         /// <returns>TRUE when it is a string variable.</returns>
@@ -74,7 +204,7 @@ namespace WolfCurses.Apps.Basic
         /// <returns>Its value.</returns>
         public BasicValue Read(string name)
         {
-            if (_variables.TryGetValue(name, out var value))
+            if (VariablesFor(name).TryGetValue(name, out var value))
                 return value;
 
             return IsStringName(name) ? BasicValue.EmptyString : BasicValue.Zero;
@@ -89,7 +219,7 @@ namespace WolfCurses.Apps.Basic
             if (IsStringName(name) != value.IsString)
                 throw new BasicError("Type mismatch assigning to " + name, line);
 
-            _variables[name] = value;
+            VariablesFor(name)[name] = value;
         }
 
         /// <summary>Whether a name has been dimensioned as an array.</summary>
@@ -97,7 +227,7 @@ namespace WolfCurses.Apps.Basic
         /// <returns>TRUE when it is an array.</returns>
         public bool IsArray(string name)
         {
-            return _arrays.ContainsKey(name);
+            return ArraysFor(name).ContainsKey(name);
         }
 
         /// <summary>Dimensions an array, replacing any previous one of that name.</summary>
@@ -112,7 +242,7 @@ namespace WolfCurses.Apps.Basic
                     throw new BasicError("Subscript out of range", line);
             }
 
-            _arrays[name] = new BasicArray(upperBounds, IsStringName(name));
+            ArraysFor(name)[name] = new BasicArray(upperBounds, IsStringName(name));
         }
 
         /// <summary>Reads an array element.</summary>
@@ -122,7 +252,7 @@ namespace WolfCurses.Apps.Basic
         /// <returns>The element.</returns>
         public BasicValue ReadElement(string name, int[] subscripts, int line)
         {
-            if (!_arrays.TryGetValue(name, out var array))
+            if (!ArraysFor(name).TryGetValue(name, out var array))
                 throw new BasicError("Array " + name + " has not been dimensioned", line);
 
             return array.Read(subscripts, line);
@@ -135,7 +265,7 @@ namespace WolfCurses.Apps.Basic
         /// <param name="line">The line to blame.</param>
         public void WriteElement(string name, int[] subscripts, BasicValue value, int line)
         {
-            if (!_arrays.TryGetValue(name, out var array))
+            if (!ArraysFor(name).TryGetValue(name, out var array))
                 throw new BasicError("Array " + name + " has not been dimensioned", line);
 
             if (IsStringName(name) != value.IsString)

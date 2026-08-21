@@ -14,6 +14,13 @@ namespace WolfCurses.Apps.Basic
         /// <summary>The subscripts, or null for a plain variable.</summary>
         private readonly IReadOnlyList<BasicExpression> _subscripts;
 
+        /// <summary>
+        ///     The subscripts as written, or null. Read by the parser, because <c>Foo(1, 2)</c> with no equals sign
+        ///     after it is not an array element at all: it is a call, and what looked like subscripts are its
+        ///     arguments. Nothing can tell the two apart until the equals sign is or is not there.
+        /// </summary>
+        public IReadOnlyList<BasicExpression> Subscripts => _subscripts;
+
         /// <summary>Initializes a new instance of the <see cref="BasicTarget" /> class.</summary>
         /// <param name="name">The variable or array name, uppercased.</param>
         /// <param name="subscripts">The subscripts, or null for a plain variable.</param>
