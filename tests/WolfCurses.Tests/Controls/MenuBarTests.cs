@@ -87,6 +87,88 @@ namespace WolfCurses.Tests.Controls
             Assert.Equal(new[] {"open"}, ran);
         }
 
+        /// <summary>
+        ///     A two entry Edit menu whose second entry can be switched off, so the same entry can be drawn both
+        ///     ways and the two compared. The first is always usable, which keeps the highlight in the same place
+        ///     either way and out of the comparison.
+        /// </summary>
+        private static MenuBar EditBar(bool cutEnabled, TextStyle? disabled)
+        {
+            return new MenuBar(
+                new MenuBarMenu("Edit",
+                    new MenuBarEntry("Select All", () => { }),
+                    new MenuBarEntry("Cut", () => { }) {EnabledWhen = () => cutEnabled}))
+            {
+                BarRow = 0,
+                ColorMode = AnsiColorModeEnum.Palette256,
+                PanelStyle = new TextStyle(ConsoleColor.Black, ConsoleColor.Gray),
+                DisabledStyle = disabled
+            };
+        }
+
+        /// <summary>The drawn row carrying a label, escapes and all.</summary>
+        private static string EntryRow(MenuBar bar, string label)
+        {
+            var rows = bar.Render(60).Split('\n');
+            var found = Array.Find(rows, row => StripSgr(row).Contains(label, StringComparison.Ordinal));
+
+            Assert.True(found != null, "no row was drawn carrying \"" + label + "\"");
+            return found;
+        }
+
+        [Fact]
+        public void AnEntryThatCannotBeChosenIsDrawnGreyed()
+        {
+            var grey = new TextStyle(ConsoleColor.DarkGray, ConsoleColor.Gray);
+
+            var live = EditBar(true, grey);
+            live.Open(0);
+
+            var dead = EditBar(false, grey);
+            dead.Open(0);
+
+            // Same menu, same entry, same everything but the predicate. Without a difference here the predicate is
+            // invisible: the entry refuses the pointer, refuses the arrows and does nothing when clicked, with
+            // nothing on screen saying why, which reads as a broken menu rather than as a greyed entry.
+            Assert.NotEqual(EntryRow(live, "Cut"), EntryRow(dead, "Cut"));
+
+            Assert.Contains(grey.OpenSequence(AnsiColorModeEnum.Palette256), EntryRow(dead, "Cut"),
+                StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void WithNoDisabledStyleADeadEntryIsPaintedLikeTheRestOfThePanel()
+        {
+            var live = EditBar(true, null);
+            live.Open(0);
+
+            var dead = EditBar(false, null);
+            dead.Open(0);
+
+            // The compatibility half, and the reason the property is nullable while its siblings are not. Unset
+            // means "not specified" and falls back to the panel's own style, so a bar that never asked for this
+            // draws exactly what it drew before it existed. An empty style would instead paint the entry with no
+            // style at all, punching a hole in a panel that has a background.
+            Assert.Equal(EntryRow(live, "Cut"), EntryRow(dead, "Cut"));
+        }
+
+        [Fact]
+        public void WhatIsDrawnGreyedIsExactlyWhatCannotBeChosen()
+        {
+            var grey = new TextStyle(ConsoleColor.DarkGray, ConsoleColor.Gray);
+            var bar = EditBar(false, grey);
+            bar.Open(0);
+
+            var rows = bar.Render(60).Split('\n');
+            var cut = Array.FindIndex(rows, row => StripSgr(row).Contains("Cut", StringComparison.Ordinal));
+
+            // The greying and the behaviour read the same IsSelectable, so they cannot drift apart: a row drawn
+            // dead must also refuse the hit test and refuse the hover.
+            Assert.Equal(-1, bar.EntryAt(cut, 3));
+            Assert.False(bar.HandleMouseMove(cut, 3));
+            Assert.Equal(0, bar.HighlightIndex);
+        }
+
         [Fact]
         public void HoveringAnEntryMovesTheHighlightOntoIt()
         {

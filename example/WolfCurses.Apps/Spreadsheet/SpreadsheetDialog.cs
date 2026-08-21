@@ -970,6 +970,11 @@ namespace WolfCurses.Apps.Spreadsheet
                 PanelStyle = DosTheme.MenuPanel,
                 PanelHighlightStyle = DosTheme.MenuHighlight,
 
+                // Without this the EnabledWhen predicates above are invisible: an entry that is switched off draws
+                // exactly like a live one and simply refuses to answer, which reads as a broken menu rather than
+                // as a greyed entry.
+                DisabledStyle = DosTheme.MenuDisabled,
+
                 // The square root sign is what an MS-DOS editor ticked a menu entry with, and the console's own
                 // code page is where that glyph came from.
                 CheckMark = '\u221A',

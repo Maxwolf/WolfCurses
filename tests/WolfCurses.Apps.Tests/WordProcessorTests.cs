@@ -34,6 +34,27 @@ namespace WolfCurses.Apps.Tests
         }
 
         [Fact]
+        public void HoveringAnEntryThatCannotBeUsedLeavesTheHighlightAlone()
+        {
+            using var suite = OpenEditor();
+
+            suite.Press(ConsoleKey.E, ConsoleModifiers.Alt);
+
+            var rows = suite.Screen.Split('\n');
+            var cut = Array.FindIndex(rows, row => row.Contains("Cut", StringComparison.Ordinal));
+
+            Assert.True(cut > 0, "the Edit menu did not open:" + "\n" + suite.Describe());
+
+            suite.MoveMouse(cut, rows[cut].IndexOf("Cut", StringComparison.Ordinal));
+            suite.Press(ConsoleKey.Enter);
+
+            // Nothing is selected, so Cut cannot be chosen and is drawn greyed; the highlight stayed on the menu's
+            // first usable entry, which is Select All. This is the behaviour that reads as broken when the greying
+            // is missing, which is why the library draws it and this pins that it is deliberate.
+            Assert.Contains(" selected", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
         public void HoveringAMenuEntryIsWhatEnterThenChooses()
         {
             using var suite = OpenEditor();

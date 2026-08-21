@@ -73,6 +73,13 @@ namespace WolfCurses.Apps
         /// <summary>A dropped panel, which is the same silver as the bar it came from.</summary>
         public static TextStyle MenuPanel { get; } = new(ConsoleColor.Black, ConsoleColor.Gray);
 
+        /// <summary>
+        ///     A menu entry that cannot be chosen just now. The same silver panel with the text greyed, which is
+        ///     what every menu since the first one has done and the only thing that explains why Cut does nothing
+        ///     when nothing is selected.
+        /// </summary>
+        public static TextStyle MenuDisabled { get; } = new(ConsoleColor.DarkGray, ConsoleColor.Gray);
+
         /// <summary>The key-hint strip along the bottom.</summary>
         public static TextStyle Status { get; } = new(ConsoleColor.Black, ConsoleColor.DarkCyan);
 

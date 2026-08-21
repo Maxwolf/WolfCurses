@@ -86,6 +86,29 @@ namespace WolfCurses.Window.Control
         public TextStyle PanelHighlightStyle { get; set; } = TextStyle.None;
 
         /// <summary>
+        ///     How an entry that cannot be chosen is painted, which is what makes
+        ///     <see cref="MenuBarEntry.EnabledWhen" /> visible at all.
+        ///     <para>
+        ///         <b>Without this the predicate is invisible and the menu reads as broken.</b> An entry that is
+        ///         switched off still draws exactly like a live one, so it does not answer the pointer, does not
+        ///         take the highlight and does nothing when clicked, with nothing on screen saying why. A menu with
+        ///         four such entries out of six looks like a menu that has stopped working.
+        ///     </para>
+        ///     <para>
+        ///         <b>Nullable, unlike its siblings, and the difference is the point.</b> Null means "not specified"
+        ///         and falls back to <see cref="PanelStyle" />, so a bar that never sets it draws exactly what it
+        ///         drew before this existed. A non-nullable default of <see cref="TextStyle.None" /> would instead
+        ///         paint disabled entries with no style at all, punching a hole in a panel that has a background,
+        ///         which is worse than the problem.
+        ///     </para>
+        ///     <para>
+        ///         What is drawn in it is exactly what cannot be chosen: the same <c>IsSelectable</c> the hit test
+        ///         and the arrow keys consult, so the greying and the behaviour can never disagree.
+        ///     </para>
+        /// </summary>
+        public TextStyle? DisabledStyle { get; set; }
+
+        /// <summary>
         ///     Which colour vocabulary the styles resolve through, pinnable per instance for the same reason every
         ///     other styled control here has one: <see cref="AnsiColorModeEnum.Auto" /> consults a process-wide
         ///     cache that a test must not move.
@@ -566,7 +589,11 @@ namespace WolfCurses.Window.Control
 
                 var label = entry.Label.PadRight(menu.ContentWidth - mark.Length - entry.Shortcut.Length);
                 var text = " " + mark + label + entry.Shortcut + " ";
-                var body = i == HighlightIndex ? Emphasis(text, PanelHighlightStyle) : Paint(text, PanelStyle);
+                // Greyed by the same rule the arrow keys and the hit test follow, so what is drawn dead is
+                // exactly what cannot be chosen. The highlight never lands on one of these, since both ways of
+                // moving it refuse them, so the two styles cannot collide.
+                var resting = entry.IsSelectable ? PanelStyle : DisabledStyle ?? PanelStyle;
+                var body = i == HighlightIndex ? Emphasis(text, PanelHighlightStyle) : Paint(text, resting);
 
                 yield return Paint("│", PanelStyle) + body + Paint("│", PanelStyle);
             }
