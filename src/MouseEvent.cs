@@ -35,12 +35,15 @@ namespace WolfCurses
         /// <param name="row">Cell row, counted from the top of the terminal window.</param>
         /// <param name="button">Which button went down.</param>
         /// <param name="modifiers">Which of shift, alt and control were held.</param>
-        public MouseEvent(int column, int row, MouseButtonEnum button, ConsoleModifiers modifiers = 0)
+        /// <param name="kind">Whether a button went down, the pointer moved, or a button came up.</param>
+        public MouseEvent(int column, int row, MouseButtonEnum button, ConsoleModifiers modifiers = 0,
+            MouseEventKindEnum kind = MouseEventKindEnum.Press)
         {
             Column = column;
             Row = row;
             Button = button;
             Modifiers = modifiers;
+            Kind = kind;
         }
 
         /// <summary>Cell column, counted from the left edge of the terminal window.</summary>
@@ -51,6 +54,13 @@ namespace WolfCurses
 
         /// <summary>Which button went down.</summary>
         public MouseButtonEnum Button { get; }
+
+        /// <summary>
+        ///     Whether this is a button going down, the pointer moving, or a button coming up. Defaults to
+        ///     <see cref="MouseEventKindEnum.Press" />, which is what every event was before the other two existed
+        ///     and is what keeps code written against the old shape meaning what it meant.
+        /// </summary>
+        public MouseEventKindEnum Kind { get; }
 
         /// <summary>
         ///     Which of shift, alt and control were held. The BCL's own <see cref="ConsoleModifiers" /> rather than a

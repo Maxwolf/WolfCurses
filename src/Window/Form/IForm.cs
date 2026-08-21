@@ -46,6 +46,23 @@ namespace WolfCurses.Window.Form
         bool EditsText => false;
 
         /// <summary>
+        ///     Fired for every mouse event the host reports: a press, a release, or a move. The default forwards a
+        ///     press to <see cref="OnMousePressed" /> and ignores the rest, so a form written before motion existed
+        ///     behaves exactly as it did.
+        ///     <para>
+        ///         Override this rather than <see cref="OnMousePressed" /> for anything with a duration: dragging a
+        ///         scrollbar, sweeping a selection, or drawing a pointer that follows the mouse. Moves arrive only
+        ///         when the application asked for them; see <see cref="WolfCurses.Core.InputManager.ReportsMouseMotion" />.
+        ///     </para>
+        /// </summary>
+        /// <param name="mouse">What happened, and where.</param>
+        void OnMouseEvent(MouseEvent mouse)
+        {
+            if (mouse.Kind == MouseEventKindEnum.Press)
+                OnMousePressed(mouse);
+        }
+
+        /// <summary>
         ///     Intended to be overridden in abstract class by generics to provide method to return object that contains all the
         ///     data for parent game Windows.
         /// </summary>

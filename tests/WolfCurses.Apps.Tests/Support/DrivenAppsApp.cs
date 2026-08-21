@@ -115,6 +115,45 @@ namespace WolfCurses.Apps.Tests.Support
             App.PumpInput();
         }
 
+        /// <summary>
+        ///     Moves the pointer to a cell. A move carrying a button is a drag; one carrying
+        ///     <see cref="MouseButtonEnum.None" /> is a bare hover.
+        /// </summary>
+        /// <param name="row">The row moved to.</param>
+        /// <param name="column">The column moved to.</param>
+        /// <param name="held">Which button is still down, if any.</param>
+        public void MoveMouse(int row, int column, MouseButtonEnum held = MouseButtonEnum.None)
+        {
+            App.InputManager.SendMousePress(
+                new MouseEvent(column, row, held, 0, MouseEventKindEnum.Move));
+
+            App.PumpInput();
+        }
+
+        /// <summary>Lets a button back up, which is what ends a drag.</summary>
+        /// <param name="row">The row released at.</param>
+        /// <param name="column">The column released at.</param>
+        /// <param name="button">Which button came up.</param>
+        public void ReleaseMouse(int row, int column, MouseButtonEnum button = MouseButtonEnum.Left)
+        {
+            App.InputManager.SendMousePress(
+                new MouseEvent(column, row, button, 0, MouseEventKindEnum.Release));
+
+            App.PumpInput();
+        }
+
+        /// <summary>Presses at one cell, drags to another and lets go, which is one sweep.</summary>
+        /// <param name="fromRow">Where the drag starts.</param>
+        /// <param name="fromColumn">Where the drag starts.</param>
+        /// <param name="toRow">Where it ends.</param>
+        /// <param name="toColumn">Where it ends.</param>
+        public void Drag(int fromRow, int fromColumn, int toRow, int toColumn)
+        {
+            Click(fromRow, fromColumn);
+            MoveMouse(toRow, toColumn, MouseButtonEnum.Left);
+            ReleaseMouse(toRow, toColumn);
+        }
+
         /// <summary>Ticks a fixed number of times, for a screen that advances on its own clock.</summary>
         /// <param name="ticks">How many system ticks to run.</param>
         public void Tick(int ticks = 1)

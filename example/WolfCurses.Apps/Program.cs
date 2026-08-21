@@ -48,6 +48,12 @@ namespace WolfCurses.Apps
             // every application here is still fully driveable from the keyboard.
             AnsiConsole.EnableMouse();
 
+            // Movement as well as presses and releases. The library reports presses only by default, because motion
+            // is one event per cell the pointer crosses and most screens want none of it; this suite asks for it
+            // because a terminal draws no pointer of its own once reporting is on, so the editor draws its own, and
+            // because dragging a scrollbar thumb or sweeping a selection cannot be built out of presses.
+            AppsSimulationApp.Instance.InputManager.ReportsMouseMotion = true;
+
             while (AppsSimulationApp.Instance != null)
             {
                 AppsSimulationApp.Instance.OnTick(true);

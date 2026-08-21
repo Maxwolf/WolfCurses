@@ -402,6 +402,24 @@ namespace WolfCurses.Apps.Tests
             Assert.Equal(before, ReportedCaret(suite.Screen));
         }
 
+        /// <summary>
+        ///     Which screen column the scrollbar is drawn in, found by its own glyphs rather than by measuring a
+        ///     row: a row stripped of escapes still ends in a carriage return, so its length is two past the last
+        ///     visible cell and anything derived from it clicks into empty space.
+        /// </summary>
+        private static int ScrollBarColumn(string screen)
+        {
+            foreach (var row in screen.Split('\n'))
+            {
+                var at = row.IndexOfAny(new[] {'█', '░', '↑', '↓'});
+                if (at >= 0)
+                    return at;
+            }
+
+            Assert.Fail("no scrollbar was drawn");
+            return -1;
+        }
+
         /// <summary>Which rendered row a phrase first appears on.</summary>
         private static int RowOf(string screen, string phrase)
         {
@@ -474,15 +492,87 @@ namespace WolfCurses.Apps.Tests
             using var suite = OpenEditor();
             var before = RowOf(suite.Screen, "█");
 
-            // The bar sits in the column just past the field, and its last cell is the down arrow.
-            var barRow = suite.Screen.Split('\n');
-            var fieldRow = barRow[3];
-            var column = fieldRow.Length - 1;
+            var column = ScrollBarColumn(suite.Screen);
 
-            for (var press = 0; press < 30; press++)
+            // The track below the thumb pages down, so a few presses move a long way through the document.
+            for (var press = 0; press < 3; press++)
                 suite.Click(3 + 12, column);
 
-            Assert.True(RowOf(suite.Screen, "█") >= before, "the thumb moved the wrong way");
+            Assert.True(RowOf(suite.Screen, "█") > before, "the thumb did not move down");
+
+            // And the caret stays exactly where it was. Scrolling the view is not moving the cursor, which is the
+            // distinction the resize housekeeping used to lose: revealing the caret on every tick dragged the
+            // document straight back and made the scrollbar look like it did nothing.
+            Assert.Equal((1, 1), ReportedCaret(suite.Screen));
+        }
+
+        [Fact]
+        public void DraggingAcrossTheDocumentSweepsASelection()
+        {
+            // The whole point of the release and move events. A press drops the anchor, the moves drag the other
+            // end behind the pointer, and the release lets go; none of that is expressible in presses alone.
+            using var suite = OpenEditor();
+            suite.Press(ConsoleKey.F10);
+            suite.Press(ConsoleKey.Enter); // File > New, so the line is this test's own
+
+            foreach (var character in "abcdefghij")
+                suite.PressChar(character, ConsoleKey.A);
+
+            suite.Click(3, 1 + 2);
+            Assert.DoesNotContain("selected", suite.Screen, StringComparison.Ordinal);
+
+            suite.MoveMouse(3, 1 + 7, MouseButtonEnum.Left);
+
+            Assert.Contains("5 selected", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void LettingGoEndsTheSweepSoLaterMovementDoesNotKeepSelecting()
+        {
+            // A drag that never ends is the failure mode of building this out of presses: without a release the
+            // selection keeps growing every time the pointer passes over the window.
+            using var suite = OpenEditor();
+            suite.Press(ConsoleKey.F10);
+            suite.Press(ConsoleKey.Enter);
+
+            foreach (var character in "abcdefghij")
+                suite.PressChar(character, ConsoleKey.A);
+
+            suite.Drag(3, 1 + 1, 3, 1 + 4);
+            var afterDrag = suite.Screen;
+
+            suite.MoveMouse(3, 1 + 9, MouseButtonEnum.Left);
+
+            Assert.Contains("3 selected", afterDrag, StringComparison.Ordinal);
+            Assert.Contains("3 selected", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void AHoverMovesThePointerWithoutSelectingAnything()
+        {
+            using var suite = OpenEditor();
+
+            suite.MoveMouse(5, 10);
+
+            Assert.DoesNotContain("selected", suite.Screen, StringComparison.Ordinal);
+            Assert.Equal((1, 1), ReportedCaret(suite.Screen));
+        }
+
+        [Fact]
+        public void DraggingTheScrollBarThumbMovesThroughTheDocument()
+        {
+            using var suite = OpenEditor();
+            var top = IndexOfRowContaining(suite.Screen, '█');
+
+            // Take hold of the thumb where it is, carry it most of the way down, and let go.
+            var column = ScrollBarColumn(suite.Screen);
+
+            suite.Click(top, column);
+            suite.MoveMouse(3 + 12, column, MouseButtonEnum.Left);
+            suite.ReleaseMouse(3 + 12, column);
+
+            Assert.True(IndexOfRowContaining(suite.Screen, '█') > top, "the thumb did not follow the drag");
+            Assert.Equal((1, 1), ReportedCaret(suite.Screen));
         }
 
         [Fact]

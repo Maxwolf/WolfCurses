@@ -503,6 +503,28 @@ namespace WolfCurses.Window
         }
 
         /// <summary>
+        ///     Fired for every mouse event: a press, a release, or a move.
+        ///     <para>
+        ///         <b>A press still travels the old road.</b> It is handed to
+        ///         <see cref="OnMousePressed(MouseEvent)" />, which stays the single routing point for presses, so a
+        ///         window that overrides that method keeps firing exactly when it always did and the games that were
+        ///         written against it are untouched. Only releases and moves take the new path down to the form,
+        ///         where a screen that wants them overrides <see cref="Form.IForm.OnMouseEvent" />.
+        ///     </para>
+        /// </summary>
+        /// <param name="mouse">What happened, and where.</param>
+        public virtual void OnMouseEvent(MouseEvent mouse)
+        {
+            if (mouse.Kind == MouseEventKindEnum.Press)
+            {
+                OnMousePressed(mouse);
+                return;
+            }
+
+            Form?.OnMouseEvent(mouse);
+        }
+
+        /// <summary>
         ///     Fired when the host reports a key press with the whole <see cref="ConsoleKeyInfo" /> attached — this is
         ///     the overload the simulation dispatches. The base implementation forwards through
         ///     <see cref="OnKeyPressed(ConsoleKey)" />, which stays the single routing point so a subclass override of

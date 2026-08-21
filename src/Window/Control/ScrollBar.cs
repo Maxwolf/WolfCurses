@@ -149,9 +149,37 @@ namespace WolfCurses.Window.Control
         }
 
         /// <summary>
+        ///     Where the window should start for the thumb to sit at a given cell, which is what a drag asks. The
+        ///     exact inverse of <see cref="ThumbStart" />, so dragging the thumb to a cell and then reading its
+        ///     position back lands on the same cell rather than drifting a little further with every step.
+        /// </summary>
+        /// <param name="cell">Which cell of the bar the thumb's top should move to, counting from the leading arrow.</param>
+        /// <returns>The position to scroll to.</returns>
+        public int PositionForDrag(int cell)
+        {
+            var slack = TrackLength - ThumbLength;
+            var furthest = Math.Max(0, Total - Visible);
+
+            if (slack <= 0 || furthest <= 0)
+                return 0;
+
+            var track = Math.Clamp(cell - 1, 0, slack);
+            return Math.Clamp(track * furthest / slack, 0, furthest);
+        }
+
+        /// <summary>Whether a cell of the bar is part of the thumb, which is what a drag grabs hold of.</summary>
+        /// <param name="cell">Which cell of the bar, counting from the leading arrow.</param>
+        /// <returns>TRUE when the thumb covers that cell.</returns>
+        public bool IsOnThumb(int cell)
+        {
+            var track = cell - 1;
+            return track >= ThumbStart && track < ThumbStart + ThumbLength;
+        }
+
+        /// <summary>
         ///     Which item a press on the bar means, or -1 for a press that is not a scroll. An arrow cap steps one
-        ///     item, the track above or below the thumb jumps a windowful, and the thumb itself is left alone because
-        ///     dragging it needs a pointer this library does not report.
+        ///     item and the track above or below the thumb jumps a windowful. A press on the thumb itself answers -1
+        ///     because it is the start of a drag rather than a jump; see <see cref="PositionForDrag" />.
         /// </summary>
         /// <param name="cell">Which cell of the bar was pressed, counting from the leading arrow.</param>
         /// <returns>The position to scroll to, or -1 to do nothing.</returns>

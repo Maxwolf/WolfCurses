@@ -39,9 +39,11 @@ namespace WolfCurses.Apps.WordProcessor
         /// <param name="title">What the frame's tab reads.</param>
         /// <param name="status">The key-hint strip's text.</param>
         /// <param name="width">The console width.</param>
+        /// <param name="pointerRow">Which field row the mouse is over, or -1 when it is not over the field.</param>
+        /// <param name="pointerColumn">Which field column the mouse is over.</param>
         /// <returns>The whole screen, newline separated.</returns>
         public static string Compose(MenuBar menuBar, TextBuffer buffer, TextViewport viewport, string title,
-            string status, int width)
+            string status, int width, int pointerRow = -1, int pointerColumn = -1)
         {
             var sb = new StringBuilder();
 
@@ -90,6 +92,17 @@ namespace WolfCurses.Apps.WordProcessor
                         .Append(panel[row])
                         .Append(Field(buffer, viewport, row, panelColumn + panelWidth,
                             viewport.Width - panelColumn - panelWidth));
+                }
+                else if (row == pointerRow && pointerColumn >= 0 && pointerColumn < viewport.Width)
+                {
+                    // The pointer is one cell repainted, composed around rather than spliced in, for the same reason
+                    // the panel is: cutting a styled row by column would cut an escape in half. Drawn at all because
+                    // a terminal stops showing a pointer of its own the moment mouse reporting is switched on.
+                    sb.Append(Field(buffer, viewport, row, 0, pointerColumn))
+                        .Append(DocumentView.RenderSegment(buffer, viewport, row, pointerColumn, 1, DosTheme.Pointer,
+                            DosTheme.Pointer))
+                        .Append(Field(buffer, viewport, row, pointerColumn + 1,
+                            viewport.Width - pointerColumn - 1));
                 }
                 else
                 {

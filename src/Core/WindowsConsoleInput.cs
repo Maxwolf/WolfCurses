@@ -39,6 +39,9 @@ namespace WolfCurses.Core
         private const ushort MouseEvent = 0x0002;
 
         /// <summary>Mouse event flags. A plain press has none of them set.</summary>
+        private const uint MouseMoved = 0x0001;
+
+        /// <summary>Mouse event flags. A plain press has none of them set.</summary>
         private const uint MouseWheeled = 0x0004;
 
         private const uint MouseHorizontalWheeled = 0x0008;
@@ -154,8 +157,13 @@ namespace WolfCurses.Core
         ///     </para>
         /// </summary>
         /// <param name="onKey">Called for each key press, already translated.</param>
-        /// <param name="onMousePress">Called for each button-down.</param>
-        internal void Drain(Action<ConsoleKeyInfo> onKey, Action<MouseEvent> onMousePress)
+        /// <param name="onMouse">Called for each mouse event: a press, a release, or a move.</param>
+        /// <param name="reportMotion">
+        ///     FALSE to drop movement records here rather than queue them. Motion is a firehose, arriving once for
+        ///     every cell the pointer crosses, and most screens want nothing to do with it. Dropping it at the
+        ///     source is the difference between every application paying for the feature and only the ones using it.
+        /// </param>
+        internal void Drain(Action<ConsoleKeyInfo> onKey, Action<MouseEvent> onMouse, bool reportMotion = false)
         {
             try
             {
@@ -172,7 +180,7 @@ namespace WolfCurses.Core
                         return;
 
                     for (var i = 0; i < read; i++)
-                        Dispatch(_records[i], windowTop, onKey, onMousePress);
+                        Dispatch(_records[i], windowTop, onKey, onMouse, reportMotion);
                 }
             }
             catch (Exception exception) when (exception is DllNotFoundException or EntryPointNotFoundException)
@@ -185,7 +193,7 @@ namespace WolfCurses.Core
 
         /// <summary>Routes one record, dropping the kinds nothing here cares about.</summary>
         private void Dispatch(InputRecord record, int windowTop,
-            Action<ConsoleKeyInfo> onKey, Action<MouseEvent> onMousePress)
+            Action<ConsoleKeyInfo> onKey, Action<MouseEvent> onMouse, bool reportMotion)
         {
             switch (record.EventType)
             {
@@ -210,10 +218,13 @@ namespace WolfCurses.Core
                     // transition.
                     _previousButtons = record.ButtonState & 0x1F;
 
-                    if (TryTranslateMousePress(record.MousePositionX, record.MousePositionY, windowTop,
+                    if (!TryTranslateMouse(record.MousePositionX, record.MousePositionY, windowTop,
                             record.ButtonState, previous, record.MouseControlKeyState, record.EventFlags,
                             out var mouse))
-                        onMousePress(mouse);
+                        return;
+
+                    if (mouse.Kind != MouseEventKindEnum.Move || reportMotion)
+                        onMouse(mouse);
 
                     return;
 
@@ -306,21 +317,79 @@ namespace WolfCurses.Core
             uint buttonState, uint previousButtonState, uint controlKeyState, uint eventFlags,
             out MouseEvent mouse)
         {
+            return TryTranslateMouse(bufferX, bufferY, windowTop, buttonState, previousButtonState, controlKeyState,
+                       eventFlags, out mouse) &&
+                   mouse.Kind == MouseEventKindEnum.Press;
+        }
+
+        /// <summary>
+        ///     Turns a console mouse record into a <see cref="MouseEvent" /> of whichever kind it is, or answers
+        ///     false for the records that mean nothing at all.
+        ///     <para>
+        ///         The three kinds fall out of two bit sets and one flag. A button down now that was not before is a
+        ///         <see cref="MouseEventKindEnum.Press" />; one that was down and now is not is a
+        ///         <see cref="MouseEventKindEnum.Release" />; a record carrying the moved flag with neither is a
+        ///         <see cref="MouseEventKindEnum.Move" />, and the buttons still held ride along on it. That last
+        ///         part is what makes a drag distinguishable from a hover without inventing a fourth kind.
+        ///     </para>
+        ///     <para>
+        ///         The wheel is refused explicitly and first, because a wheel record arrives with a button bit set
+        ///         and would otherwise read as a click, and both sides are masked to the five real buttons before
+        ///         they are compared, since the notch count rides in the high word of the same field.
+        ///     </para>
+        /// </summary>
+        /// <param name="bufferX">Column in console screen-buffer space.</param>
+        /// <param name="bufferY">Row in console screen-buffer space.</param>
+        /// <param name="windowTop">The buffer row currently at the top of the window.</param>
+        /// <param name="buttonState">Which buttons are down now.</param>
+        /// <param name="previousButtonState">Which buttons were down at the previous record.</param>
+        /// <param name="controlKeyState">The modifier bits.</param>
+        /// <param name="eventFlags">The mouse event flags.</param>
+        /// <param name="mouse">The translated event.</param>
+        /// <returns>TRUE when this record means something.</returns>
+        internal static bool TryTranslateMouse(short bufferX, short bufferY, int windowTop,
+            uint buttonState, uint previousButtonState, uint controlKeyState, uint eventFlags,
+            out MouseEvent mouse)
+        {
             mouse = default;
 
             if ((eventFlags & (MouseWheeled | MouseHorizontalWheeled)) != 0)
                 return false;
 
-            var pressed = (buttonState & 0x1F) & ~(previousButtonState & 0x1F);
-            if (pressed == 0)
-                return false;
+            var now = buttonState & 0x1F;
+            var before = previousButtonState & 0x1F;
+            var changed = now & ~before;
+            MouseEventKindEnum kind;
 
-            var button = (pressed & 0x0001) != 0 ? MouseButtonEnum.Left
-                : (pressed & 0x0002) != 0 ? MouseButtonEnum.Right
-                : (pressed & 0x0004) != 0 ? MouseButtonEnum.Middle
+            if (changed != 0)
+            {
+                kind = MouseEventKindEnum.Press;
+            }
+            else if ((before & ~now) != 0)
+            {
+                kind = MouseEventKindEnum.Release;
+                changed = before & ~now;
+            }
+            else if ((eventFlags & MouseMoved) != 0)
+            {
+                // A move carries whichever buttons are still held, which is the whole of what makes it a drag.
+                kind = MouseEventKindEnum.Move;
+                changed = now;
+            }
+            else
+            {
+                // Nothing changed and the pointer did not move, so the record says nothing. Dropped rather than
+                // reported as a move, or a screen drawing a pointer would redraw on every stray record.
+                return false;
+            }
+
+            var button = (changed & 0x0001) != 0 ? MouseButtonEnum.Left
+                : (changed & 0x0002) != 0 ? MouseButtonEnum.Right
+                : (changed & 0x0004) != 0 ? MouseButtonEnum.Middle
                 : MouseButtonEnum.None;
 
-            if (button == MouseButtonEnum.None)
+            // A press or a release with no button in it is not one. A move with no button is an ordinary hover.
+            if (button == MouseButtonEnum.None && kind != MouseEventKindEnum.Move)
                 return false;
 
             // Buffer coordinates, not window coordinates. On a console with scrollback the two differ by however far
@@ -338,7 +407,7 @@ namespace WolfCurses.Core
             if ((controlKeyState & (LeftCtrlPressed | RightCtrlPressed)) != 0)
                 modifiers |= ConsoleModifiers.Control;
 
-            mouse = new MouseEvent(bufferX, row, button, modifiers);
+            mouse = new MouseEvent(bufferX, row, button, modifiers, kind);
             return true;
         }
 

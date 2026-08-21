@@ -53,6 +53,18 @@ namespace WolfCurses.Apps.WordProcessor
         /// <summary>The file the document came from, or null for one that has never been on disk.</summary>
         private string _path;
 
+        /// <summary>Whether the left button is down and sweeping a selection through the document.</summary>
+        private bool _draggingText;
+
+        /// <summary>Whether the left button is down and carrying the scrollbar thumb.</summary>
+        private bool _draggingThumb;
+
+        /// <summary>Which field row the pointer is over, or -1 when it is somewhere else.</summary>
+        private int _pointerRow = -1;
+
+        /// <summary>Which field column the pointer is over.</summary>
+        private int _pointerColumn = -1;
+
         /// <summary>Initializes a new instance of the <see cref="WordProcessorDialog" /> class.</summary>
         /// <param name="window">The parent window.</param>
         public WordProcessorDialog(IWindow window) : base(window)
@@ -109,13 +121,94 @@ namespace WolfCurses.Apps.WordProcessor
             // the end of "[ - ] - Window(1): ... - WolfCurses Apps". That row cannot be replaced, so everything here
             // starts below it, and every row offset the mouse hit test uses counts from there.
             return Environment.NewLine +
-                   EditorChrome.Compose(_menuBar, _buffer, _viewport, Title(), StatusText(), width);
+                   EditorChrome.Compose(_menuBar, _buffer, _viewport, Title(), StatusText(), width, _pointerRow,
+                       _pointerColumn);
+        }
+
+        /// <summary>
+        ///     The two mouse events that have a duration: the pointer moving, and a button coming back up. Presses
+        ///     arrive at <see cref="OnMousePressed" /> instead, which stays the single routing point for them.
+        ///     <para>
+        ///         Everything with a beginning and an end is built here. A press starts a drag, the moves carry it,
+        ///         and the release ends it, which is the shape of both sweeping a selection and carrying a scrollbar
+        ///         thumb. Neither can be done with presses alone, however many arrive.
+        ///     </para>
+        /// </summary>
+        /// <param name="mouse">What happened, and where.</param>
+        public override void OnMouseEvent(MouseEvent mouse)
+        {
+            if (mouse.Kind == MouseEventKindEnum.Press)
+            {
+                OnMousePressed(mouse);
+                return;
+            }
+
+            TrackPointer(mouse);
+
+            if (mouse.Kind == MouseEventKindEnum.Release)
+            {
+                _draggingText = false;
+                _draggingThumb = false;
+                return;
+            }
+
+            // A move with no button on it is a bare hover: it moves the drawn pointer and nothing else.
+            if (mouse.Button != MouseButtonEnum.Left)
+                return;
+
+            var draggedRow = mouse.Row - FieldTopRow;
+
+            if (_draggingThumb)
+            {
+                _viewport.ScrollTo(VerticalBar().PositionForDrag(draggedRow), _viewport.FirstColumn);
+                _viewport.ClampToDocument(_buffer.LineCount);
+                return;
+            }
+
+            if (!_draggingText || draggedRow < 0 || draggedRow >= _viewport.Height)
+                return;
+
+            // Extending rather than moving, which is the whole of a sweep: the anchor was dropped by the press, and
+            // every move since drags the other end of the selection along behind the pointer.
+            _buffer.MoveTo(DocumentAt(draggedRow, mouse.Column - 1), true);
+            _viewport.EnsureVisible(CaretOnScreen());
+        }
+
+        /// <summary>Remembers where the pointer is so the screen can draw one, since the terminal no longer does.</summary>
+        /// <param name="mouse">The event carrying the position.</param>
+        private void TrackPointer(MouseEvent mouse)
+        {
+            var row = mouse.Row - FieldTopRow;
+            var column = mouse.Column - 1;
+            var inside = row >= 0 && row < _viewport.Height && column >= 0 && column < _viewport.Width;
+
+            _pointerRow = inside ? row : -1;
+            _pointerColumn = inside ? column : -1;
+        }
+
+        /// <summary>
+        ///     The document position under a field cell. Two translations and both are needed: the viewport turns a
+        ///     cell into a line, and <see cref="TabStops" /> turns the screen column into a character index, which
+        ///     are different numbers the moment the line is indented.
+        /// </summary>
+        /// <param name="row">Field row.</param>
+        /// <param name="column">Field column.</param>
+        /// <returns>Where in the document that cell is.</returns>
+        private TextPosition DocumentAt(int row, int column)
+        {
+            var at = _viewport.ToDocument(row, Math.Max(0, column));
+            var line = Math.Clamp(at.Line, 0, _buffer.LineCount - 1);
+
+            return new TextPosition(line,
+                TabStops.ToDocumentColumn(_buffer.GetLine(line), at.Column, _buffer.TabWidth));
         }
 
         /// <inheritdoc />
         public override void OnMousePressed(MouseEvent mouse)
         {
             base.OnMousePressed(mouse);
+
+            TrackPointer(mouse);
 
             // The menus get the press first, exactly as they get keys first. A press that shuts an open menu is
             // consumed, so dismissing one does not also move the caret to whatever was underneath it.
@@ -139,7 +232,17 @@ namespace WolfCurses.Apps.WordProcessor
             // report, so the bar answers -1 there rather than jumping somewhere nobody asked for.
             if (column == _viewport.Width)
             {
-                var scrolled = VerticalBar().PositionForPress(row);
+                var bar = VerticalBar();
+
+                // Taking hold of the thumb starts a drag rather than jumping anywhere: the moves that follow carry
+                // it and the release lets go.
+                if (bar.IsOnThumb(row))
+                {
+                    _draggingThumb = true;
+                    return;
+                }
+
+                var scrolled = bar.PositionForPress(row);
                 if (scrolled >= 0)
                 {
                     _viewport.ScrollTo(scrolled, _viewport.FirstColumn);
@@ -152,14 +255,10 @@ namespace WolfCurses.Apps.WordProcessor
             if (column < 0 || column >= _viewport.Width)
                 return;
 
-            // Two translations, and both are needed. The viewport turns a screen cell into a place in the document,
-            // and TabStops turns the screen column into a character index, which are different numbers the moment
-            // the line is indented.
-            var at = _viewport.ToDocument(row, column);
-            var line = Math.Clamp(at.Line, 0, _buffer.LineCount - 1);
-            var documentColumn = TabStops.ToDocumentColumn(_buffer.GetLine(line), at.Column, _buffer.TabWidth);
+            // The press drops the selection anchor; every move until the release drags the other end behind it.
+            _draggingText = true;
 
-            _buffer.MoveTo(new TextPosition(line, documentColumn));
+            _buffer.MoveTo(DocumentAt(row, column));
             _message = null;
             _viewport.EnsureVisible(CaretOnScreen());
         }
@@ -441,9 +540,21 @@ namespace WolfCurses.Apps.WordProcessor
             var height = AnsiConsole.SafeWindowHeight();
 
 
-            _viewport.Resize(width - EditorChrome.ChromeColumns, EditorChrome.Rows(height, ReservedRows));
+            var columns = width - EditorChrome.ChromeColumns;
+            var rows = EditorChrome.Rows(height, ReservedRows);
+            var resized = columns != _viewport.Width || rows != _viewport.Height;
+
+            _viewport.Resize(columns, rows);
             _viewport.ClampToDocument(_buffer.LineCount);
-            _viewport.EnsureVisible(CaretOnScreen());
+
+            // Only when the window really changed shape.
+            //
+            // This runs on every simulation tick, and revealing the caret unconditionally means the view is dragged
+            // back to it once a second: scrolling with the scrollbar would move the document and then snap straight
+            // back, which looks like the scrollbar not working at all. Scrolling and the caret are different things,
+            // and the caret is revealed by the things that move it.
+            if (resized)
+                _viewport.EnsureVisible(CaretOnScreen());
         }
 
         /// <summary>

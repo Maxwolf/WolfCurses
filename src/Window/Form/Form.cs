@@ -189,6 +189,23 @@ namespace WolfCurses.Window.Form
         ///     with <see cref="Graphics.AnsiConsole.EnableMouse" />. Does nothing unless overridden.
         /// </summary>
         /// <param name="mouse">Where the press landed and which button it was.</param>
+        /// <summary>
+        ///     Fired for every mouse event: a press, a release, or a move. The default hands a press to
+        ///     <see cref="OnMousePressed(MouseEvent)" /> and ignores the rest, so a form written before motion
+        ///     existed behaves exactly as it did.
+        ///     <para>
+        ///         Override this instead of <see cref="OnMousePressed(MouseEvent)" /> for anything with a duration:
+        ///         dragging a scrollbar, sweeping a selection, or a pointer that follows the mouse.
+        ///     </para>
+        /// </summary>
+        /// <param name="mouse">What happened, and where.</param>
+        public virtual void OnMouseEvent(MouseEvent mouse)
+        {
+            if (mouse.Kind == MouseEventKindEnum.Press)
+                OnMousePressed(mouse);
+        }
+
+        /// <inheritdoc cref="IForm.OnMousePressed" />
         public virtual void OnMousePressed(MouseEvent mouse)
         {
         }

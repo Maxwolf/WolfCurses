@@ -124,6 +124,25 @@ namespace WolfCurses.Window
         ///     with <see cref="Graphics.AnsiConsole.EnableMouse" />. Does nothing unless overridden, so every window
         ///     written before the mouse existed compiles and behaves exactly as it did.
         /// </summary>
+        /// <summary>
+        ///     Fired for every mouse event the host reports: a press, a release, or a move. Presses are forwarded to
+        ///     <see cref="OnMousePressed" /> by the default implementation, so a window written before motion
+        ///     existed keeps working untouched and never sees the other two.
+        ///     <para>
+        ///         Releases and moves are what anything with a <i>duration</i> is built from: a pointer you can see,
+        ///         a scrollbar thumb being dragged, a selection swept across a document. None of those can be made
+        ///         out of presses however many arrive. Moves are only delivered when the application asked for them
+        ///         through <see cref="Core.InputManager.ReportsMouseMotion" />, because they arrive once per cell
+        ///         the pointer crosses.
+        ///     </para>
+        /// </summary>
+        /// <param name="mouse">What happened, and where.</param>
+        void OnMouseEvent(MouseEvent mouse)
+        {
+            if (mouse.Kind == MouseEventKindEnum.Press)
+                OnMousePressed(mouse);
+        }
+
         /// <param name="mouse">Where the press landed and which button it was.</param>
         void OnMousePressed(MouseEvent mouse)
         {

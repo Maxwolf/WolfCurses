@@ -108,6 +108,21 @@ namespace WolfCurses.Core
         public bool ReadsConsoleInput { get; set; }
 
         /// <summary>
+        ///     Whether pointer movement is reported as well as presses and releases. Off by default.
+        ///     <para>
+        ///         Motion is a firehose: one event for every cell the pointer crosses, whether or not anything is
+        ///         being dragged. Most screens want none of it, and the ones that do want it want it badly, so it is
+        ///         asked for rather than assumed. With this off the records are dropped inside the console reader
+        ///         and never reach a queue at all, which is why the applications that do not use it pay nothing.
+        ///     </para>
+        ///     <para>
+        ///         Turning it on is what makes a visible pointer, a draggable scrollbar thumb and a swept selection
+        ///         possible; none of the three can be built out of presses, however many arrive.
+        ///     </para>
+        /// </summary>
+        public bool ReportsMouseMotion { get; set; }
+
+        /// <summary>
         ///     Where the automatic read gets keys instead of the real console, returning null when none are waiting.
         ///     Test seam: the real path needs a console with keys in it, which a test host has no way to arrange.
         /// </summary>
@@ -185,7 +200,7 @@ namespace WolfCurses.Core
             while (_mouseQueue.Count > 0)
             {
                 var clicked = _mouseQueue.Dequeue();
-                _simUnit.WindowManager.FocusedWindow?.OnMousePressed(clicked);
+                _simUnit.WindowManager.FocusedWindow?.OnMouseEvent(clicked);
             }
 
             // Skip if there are no commands to tick.
@@ -231,7 +246,7 @@ namespace WolfCurses.Core
             var mouseReader = WindowsConsoleInput.Active;
             if (mouseReader != null)
             {
-                mouseReader.Drain(SendConsoleKey, SendMousePress);
+                mouseReader.Drain(SendConsoleKey, SendMousePress, ReportsMouseMotion);
                 return;
             }
 

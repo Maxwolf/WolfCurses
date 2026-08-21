@@ -31,6 +31,14 @@ namespace WolfCurses.Apps.WordProcessor
         /// <summary>The caret and the selection, which is the field's colours turned round.</summary>
         public static TextStyle Selection { get; } = new(ConsoleColor.DarkBlue, ConsoleColor.Gray);
 
+        /// <summary>
+        ///     The cell the mouse pointer is over. A terminal draws no pointer of its own once mouse reporting is
+        ///     on, so the editor has to draw one, exactly as the MS-DOS Editor did: a lit block that follows the
+        ///     mouse. It is deliberately a different colour from the caret, or there would be no telling which of
+        ///     the two lit cells the keyboard is about to type into.
+        /// </summary>
+        public static TextStyle Pointer { get; } = new(ConsoleColor.Black, ConsoleColor.DarkCyan);
+
         /// <summary>The frame around the field, brighter than the text inside it.</summary>
         public static TextStyle Frame { get; } = new(ConsoleColor.White, ConsoleColor.DarkBlue);
 
