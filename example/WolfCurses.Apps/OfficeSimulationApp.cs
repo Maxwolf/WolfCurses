@@ -10,10 +10,10 @@ namespace WolfCurses.Apps
     ///     gets: no extra module, no persisted state and no image set-up, so what is left is the minimum a host has
     ///     to write.
     /// </summary>
-    public sealed class AppsSimulationApp : SimulationApp
+    public sealed class OfficeSimulationApp : SimulationApp
     {
         /// <summary>Singleton instance for the whole suite; the host loop ticks this until it goes null.</summary>
-        public static AppsSimulationApp Instance { get; private set; }
+        public static OfficeSimulationApp Instance { get; private set; }
 
         // AllowedWindows is deliberately NOT overridden. The base class discovers AppsWindow from this assembly and
         // the built-in control windows (file dialog, select list, message box, text input) from the library, so an
@@ -28,7 +28,7 @@ namespace WolfCurses.Apps
                 throw new InvalidOperationException(
                     "Unable to create new instance of simulation since it already exists!");
 
-            Instance = new AppsSimulationApp();
+            Instance = new OfficeSimulationApp();
         }
 
         /// <summary>Fired when the ticker receives the first system tick event.</summary>

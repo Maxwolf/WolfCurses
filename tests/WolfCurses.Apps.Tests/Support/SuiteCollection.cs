@@ -5,7 +5,7 @@ namespace WolfCurses.Apps.Tests.Support
     /// <summary>
     ///     Every test that starts the suite belongs here.
     ///     <para>
-    ///         <c>AppsSimulationApp</c> is a singleton that throws rather than be created twice, and the library
+    ///         <c>OfficeSimulationApp</c> is a singleton that throws rather than be created twice, and the library
     ///         carries process-wide state besides: the cached colour mode, the once-per-process renderer probe. Two
     ///         of these running at once is not a race that shows up as a wrong answer, it is one that shows up as
     ///         "an instance already exists" in whichever test lost, which is the kind of failure people rerun until

@@ -12,9 +12,9 @@ namespace WolfCurses.Apps
     ///     look like?", this one asks the same question about the other half of what a terminal used to be for: an
     ///     editor, a spreadsheet, a card file, a calculator, a diary.
     ///     <para>
-    ///         There is nothing on the menu yet but Quit, and the scaffolding is deliberately here first. Every
-    ///         application added after this is a folder plus one <c>AddCommand</c> line in
-    ///         <see cref="AppsWindow" />, and that claim is worth proving before any of them are written.
+    ///         Three of them so far: a word processor, a BASIC environment and a spreadsheet. The scaffolding went
+    ///         in before any of them, on the claim that adding one would be a folder plus one <c>AddCommand</c>
+    ///         line in <see cref="AppsWindow" /> with no registration step anywhere, and that has held.
     ///     </para>
     /// </summary>
     internal static class Program
@@ -39,7 +39,7 @@ namespace WolfCurses.Apps
             // scene graph presents each changed frame to this console, flicker-free), and no renderer set-up (the
             // SimulationApp constructor probes the terminal). An application overrides OnKeyPressed and returns a
             // string, and that is the entire contract.
-            AppsSimulationApp.Create();
+            OfficeSimulationApp.Create();
 
             // Asked for AFTER the app is built, because the SimulationApp constructor probes the terminal for a
             // graphics protocol and that probe reads standard input. Opt-in and host-owned on purpose: switching it
@@ -52,11 +52,11 @@ namespace WolfCurses.Apps
             // is one event per cell the pointer crosses and most screens want none of it; this suite asks for it
             // because a terminal draws no pointer of its own once reporting is on, so the editor draws its own, and
             // because dragging a scrollbar thumb or sweeping a selection cannot be built out of presses.
-            AppsSimulationApp.Instance.InputManager.ReportsMouseMotion = true;
+            OfficeSimulationApp.Instance.InputManager.ReportsMouseMotion = true;
 
-            while (AppsSimulationApp.Instance != null)
+            while (OfficeSimulationApp.Instance != null)
             {
-                AppsSimulationApp.Instance.OnTick(true);
+                OfficeSimulationApp.Instance.OnTick(true);
 
                 // Do not consume all of the CPU, allow other messages to occur. Note this sleep is why anything
                 // real-time here should pace itself on an IntervalTimer rather than by counting ticks: Windows'
@@ -81,14 +81,14 @@ namespace WolfCurses.Apps
         private static void Console_CancelKeyPress(object sender, ConsoleCancelEventArgs e)
         {
             AnsiConsole.DisableMouse();
-            AppsSimulationApp.Instance?.Destroy();
+            OfficeSimulationApp.Instance?.Destroy();
             e.Cancel = true;
         }
 
         /// <summary>Forces the current simulation app to close and return control to the operating system.</summary>
         public static void Destroy()
         {
-            AppsSimulationApp.Instance?.Destroy();
+            OfficeSimulationApp.Instance?.Destroy();
         }
     }
 }

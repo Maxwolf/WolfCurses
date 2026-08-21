@@ -54,7 +54,7 @@ namespace WolfCurses.Apps.Tests
 
             suite.Escape();
 
-            Assert.NotNull(AppsSimulationApp.Instance);
+            Assert.NotNull(OfficeSimulationApp.Instance);
             Assert.Equal(before, suite.ScreenBelowStatusLine);
         }
 
@@ -67,7 +67,7 @@ namespace WolfCurses.Apps.Tests
 
             suite.ChooseMenuItem((int) AppsCommandsEnum.Quit);
 
-            Assert.Null(AppsSimulationApp.Instance);
+            Assert.Null(OfficeSimulationApp.Instance);
         }
 
         [Fact]

@@ -22,7 +22,7 @@ namespace WolfCurses.Apps.Tests.Support
     ///         with "no such window", which is signal enough not to need a canary of its own.
     ///     </para>
     ///     <para>
-    ///         <b>Dispose matters.</b> <c>AppsSimulationApp</c> is a singleton that refuses to be created twice, so
+    ///         <b>Dispose matters.</b> <c>OfficeSimulationApp</c> is a singleton that refuses to be created twice, so
     ///         a test that leaks one fails every test after it. Hence <c>using</c> at every call site and the
     ///         non-parallel collection, see <see cref="SuiteCollection" />.
     ///     </para>
@@ -31,8 +31,8 @@ namespace WolfCurses.Apps.Tests.Support
     {
         public DrivenSuite()
         {
-            AppsSimulationApp.Create();
-            App = AppsSimulationApp.Instance;
+            OfficeSimulationApp.Create();
+            App = OfficeSimulationApp.Instance;
 
             // The suite would otherwise try to read the console, which a test host does not have.
             App.InputManager.ReadsConsoleInput = false;
@@ -41,7 +41,7 @@ namespace WolfCurses.Apps.Tests.Support
         }
 
         /// <summary>The running simulation.</summary>
-        public AppsSimulationApp App { get; }
+        public OfficeSimulationApp App { get; }
 
         /// <summary>The last frame with the escapes taken out, for asserting on what is visible.</summary>
         public string Screen => AnsiText.StripEscapes(App.SceneGraph.ScreenBuffer);
@@ -203,7 +203,7 @@ namespace WolfCurses.Apps.Tests.Support
         /// <inheritdoc />
         public void Dispose()
         {
-            AppsSimulationApp.Instance?.Destroy();
+            OfficeSimulationApp.Instance?.Destroy();
         }
 
         /// <summary>
