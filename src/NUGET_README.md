@@ -113,11 +113,13 @@ Every widget takes colours and ramps, and colour is entirely opt-in: with styles
 
 **[Input](https://github.com/Maxwolf/WolfCurses#input).** Mouse support is opt-in through `AnsiConsole.EnableMouse()` and Windows-only for now; presses, releases, wheel notches and (with a further opt-in) pointer motion, which is what click-and-drag is built from. `HeldAxis` recovers a held direction from the burst of presses a terminal actually delivers, since a terminal never reports a key being let go.
 
-**[Editable text](https://github.com/Maxwolf/WolfCurses#editable-documents).** `TextBuffer`, `TextViewport`, `TabStops`, `ControlPictures`, `TextSearch` and `TextWords` in `WolfCurses.Documents` are a document, the window onto it, the two halves of the translation between where a character is stored and where it is drawn, and finding and counting things in it, so an editor-shaped screen does not start by writing all six. The last of those is the one nobody expects: a terminal obeys a control character rather than drawing it, and a form feed used as a page break moves the cursor mid-row. `MenuBar` and `ScrollBar` are the pull-down bar and the bar down the side.
+**[Editable text](https://github.com/Maxwolf/WolfCurses#editable-documents).** `TextBuffer`, `TextViewport`, `TabStops`, `ControlPictures`, `TextSearch` and `TextWords` in `WolfCurses.Documents` are a document, the window onto it, the two halves of the translation between where a character is stored and where it is drawn, and finding and counting things in it, so an editor-shaped screen does not start by writing all six. The last of those is the one nobody expects: a terminal obeys a control character rather than drawing it, and a form feed used as a page break moves the cursor mid-row. `DelimitedText` reads and writes CSV properly, including the quoted field with a line break in it that no line-by-line splitter can handle at all. `MenuBar` and `ScrollBar` are the pull-down bar and the bar down the side.
+
+**Tables.** `TableViewport` is the scrolling window onto a grid whose columns are *not* all one wide: which columns fit, where one is drawn, which one a click landed in, and how far right there is to scroll. `TextRow` builds a row out of styled runs and can draw a range of its columns, which is how a menu panel or a tooltip is drawn over the screen behind it: a finished styled row cannot be cut by column, because the cut lands inside an escape sequence.
 
 **Real-time screens.** `IntervalTimer` paces anything that moves on its own, off the system tick rather than the once-a-second simulation tick. A late period is dropped rather than banked, so a slow frame is never repaid as a burst of instant ones.
 
-**Measuring styled text.** An escape sequence has length but no width, so `string.Length` is the wrong number for anything you want to pad or place beside something else. `AnsiText.VisibleLength` and `AnsiText.StripEscapes` share one parser, and `TextColumns.Join` puts blocks of text side by side using that measurement.
+**Measuring styled text.** An escape sequence has length but no width, so `string.Length` is the wrong number for anything you want to pad or place beside something else. `AnsiText.VisibleLength`, `AnsiText.StripEscapes` and `AnsiText.Fit` share one parser: the last pads or trims to an exact column count, carrying every escape through a trim so a run that was opened is still closed. `TextColumns.Join` puts blocks of text side by side using the same measurement.
 
 ## See it running
 
@@ -125,7 +127,7 @@ Three example apps ship in the repository, each with its own guide:
 
 - **[The library tour](https://github.com/Maxwolf/WolfCurses/blob/master/example/WolfCurses.Demo/README.md)**: images, sprites, widgets, colour, and every dialog.
 - **[The arcade](https://github.com/Maxwolf/WolfCurses/blob/master/example/WolfCurses.Games/README.md)**: ten games, each built on a different part of the library.
-- **[The office suite](https://github.com/Maxwolf/WolfCurses/blob/master/example/WolfCurses.Apps/README.md)**: small productivity applications, starting with a word processor after the MS-DOS Editor.
+- **[The office suite](https://github.com/Maxwolf/WolfCurses/blob/master/example/WolfCurses.Apps/README.md)**: a word processor after the MS-DOS Editor, a BASIC environment after the one that shipped with DOS, and a spreadsheet.
 
 Prebuilt, self-contained downloads for Windows, macOS and Linux are on the [releases page](https://github.com/Maxwolf/WolfCurses/releases), all of them in a single archive with no .NET install needed.
 

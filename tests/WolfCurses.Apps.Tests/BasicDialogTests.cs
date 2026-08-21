@@ -14,19 +14,19 @@ namespace WolfCurses.Apps.Tests
     ///         the screen with it, which means spinning ticks with no clock between them runs nothing at all.
     ///     </para>
     /// </summary>
-    [Collection("AppsApp")]
+    [Collection("Suite")]
     public class BasicDialogTests
     {
-        private static DrivenAppsApp OpenBasic()
+        private static DrivenSuite OpenBasic()
         {
-            var suite = new DrivenAppsApp();
+            var suite = new DrivenSuite();
             suite.ChooseMenuItem((int) AppsCommandsEnum.Basic);
 
             return suite;
         }
 
         /// <summary>Ticks with a real clock running until the screen says what is expected, or gives up.</summary>
-        private static bool WaitFor(DrivenAppsApp suite, string expected)
+        private static bool WaitFor(DrivenSuite suite, string expected)
         {
             var clock = Stopwatch.StartNew();
 
@@ -111,14 +111,14 @@ namespace WolfCurses.Apps.Tests
         }
 
         /// <summary>Types a line into whatever is collecting characters, a key at a time.</summary>
-        private static void Type(DrivenAppsApp suite, string text)
+        private static void Type(DrivenSuite suite, string text)
         {
             foreach (var character in text)
                 suite.PressChar(character, ConsoleKey.NoName);
         }
 
         /// <summary>Replaces the listing with a program of the test's own.</summary>
-        private static void ReplaceProgram(DrivenAppsApp suite, params string[] lines)
+        private static void ReplaceProgram(DrivenSuite suite, params string[] lines)
         {
             suite.Press(ConsoleKey.A, ConsoleModifiers.Control);
 

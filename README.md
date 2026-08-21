@@ -92,7 +92,7 @@ Menus are steerable with the arrow keys as well as by typing a number, and typed
 Three example apps live in this repo, each with its own README:
 
 - **[The library tour](example/WolfCurses.Demo/README.md)**: images, sprites, widgets, colour, and every dialog.
-- **[The office suite](example/WolfCurses.Apps/README.md)**: small productivity applications. A word processor after the MS-DOS Editor so far, with menus, mouse selection and a real document model behind it.
+- **[The office suite](example/WolfCurses.Apps/README.md)**: small productivity applications. A word processor after the MS-DOS Editor, a BASIC environment after the one that shipped with DOS, and a spreadsheet with formulas and charts.
 - **[The arcade](example/WolfCurses.Games/README.md)**: ten games, each built on a different part of the library. Snake, Minesweeper, Tetris, WolfChess 5000, Missile Command, Labyrinth, Pac-Man, Blackjack, Poker and Battlezone.
 
 ```cmd
@@ -262,9 +262,17 @@ All of them ship inside the library and are discovered automatically. (If you ov
 - **`TabStops`** translates between where a character is stored and where it is drawn. A tab advances to the next stop; it is not a fixed number of spaces, and treating it as one misaligns every table from its second row on.
 - **`TextWords`** walks the words of a document and counts them, using the same idea of a word as the cursor keys, or one you supply.
 - **`TextSearch`** finds things, forwards or backwards, wrapping round the ends. Forward means "at or after" and backward means "strictly before", which is what stops a Find Next key from landing on the same match every time it is pressed.
+- **`DelimitedText`** reads and writes CSV, and the other delimiters that share its rules. Everybody writes this as `line.Split(',')`, which is correct on the file you tested it against and wrong on the first real one: a field may be quoted, and a quoted field may contain the delimiter, a quote, or a line break. That last one is not a bug in a line splitter so much as proof that splitting into lines first cannot work at all, which is why this takes the whole text. Reading is lenient and never throws, because a parser for somebody else's export has no useful way to refuse.
 - **`ControlPictures`** is the other half of that translation and the half that is easy to miss. A terminal does not *draw* a control character, it obeys it: a form feed, which text files have used as a page break for fifty years, moves the cursor down a row part way through writing one, and everything after it lands on the line below. Substituting one visible character for one keeps every column, caret and hit test exactly where it was. It applies to drawing only, so a page break still survives being opened and saved again.
 
 `MenuBar` and `ScrollBar` are the pull-down bar across the top and the bar down the side, both of which keep their layout so that what is drawn and what a click lands on cannot disagree.
+
+Two more pieces sit alongside them, for the screens that are a table rather than a document:
+
+- **`TableViewport`** is `TextViewport` for a grid whose columns are not all one wide. Every sum in it would be a multiplication if they were, and each one is the sum somebody writes inline, gets right for the fixed-width case, and finds is wrong the first time a column is widened. It answers which columns fit, where one is drawn, which one a click landed in, and how far right you may scroll before the last column stops moving.
+- **`TextRow`** builds a row out of styled runs and can then draw *a range of its columns*. That is what anything drawing a panel, a tooltip or a pointer over the screen behind it needs, and it cannot be done to a finished styled string: twenty columns of coloured text is several hundred characters long, so cutting by column lands inside an escape sequence and spills the rest into the terminal as text. Keep the row as plain runs, resolve the colour at the moment of drawing, and slicing is ordinary arithmetic. Adjacent runs coalesce on the escape they resolve to, and a row nobody coloured comes out byte-for-byte plain.
+
+`AnsiText.Fit` is the smallest version of the same problem: pad or trim text to an exact number of *visible* columns. `PadRight` pads a coloured cell to nothing and `Substring` cuts an escape in half; this measures with the same walk `VisibleLength` uses and carries every escape through a trim, including the reset that fell past the cut.
 
 ## Input
 

@@ -17,8 +17,8 @@ namespace WolfCurses.Apps.Tests.Support
     ///         collection, so they keep running in parallel.
     ///     </para>
     /// </summary>
-    [CollectionDefinition("AppsApp", DisableParallelization = true)]
-    public class AppsAppCollection
+    [CollectionDefinition("Suite", DisableParallelization = true)]
+    public class SuiteCollection
     {
     }
 }

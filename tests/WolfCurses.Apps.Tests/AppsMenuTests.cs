@@ -13,13 +13,13 @@ namespace WolfCurses.Apps.Tests
     ///         to back out of, and Quit really does close the simulation rather than merely saying so.
     ///     </para>
     /// </summary>
-    [Collection("AppsApp")]
+    [Collection("Suite")]
     public class AppsMenuTests
     {
         [Fact]
         public void TheMenuComesUpByItselfAndAsksWhichApplication()
         {
-            using var suite = new DrivenAppsApp();
+            using var suite = new DrivenSuite();
 
             Assert.Contains("WolfCurses Apps", suite.Screen, StringComparison.Ordinal);
             Assert.Contains("Small office applications", suite.Screen, StringComparison.Ordinal);
@@ -34,7 +34,7 @@ namespace WolfCurses.Apps.Tests
         {
             // Applications are added by putting a value on the enum and one AddCommand line beside it, so this is
             // the test that fails when somebody does one and forgets the other.
-            using var suite = new DrivenAppsApp();
+            using var suite = new DrivenSuite();
 
             foreach (AppsCommandsEnum choice in Enum.GetValues<AppsCommandsEnum>())
             {
@@ -49,7 +49,7 @@ namespace WolfCurses.Apps.Tests
             // ESC backs out of an application, and with none open it must do nothing at all rather than close the
             // suite or clear the menu. Asserted below the status line because the scene graph's spinner advances on
             // every tick, so the whole frame legitimately differs from one tick to the next.
-            using var suite = new DrivenAppsApp();
+            using var suite = new DrivenSuite();
             var before = suite.ScreenBelowStatusLine;
 
             suite.Escape();
@@ -63,7 +63,7 @@ namespace WolfCurses.Apps.Tests
         {
             // The host loop watches Instance and exits when it goes null, so this is the whole of "the program
             // ended" as far as anything but the console can see.
-            using var suite = new DrivenAppsApp();
+            using var suite = new DrivenSuite();
 
             suite.ChooseMenuItem((int) AppsCommandsEnum.Quit);
 
@@ -75,7 +75,7 @@ namespace WolfCurses.Apps.Tests
         {
             // The library's compatibility stance, visible from the application side: the arrow-key highlight is
             // hidden until an arrow key summons it, so a menu nobody has touched renders as plain text.
-            using var suite = new DrivenAppsApp();
+            using var suite = new DrivenSuite();
 
             Assert.DoesNotContain('\x1b', suite.RawScreen);
         }
@@ -83,7 +83,7 @@ namespace WolfCurses.Apps.Tests
         [Fact]
         public void AnArrowKeySummonsTheHighlightOntoTheFirstChoice()
         {
-            using var suite = new DrivenAppsApp();
+            using var suite = new DrivenSuite();
 
             suite.Press(ConsoleKey.DownArrow);
 

@@ -39,6 +39,7 @@ namespace WolfCurses.Apps
             // last, which is what the renumbering note on AppsCommandsEnum is about.
             AddCommand(OpenWordProcessor, AppsCommandsEnum.WordProcessor);
             AddCommand(OpenBasic, AppsCommandsEnum.Basic);
+            AddCommand(OpenSpreadsheet, AppsCommandsEnum.Spreadsheet);
             AddCommand(Quit, AppsCommandsEnum.Quit);
 
             RestoreMenuChrome();
@@ -117,6 +118,12 @@ namespace WolfCurses.Apps
         private void OpenBasic()
         {
             SetForm(typeof (Basic.BasicDialog));
+        }
+
+        /// <summary>Shows the spreadsheet on its sample sheet.</summary>
+        private void OpenSpreadsheet()
+        {
+            SetForm(typeof (Spreadsheet.SpreadsheetDialog));
         }
 
         /// <summary>Closes the suite and hands the terminal back.</summary>

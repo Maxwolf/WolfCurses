@@ -29,7 +29,14 @@ namespace WolfCurses.Apps
         /// </summary>
         [Description("BASIC - write and run a program.")] Basic = 2,
 
+        /// <summary>
+        ///     A grid of cells with formulas in some of them, scrollbars round it and a chart a keystroke away.
+        ///     The editing is the library's text buffer, the scrolling is its table viewport, and the charts are
+        ///     its own widgets; what is this application's is what the cells mean.
+        /// </summary>
+        [Description("Spreadsheet - a grid, some sums and a chart.")] Spreadsheet = 3,
+
         /// <summary>Closes the suite and returns to the operating system.</summary>
-        [Description("Quit.")] Quit = 3
+        [Description("Quit.")] Quit = 4
     }
 }

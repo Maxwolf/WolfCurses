@@ -6,7 +6,7 @@ The other half of what a terminal used to be for. Where [the arcade](../WolfCurs
 dotnet run --project example/WolfCurses.Apps
 ```
 
-**Two applications so far**: a word processor laid out after the MS-DOS Editor, and a BASIC environment after the one that shipped with MS-DOS. Spreadsheet, database, calculator and diary are planned and unwritten.
+**Three applications so far**: a word processor laid out after the MS-DOS Editor, a BASIC environment after the one that shipped with MS-DOS, and a spreadsheet. Database, calculator and diary are planned and unwritten.
 
 That order is deliberate. Adding an application is meant to be a folder, a form carrying `[ParentWindow(typeof(AppsWindow))]`, a value on `AppsCommandsEnum`, and one `AddCommand` line in `AppsWindow`, with no registration step anywhere. It is worth proving that claim before writing anything that depends on it.
 
@@ -38,11 +38,28 @@ The language covers expressions with BASIC's own precedence, variables and array
 
 Seven sample programs ship, all written for this repository: `welcome.bas` walks through the language, `greet.bas` asks questions, `shapes.bas` draws with `LOCATE`, `procedures.bas` shows SUBs, FUNCTIONs and recursion, `drawing.bas` is the graphics demonstration, `sprite.bas` walks a face across the screen with GET and PUT, and `music.bas` works through PLAY and SOUND. The tunes in that last one are all long out of copyright: Grieg's *In the Hall of the Mountain King* of 1875, whose accelerando makes it the best demonstration of tempo there is, a Beethoven melody of 1824 and a French air of 1761, plus scales and a fanfare written here. **The QBasic samples everybody remembers are Microsoft's** and carry no redistribution licence, so they are not included; open your own copy with F3.
 
+## The spreadsheet
+
+A grid of cells with the same menus and frame round it, lettered columns, numbered rows, a cell entry line under the sheet and scrollbars on two sides. It opens on `sheets/spreadsheet.csv`, which is a joke ledger about a year of consulting income going out again on graphics cards and coffee.
+
+**Editing.** Arrows move; typing anything starts editing the cell with that character already in it; **F2** keeps what is there instead. ENTER accepts and moves down, TAB accepts and moves right, ESC abandons the edit. DEL clears whatever is selected, and SHIFT with the arrows sweeps a rectangle. HOME and END take the row, CTRL with them the whole sheet, and CTRL+END goes to the end of the *data* rather than the end of the two-hundred-row grid.
+
+**Formulas.** A cell beginning with `=` is worked out: arithmetic with the usual precedence, brackets, powers, cell references, ranges, and `SUM`, `AVERAGE`, `MIN`, `MAX`, `COUNT`, `COUNTA`, `ROUND`, `ABS`, `INT` and `SQRT`. **A cell holds what you typed and is worth something else** - the entry line under the grid shows the formula while the cell shows the answer, which is the whole distinction a spreadsheet is built on and is why saving gives back the formula rather than the number. Mistakes are values rather than exceptions: `#DIV/0!`, `#NAME?`, `#VALUE!`, `#REF!` and `#CIRC!` for a cell that needs its own value to work out its own value. **Data > Total Selection** writes a `=SUM(...)` underneath whatever is selected.
+
+**Charts.** **F6** draws the selection as labelled bars and **F7** as a line graph, both of them the library's own widgets. Labels come from the cells beside the numbers, so a column of figures with the month names to its left charts itself with no configuration at all. A rectangle is charted by its first column and the caption says so, rather than quietly picking one.
+
+**Mouse.** Click a cell, drag to sweep a rectangle, click a column letter or a row number to select the whole of it, drag the scrollbar thumb, roll the wheel.
+
+**Merged cells** are how the instructions at the top of the sample are drawn across the sheet. A comma separated file has nowhere to record a merge, so the loader infers one: a row with something in its first cell and nothing in any other is a banner. **Data > Merge Across** and **Unmerge** do it by hand.
+
+**Shortcuts here are function keys** rather than control combinations, because a control combination the console keeps for itself never arrives at all, and a menu advertising a key that does nothing is worse than one advertising none. The clipboard three are the exception, and cutting or copying a range puts it on the suite clipboard as tab separated text, so it arrives in the word processor as a table rather than a run-on line.
+
+Four pieces of this are in the library rather than here: `TableViewport` (which columns are on screen and which one a click landed in, when the columns are not all the same width), `TextRow` (a row built of styled runs, so the menu panel can be drawn over it), `DelimitedText` (reading and writing the file), and `TextBuffer` again, this time holding one line of text as the cell editor.
+
 ## Planned
 
 | Application | What only it will demonstrate |
 | --- | --- |
-| **Spreadsheet** | A language: cell references, a formula parser, evaluation in dependency order, and a circular reference as the interesting failure. |
 | **Database** | Reading back what it wrote, so the only screen that has to distrust a file it created. Also where the four modal controls appear as a workflow rather than one at a time. |
 | **Calculator** | The mouse as labelled buttons. Minesweeper divides to find a cell and Missile Command aims at a continuum; a keypad needs a retained layout to hit-test against. |
 | **Diary** | Dates and wall-clock time: a month grid, today, and a clock that moves while you look at it. |

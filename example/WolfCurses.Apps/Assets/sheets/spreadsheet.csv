@@ -1,0 +1,56 @@
+Maxwolf Financial Situation 2026
+"Arrow keys move. Type to edit a cell; ENTER accepts, ESC cancels."
+F2 edits what is already in a cell. DEL clears. SHIFT+arrows select.
+"F6 draws bars of the selection, F7 a line. Try B9:B20 for a good one."
+Click a column letter to select it all. Data > Column Width helps.
+F8 jumps to a cell. F10 opens the menus. The Net column is a formula.
+
+Month,Income,Hardware,Drugs,Everything else,Net
+Jan,18400,5200,380,1100,=B9-C9-D9-E9
+Feb,16250,890,410,1150,=B10-C10-D10-E10
+Mar,21300,7400,395,1080,=B11-C11-D11-E11
+Apr,17800,320,455,1210,=B12-C12-D12-E12
+May,19950,2100,470,1130,=B13-C13-D13-E13
+Jun,23400,11200,510,1340,=B14-C14-D14-E14
+Jul,15600,450,530,1190,=B15-C15-D15-E15
+Aug,20100,3300,495,1220,=B16-C16-D16-E16
+Sep,18750,780,540,1260,=B17-C17-D17-E17
+Oct,22600,6900,610,1310,=B18-C18-D18-E18
+Nov,19400,1450,585,1275,=B19-C19-D19-E19
+Dec,26800,14300,720,1420,=B20-C20-D20-E20
+Total,=SUM(B9:B20),=SUM(C9:C20),=SUM(D9:D20),=SUM(E9:E20),=SUM(F9:F20)
+
+Every purchase. Select D25:D48 and press F6 to see them as bars.
+Date,Category,Item,Cost
+2026-01-14,Hardware,RTX 5090 (the first one),2199
+2026-01-14,Hardware,"1200W power supply, obviously",289
+2026-01-22,Drugs,"Espresso machine, plumbed in",1899
+2026-02-03,Drugs,Coffee beans (12 kg subscription),264
+2026-02-19,Hardware,"27"" monitor, the fourth one",430
+2026-03-06,Hardware,RTX 5090 (the second one, for science),2199
+2026-03-06,Hardware,128 GB DDR5 because 64 felt cramped,640
+2026-03-27,Hardware,Second fridge (for the energy drinks),349
+2026-04-11,Drugs,Energy drinks by the pallet,412
+2026-05-02,Hardware,8 TB NVMe (mostly shader caches),719
+2026-05-30,Everything else,Standing desk,690
+2026-06-08,Hardware,"Water cooling loop, first attempt",510
+2026-06-09,Everything else,Towels,24
+2026-06-10,Hardware,"Water cooling loop, second attempt (dry)",610
+2026-07-15,Drugs,Coffee beans (emergency resupply),88
+2026-08-01,Hardware,Mechanical keyboard number seven,245
+2026-08-02,Hardware,Switches for keyboard number seven,88
+2026-08-04,Hardware,Keycaps for keyboard number seven,132
+2026-09-13,Everything else,"Chair, after the standing desk",1240
+2026-10-21,Drugs,Herbal tea (an experiment; abandoned),11
+2026-11-07,Drugs,Ibuprofen (have you seen GPU prices),8
+2026-11-28,Hardware,Black Friday. Do not ask.,3900
+2026-12-01,Everything else,Electricity (see the two rows above),940
+2026-12-19,Everything else,Domain renewal for bigmaxwolf.com,14
+
+A few sums. Change any number above and watch these move.
+Biggest single purchase,=MAX(D25:D48)
+Things bought,=COUNT(D25:D48)
+Average purchase,"=ROUND(AVERAGE(D25:D48),2)"
+Spent on hardware,=SUM(C9:C20)
+Spent on drugs,=SUM(D9:D20)
+Kept after all that,=F21

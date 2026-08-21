@@ -24,12 +24,12 @@ namespace WolfCurses.Apps.Tests.Support
     ///     <para>
     ///         <b>Dispose matters.</b> <c>AppsSimulationApp</c> is a singleton that refuses to be created twice, so
     ///         a test that leaks one fails every test after it. Hence <c>using</c> at every call site and the
-    ///         non-parallel collection, see <see cref="AppsAppCollection" />.
+    ///         non-parallel collection, see <see cref="SuiteCollection" />.
     ///     </para>
     /// </summary>
-    public sealed class DrivenAppsApp : IDisposable
+    public sealed class DrivenSuite : IDisposable
     {
-        public DrivenAppsApp()
+        public DrivenSuite()
         {
             AppsSimulationApp.Create();
             App = AppsSimulationApp.Instance;

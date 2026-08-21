@@ -45,6 +45,25 @@ namespace WolfCurses.Apps
         /// <summary>The file name, which sits in a lit tab notched into the top of the frame.</summary>
         public static TextStyle Title { get; } = new(ConsoleColor.DarkBlue, ConsoleColor.Gray);
 
+        /// <summary>
+        ///     A column letter or a row number down the side of a grid. The same silver as the menu bar, which is
+        ///     what a spreadsheet's headings have always been: raised, and plainly not part of the data.
+        /// </summary>
+        public static TextStyle Header { get; } = new(ConsoleColor.Black, ConsoleColor.Gray);
+
+        /// <summary>
+        ///     The heading of the row or column the cursor is in. Worth picking out because on a wide grid the
+        ///     cursor is the only thing saying where you are, and it is one lit cell among several hundred.
+        /// </summary>
+        public static TextStyle HeaderActive { get; } = new(ConsoleColor.White, ConsoleColor.Black);
+
+        /// <summary>
+        ///     A cell inside a swept selection but not the one the keyboard is on. Deliberately a different colour
+        ///     from <see cref="Selection" /> rather than the same one: a range and the cell within it that will
+        ///     receive the next keystroke are different things, and drawing them alike hides the second.
+        /// </summary>
+        public static TextStyle Highlight { get; } = new(ConsoleColor.White, ConsoleColor.DarkCyan);
+
         /// <summary>The menu bar across the top.</summary>
         public static TextStyle MenuBar { get; } = new(ConsoleColor.Black, ConsoleColor.Gray);
 

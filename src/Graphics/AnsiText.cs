@@ -109,6 +109,109 @@ namespace WolfCurses.Graphics
         }
 
         /// <summary>
+        ///     Pads or trims text so that it occupies exactly <paramref name="width" /> visible columns, measured
+        ///     with <see cref="VisibleLength" /> rather than <c>string.Length</c>.
+        ///     <para>
+        ///         <b>This is the operation every laid-out screen performs and the one it performs wrongly.</b> A
+        ///         styled row twenty columns wide is several hundred characters long, so <c>PadRight</c> pads it to
+        ///         nothing and <c>Substring</c> cuts an escape in half, which spills the rest of the sequence into
+        ///         the terminal as text and leaves the colour switched on for the remainder of the screen.
+        ///     </para>
+        ///     <para>
+        ///         An earlier version of this class deliberately shipped without a padding helper, on the grounds
+        ///         that it would have been public surface for a single internal caller. That reasoning has expired:
+        ///         there are now several, inside the package and out, and each had privately re-derived a version
+        ///         that only works while the text happens to carry no colour.
+        ///     </para>
+        ///     <para>
+        ///         Trimming keeps every escape it passes, including ones sitting past the cut, so a run that was
+        ///         opened is still closed by whatever reset the original ended with. Padding is spaces and is added
+        ///         outside the text, which is the right order: style what has already been fitted, rather than
+        ///         fitting something already styled, and the padding takes the background with it.
+        ///     </para>
+        /// </summary>
+        /// <param name="width">The exact number of visible columns wanted. Zero or less gives an empty string.</param>
+        /// <param name="text">The text to fit. Null is treated as empty and becomes that many spaces.</param>
+        /// <param name="alignment">
+        ///     Where the text sits when it is narrower than the width. When centring leaves an odd space over it
+        ///     goes on the right.
+        /// </param>
+        /// <returns>Text exactly <paramref name="width" /> visible columns wide.</returns>
+        public static string Fit(string text, int width,
+            AnsiHorizontalAlignmentEnum alignment = AnsiHorizontalAlignmentEnum.Left)
+        {
+            if (width <= 0)
+                return string.Empty;
+
+            text ??= string.Empty;
+
+            var visible = VisibleLength(text);
+
+            // Already exactly right, which for a screen redrawn every frame is the overwhelmingly common case.
+            if (visible == width)
+                return text;
+
+            if (visible > width)
+                return Truncate(text, width);
+
+            var missing = width - visible;
+
+            switch (alignment)
+            {
+                case AnsiHorizontalAlignmentEnum.Right:
+                    return new string(' ', missing) + text;
+
+                case AnsiHorizontalAlignmentEnum.Center:
+                    var before = missing / 2;
+                    return new string(' ', before) + text + new string(' ', missing - before);
+
+                default:
+                    return text + new string(' ', missing);
+            }
+        }
+
+        /// <summary>
+        ///     Keeps the first <paramref name="width" /> visible columns and every escape sequence in the string,
+        ///     including those after the cut.
+        ///     <para>
+        ///         Carrying the trailing escapes through is what makes this safe rather than merely shorter. A
+        ///         styled run is an opening sequence, some text, and a reset; drop the reset because it fell past
+        ///         the cut and the colour runs on into everything drawn after it, which on a full screen means one
+        ///         over-long cell repaints the rest of the row.
+        ///     </para>
+        /// </summary>
+        /// <param name="text">The text to trim.</param>
+        /// <param name="width">How many visible columns to keep.</param>
+        /// <returns>The trimmed text.</returns>
+        private static string Truncate(string text, int width)
+        {
+            var sb = new StringBuilder(text.Length);
+            var kept = 0;
+            var i = 0;
+
+            while (i < text.Length)
+            {
+                if (text[i] == Escape)
+                {
+                    var next = SkipEscape(text, i);
+                    sb.Append(text, i, next - i);
+                    i = next;
+                    continue;
+                }
+
+                if (kept < width)
+                {
+                    sb.Append(text[i]);
+                    kept++;
+                }
+
+                i++;
+            }
+
+            return sb.ToString();
+        }
+
+        /// <summary>
         ///     Given a string and the index of an <see cref="Escape" /> character within it, returns the index of the
         ///     first character after the escape sequence that starts there — so both <see cref="VisibleLength" /> and
         ///     <see cref="StripEscapes" /> skip escapes identically. A bare trailing <see cref="Escape" /> with nothing

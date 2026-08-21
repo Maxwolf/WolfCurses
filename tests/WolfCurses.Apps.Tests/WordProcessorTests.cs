@@ -15,12 +15,12 @@ namespace WolfCurses.Apps.Tests
     ///         document did, which the status line states outright and the text does not.
     ///     </para>
     /// </summary>
-    [Collection("AppsApp")]
+    [Collection("Suite")]
     public class WordProcessorTests
     {
-        private static DrivenAppsApp OpenEditor()
+        private static DrivenSuite OpenEditor()
         {
-            var suite = new DrivenAppsApp();
+            var suite = new DrivenSuite();
             suite.ChooseMenuItem((int) AppsCommandsEnum.WordProcessor);
             return suite;
         }
@@ -698,7 +698,7 @@ namespace WolfCurses.Apps.Tests
         /// </summary>
         /// <param name="text">What to type into it.</param>
         /// <returns>The running suite.</returns>
-        private static DrivenAppsApp EditorWithText(string text)
+        private static DrivenSuite EditorWithText(string text)
         {
             var suite = OpenEditor();
 
@@ -715,7 +715,7 @@ namespace WolfCurses.Apps.Tests
 
         /// <summary>Selects the line the caret is on, which is the shortest honest way to have something selected.</summary>
         /// <param name="suite">The running suite.</param>
-        private static void SelectTheLine(DrivenAppsApp suite)
+        private static void SelectTheLine(DrivenSuite suite)
         {
             suite.Press(ConsoleKey.Home);
             suite.Press(ConsoleKey.End, ConsoleModifiers.Shift);
@@ -1088,7 +1088,7 @@ namespace WolfCurses.Apps.Tests
             Assert.Contains("rfc1149.txt *", suite.Screen, StringComparison.Ordinal);
         }
 
-        private static bool IsSpellingDialogOpen(DrivenAppsApp suite)
+        private static bool IsSpellingDialogOpen(DrivenSuite suite)
         {
             return suite.Screen.Contains("is not in the dictionary", StringComparison.Ordinal);
         }
