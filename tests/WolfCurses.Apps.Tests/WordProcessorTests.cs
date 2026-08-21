@@ -1033,6 +1033,67 @@ namespace WolfCurses.Apps.Tests
         }
 
         [Fact]
+        public void SpellCheckSaysHowManyWordsThereAreToGetThrough()
+        {
+            // Without a total, a check over a long document is a prompt that keeps reappearing with no sign of
+            // whether it is nearly finished or has barely started.
+            using var suite = EditorWithText("qzwxjkv and qwxjkvz");
+
+            suite.Press(ConsoleKey.F7);
+
+            Assert.Contains("(1 of 2)", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void TheProgressCountAdvancesAsWordsAreDealtWith()
+        {
+            using var suite = EditorWithText("qzwxjkv and qwxjkvz");
+
+            suite.Press(ConsoleKey.F7);
+            Assert.Contains("(1 of 2)", suite.Screen, StringComparison.Ordinal);
+
+            // Whatever is highlighted, taking it moves the pass on to the next word.
+            suite.Press(ConsoleKey.Enter);
+
+            Assert.Contains("(2 of 2)", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void AcceptingSpellingSuggestionsLeavesTheRestOfTheDocumentIntact()
+        {
+            // The document is only ever edited through a selection covering exactly one word, so a pass of
+            // corrections must not add or lose a single line. Asserted on the shipped document because that is
+            // where it would be noticed, and by counting lines rather than by quoting any of them.
+            using var suite = OpenEditor();
+            var before = ReportedLineCount(suite.Screen);
+
+            suite.Press(ConsoleKey.F7);
+
+            // Bounded, and guarded on the dialog still being up: if the pass ended early these keys would land in
+            // the document, and ENTER in the document inserts a line, which is exactly what is being measured.
+            var accepted = 0;
+            for (var i = 0; i < 5 && IsSpellingDialogOpen(suite); i++)
+            {
+                suite.Press(ConsoleKey.Enter);
+                accepted++;
+            }
+
+            if (IsSpellingDialogOpen(suite))
+                suite.Type("C");
+
+            Assert.True(accepted > 0, "the shipped document produced no spelling prompts, so this proves nothing");
+            Assert.Equal(before, ReportedLineCount(suite.Screen));
+
+            // And it really did edit something, or the line count would be unchanged for the boring reason.
+            Assert.Contains("rfc1149.txt *", suite.Screen, StringComparison.Ordinal);
+        }
+
+        private static bool IsSpellingDialogOpen(DrivenAppsApp suite)
+        {
+            return suite.Screen.Contains("is not in the dictionary", StringComparison.Ordinal);
+        }
+
+        [Fact]
         public void ReopeningTheEditorStartsFromTheFileAgain()
         {
             // A form is created fresh each time it is set, so an edited-then-abandoned document does not come back.

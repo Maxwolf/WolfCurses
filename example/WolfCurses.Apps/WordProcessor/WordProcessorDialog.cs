@@ -69,6 +69,20 @@ namespace WolfCurses.Apps.WordProcessor
         /// <summary>Whether a search refuses a match with a word character against either end of it.</summary>
         private bool _wholeWord;
 
+        /// <summary>
+        ///     How many unknown words the document held when the current spelling pass started. Counted once, and
+        ///     therefore a snapshot: correcting a word can turn its neighbours into different words, so the total is
+        ///     what was true at the start rather than a figure recomputed for every prompt. That is the honest thing
+        ///     to show, since a total that moved while you worked would be worse than useless.
+        /// </summary>
+        private int _spellTotal;
+
+        /// <summary>How many of them have been offered so far in this pass.</summary>
+        private int _spellVisited;
+
+        /// <summary>The bar drawn beside that count, so the size of the job is visible rather than only its number.</summary>
+        private readonly ProgressBar _spellProgress = new() {Width = 16, ShowPercentage = false};
+
         /// <summary>Whether the left button is down and sweeping a selection through the document.</summary>
         private bool _draggingText;
 
@@ -664,7 +678,33 @@ namespace WolfCurses.Apps.WordProcessor
                 return;
             }
 
+            // Counted up front, which costs one pass over the document and is the only way to say "of how many".
+            // Worth it: without a total, a check over a long document is a prompt that keeps reappearing with no
+            // sign of whether it is nearly done or has barely started.
+            _spellTotal = CountMisspellings(dictionary);
+            _spellVisited = 0;
+
             CheckSpellingFrom(TextPosition.Start);
+        }
+
+        /// <summary>How many words in the whole document the dictionary does not know.</summary>
+        /// <param name="dictionary">The word list to ask.</param>
+        /// <returns>The count.</returns>
+        private int CountMisspellings(SpellDictionary dictionary)
+        {
+            var total = 0;
+            var at = TextPosition.Start;
+
+            while (TryFindMisspelling(at, dictionary, out var start, out var word))
+            {
+                total++;
+
+                // Resuming past the word rather than at it, the same rule TextWords states: starting again at the
+                // same place would count the same word until the machine gave out.
+                at = new TextPosition(start.Line, start.Column + word.Length);
+            }
+
+            return total;
         }
 
         /// <summary>
@@ -682,9 +722,15 @@ namespace WolfCurses.Apps.WordProcessor
 
             if (!TryFindMisspelling(from, dictionary, out var start, out var word))
             {
-                _message = "Spelling check complete.";
+                _message = _spellTotal == 0
+                    ? "Spelling check complete. Nothing to correct."
+                    : string.Format(CultureInfo.InvariantCulture, "Spelling check complete. {0} word{1} looked at.",
+                        _spellVisited, _spellVisited == 1 ? string.Empty : "s");
+
                 return;
             }
+
+            _spellVisited++;
 
             var end = new TextPosition(start.Line, start.Column + word.Length);
 
@@ -698,7 +744,7 @@ namespace WolfCurses.Apps.WordProcessor
 
             SelectList.Choose(
                 SimUnit,
-                $"\"{word}\" is not in the dictionary:",
+                $"\"{word}\" is not in the dictionary   {Progress()}",
                 choices,
                 chosen =>
                 {
@@ -715,6 +761,20 @@ namespace WolfCurses.Apps.WordProcessor
                     CheckSpellingFrom(_buffer.Caret);
                 },
                 () => _message = "Spelling check stopped.");
+        }
+
+        /// <summary>
+        ///     How far through the pass this is, as a count and as a bar. The count is what answers "how many are
+        ///     there"; the bar is what answers it at a glance, which for a long document is the question actually
+        ///     being asked.
+        /// </summary>
+        /// <returns>The progress text.</returns>
+        private string Progress()
+        {
+            var total = Math.Max(_spellVisited, _spellTotal);
+
+            return string.Format(CultureInfo.InvariantCulture, "({0} of {1}) {2}", _spellVisited, total,
+                _spellProgress.Render(_spellVisited, Math.Max(1, total)));
         }
 
         /// <summary>The first word from a position that the dictionary does not know.</summary>
