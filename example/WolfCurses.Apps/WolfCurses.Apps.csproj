@@ -36,6 +36,12 @@
          document model shows up by hand rather than only in a test. -->
     <None Include="Assets\documents\*.txt" Link="documents\%(Filename)%(Extension)"
           CopyToOutputDirectory="PreserveNewest" />
+
+    <!-- The spelling word list, in its own folder so the Open dialog never offers it as a document to edit. It is
+         public domain (Unlicense); see Assets/dictionary/README.md for why a shorter frequency list was rejected on
+         licensing rather than on size. -->
+    <None Include="Assets\dictionary\words.txt" Link="dictionary\words.txt"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

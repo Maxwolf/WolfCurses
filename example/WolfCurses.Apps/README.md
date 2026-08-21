@@ -24,6 +24,8 @@ Menus across the top, a framed blue field with the file name in its top edge, sc
 
 **Search.** CTRL+F asks what to find and selects the first match; F3 and SHIFT+F3 walk to the next and previous, coming round the ends rather than stopping; CTRL+H asks what to change and what to change it to, and changes every one. Match Case and Whole Word are ticked entries on the Search menu rather than checkboxes in a dialog, so the setting is readable without opening anything.
 
+**Spelling.** F7 checks the document and stops on each word it does not know, offering what was probably meant; choosing a correction applies it and carries straight on to the next. Words with digits in them, acronyms in capitals and single letters are left alone. Tools also counts the words. The dictionary is 370,105 public domain words shipped alongside; see [its provenance note](Assets/dictionary/README.md) for why the small frequency list everyone reaches for first could not be used.
+
 **File.** Opens on `documents/rfc1149.txt`; Open browses that folder, and Save and Save As write back.
 
 Five pieces of it are in the library rather than here, which is the point of these examples: `TextBuffer` and `TextViewport` (the document and the window onto it), `TabStops` (a tab is one character and several columns, and keeping those in step is most of what makes a caret land correctly), `MenuBar`, and `ScrollBar`.

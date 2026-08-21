@@ -990,6 +990,49 @@ namespace WolfCurses.Apps.Tests
         }
 
         [Fact]
+        public void SpellCheckStopsOnAWordTheDictionaryDoesNotKnowAndOffersAList()
+        {
+            // A string no word list contains, chosen so the test does not depend on which real typos happen to be
+            // entries in a near-exhaustive dictionary.
+            using var suite = EditorWithText("qzwxjkv");
+
+            suite.Press(ConsoleKey.F7);
+
+            Assert.Contains("is not in the dictionary", suite.Screen, StringComparison.Ordinal);
+            Assert.Contains("qzwxjkv", suite.Screen, StringComparison.Ordinal);
+
+            // There is always a way out of the list even when nothing can be suggested, or a word the checker
+            // cannot help with would be one nobody could get past.
+            Assert.Contains("leave this word alone", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void SpellCheckOnOrdinaryWordsSaysItIsFinishedRatherThanNothingAtAll()
+        {
+            // The failure this guards is a checker whose rules skip everything: it reports no problems, looks like
+            // it worked, and has not looked at anything.
+            using var suite = EditorWithText("the pigeon carried the message");
+
+            suite.Press(ConsoleKey.F7);
+
+            Assert.Contains("Spelling check complete", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void WordCountReportsWhatIsActuallyInTheDocument()
+        {
+            using var suite = EditorWithText("one two three");
+
+            // Tools has exactly two entries and both are selectable, so this needs no arithmetic about where
+            // anything sits: down one from Spelling, and choose.
+            suite.Press(ConsoleKey.T, ConsoleModifiers.Alt);
+            suite.Press(ConsoleKey.DownArrow);
+            suite.Press(ConsoleKey.Enter);
+
+            Assert.Contains("3 words", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
         public void ReopeningTheEditorStartsFromTheFileAgain()
         {
             // A form is created fresh each time it is set, so an edited-then-abandoned document does not come back.

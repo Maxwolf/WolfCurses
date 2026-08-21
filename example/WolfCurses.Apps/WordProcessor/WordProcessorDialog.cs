@@ -2,6 +2,7 @@
 // Timestamp 08/20/2026
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using WolfCurses.Controls;
@@ -395,6 +396,9 @@ namespace WolfCurses.Apps.WordProcessor
                 case ConsoleKey.F2:
                     SaveDocument();
                     return;
+                case ConsoleKey.F7:
+                    CheckSpelling();
+                    return;
                 case ConsoleKey.V when control:
                 case ConsoleKey.Insert when shift:
                     Paste();
@@ -635,6 +639,132 @@ namespace WolfCurses.Apps.WordProcessor
             _viewport.EnsureVisible(CaretOnScreen());
         }
 
+        /// <summary>What the last entry of the suggestion list reads, for a word that is right after all.</summary>
+        private const string SkipLabel = "(leave this word alone)";
+
+        /// <summary>
+        ///     Checks the whole document, stopping at the first word the dictionary does not know.
+        ///     <para>
+        ///         From the beginning rather than from the caret, which was the first thing tried and is wrong for
+        ///         the commonest case there is: somebody who has been typing has their caret at the end of what
+        ///         they wrote, so a check starting there reports a document full of mistakes as complete. Once
+        ///         running it carries on from where it got to, which is what makes a pass a pass.
+        ///     </para>
+        ///     <para>
+        ///         It does not wrap, unlike the search. A spell check has an end, and coming round to words already
+        ///         skipped would mean it never reached one.
+        ///     </para>
+        /// </summary>
+        private void CheckSpelling()
+        {
+            var dictionary = SpellDictionary.Shared();
+            if (!dictionary.IsUsable)
+            {
+                _message = $"Cannot check spelling: {dictionary.Error}.";
+                return;
+            }
+
+            CheckSpellingFrom(TextPosition.Start);
+        }
+
+        /// <summary>
+        ///     Finds the next unknown word, selects it and offers what was probably meant.
+        ///     <para>
+        ///         Choosing carries straight on to the next one, which is the whole shape of a spell check and is
+        ///         only expressible because a control can now be opened from another control's callback. Cancelling
+        ///         the list ends the pass.
+        ///     </para>
+        /// </summary>
+        /// <param name="from">Where to resume looking.</param>
+        private void CheckSpellingFrom(TextPosition from)
+        {
+            var dictionary = SpellDictionary.Shared();
+
+            if (!TryFindMisspelling(from, dictionary, out var start, out var word))
+            {
+                _message = "Spelling check complete.";
+                return;
+            }
+
+            var end = new TextPosition(start.Line, start.Column + word.Length);
+
+            _buffer.Select(start, end);
+            _viewport.EnsureVisible(OnScreen(start));
+            _viewport.EnsureVisible(CaretOnScreen());
+
+            // The skip entry is always last and always present, so a word list with nothing to suggest still gives
+            // a list somebody can answer rather than an empty one they cannot.
+            var choices = new List<string>(SpellChecker.Suggest(word, dictionary)) {SkipLabel};
+
+            SelectList.Choose(
+                SimUnit,
+                $"\"{word}\" is not in the dictionary:",
+                choices,
+                chosen =>
+                {
+                    if (chosen < 0 || chosen >= choices.Count - 1)
+                    {
+                        // Left alone. Resuming from the end of the word rather than its start, or the very next
+                        // thing found would be the word just skipped and the check would never move.
+                        _buffer.ClearSelection();
+                        CheckSpellingFrom(end);
+                        return;
+                    }
+
+                    _buffer.Insert(choices[chosen]);
+                    CheckSpellingFrom(_buffer.Caret);
+                },
+                () => _message = "Spelling check stopped.");
+        }
+
+        /// <summary>The first word from a position that the dictionary does not know.</summary>
+        /// <param name="from">Where to start looking.</param>
+        /// <param name="dictionary">The word list to ask.</param>
+        /// <param name="start">Where the word begins.</param>
+        /// <param name="word">The word itself.</param>
+        /// <returns>TRUE when one was found.</returns>
+        private bool TryFindMisspelling(TextPosition from, SpellDictionary dictionary, out TextPosition start,
+            out string word)
+        {
+            start = TextPosition.Start;
+            word = null;
+
+            for (var line = Math.Max(0, from.Line); line < _buffer.LineCount; line++)
+            {
+                var text = _buffer.GetLine(line);
+                var at = line == from.Line ? from.Column : 0;
+
+                // The spell checker's own idea of a word rather than the library's, because an apostrophe is a
+                // boundary to a cursor and part of the word to a dictionary.
+                while (TextWords.TryNextWord(text, at, out var wordStart, out var length,
+                           SpellChecker.IsWordCharacter))
+                {
+                    at = wordStart + length;
+
+                    var candidate = text.Substring(wordStart, length);
+                    if (SpellChecker.IsCorrect(candidate, dictionary))
+                        continue;
+
+                    start = new TextPosition(line, wordStart);
+                    word = candidate;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>Counts the words, which is the other question every word processor is asked.</summary>
+        private void ShowWordCount()
+        {
+            // The library's word rule here rather than the spell checker's: "don't" is one word to a person
+            // counting them, and it is also one word to a cursor stepping over it.
+            var words = TextWords.Count(_buffer.Lines, SpellChecker.IsWordCharacter);
+
+            _message = string.Format(CultureInfo.InvariantCulture, "{0} words, {1} lines.", words,
+                _buffer.LineCount);
+        }
+
         /// <summary>Builds the pull-downs, styled to match the field they sit over.</summary>
         private void BuildMenus()
         {
@@ -682,6 +812,9 @@ namespace WolfCurses.Apps.WordProcessor
                         {CheckedWhen = () => _matchCase},
                     new MenuBarEntry("Whole Word", () => _wholeWord = !_wholeWord)
                         {CheckedWhen = () => _wholeWord}),
+                new MenuBarMenu("Tools",
+                    new MenuBarEntry("Spelling...", CheckSpelling, "F7"),
+                    new MenuBarEntry("Word Count", ShowWordCount)),
                 new MenuBarMenu("Options",
                     // Marked, because two entries offering a choice with no sign of which one is in force is a menu
                     // that makes you change the setting to find out what it was.
