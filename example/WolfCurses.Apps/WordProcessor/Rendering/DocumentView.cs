@@ -39,19 +39,49 @@ namespace WolfCurses.Apps.WordProcessor
 
             for (var row = 0; row < viewport.Height; row++)
             {
-                var lineIndex = viewport.FirstLine + row;
 
-                rows[row] = lineIndex < buffer.LineCount
-                    ? RenderLine(buffer, viewport, lineIndex, field, highlight, showCaret)
-                    : field.Apply(new string(' ', viewport.Width));
+
+                rows[row] = RenderSegment(buffer, viewport, row, 0, viewport.Width, field, highlight, showCaret);
             }
 
             return rows;
         }
 
-        /// <summary>Renders one document line, clipped to the viewport and padded back out to its full width.</summary>
+        /// <summary>
+        ///     Renders part of one visible row: the columns <paramref name="fromColumn" /> to
+        ///     <paramref name="fromColumn" /> plus <paramref name="count" />, measured from the left of the viewport.
+        ///     <para>
+        ///         The range exists so something can be drawn <i>over</i> the document without the document moving.
+        ///         A menu panel that appends rows pushes the field down the screen, which is the tell that a screen
+        ///         is being stacked rather than composited; with a range, the caller draws the text either side of
+        ///         the panel and the field stays exactly where it was.
+        ///     </para>
+        /// </summary>
+        /// <param name="buffer">The document.</param>
+        /// <param name="viewport">The window onto it.</param>
+        /// <param name="row">Which viewport row.</param>
+        /// <param name="fromColumn">First viewport column to draw.</param>
+        /// <param name="count">How many columns to draw.</param>
+        /// <param name="field">How ordinary text is painted.</param>
+        /// <param name="highlight">How the caret and the selection are painted.</param>
+        /// <param name="showCaret">Whether the caret should be drawn.</param>
+        /// <returns>Exactly <paramref name="count" /> visible columns.</returns>
+        public static string RenderSegment(TextBuffer buffer, TextViewport viewport, int row, int fromColumn,
+            int count, TextStyle field, TextStyle highlight, bool showCaret = true)
+        {
+            if (count <= 0)
+                return string.Empty;
+
+            var lineIndex = viewport.FirstLine + row;
+            if (lineIndex >= buffer.LineCount)
+                return field.Apply(new string(' ', count));
+
+            return RenderLine(buffer, viewport, lineIndex, field, highlight, showCaret, fromColumn, count);
+        }
+
+        /// <summary>Renders part of one document line, clipped to the viewport and padded back out.</summary>
         private static string RenderLine(TextBuffer buffer, TextViewport viewport, int lineIndex, TextStyle field,
-            TextStyle highlight, bool showCaret)
+            TextStyle highlight, bool showCaret, int fromColumn, int count)
         {
             var stored = buffer.GetLine(lineIndex);
             var (documentStart, documentEnd) = HighlightRange(buffer, lineIndex, showCaret);
@@ -66,14 +96,15 @@ namespace WolfCurses.Apps.WordProcessor
 
             // Padded to cover the whole row before anything is clipped, so the caret has a cell to sit in past the
             // end of the text and the field colour reaches the frame on the right.
-            var needed = Math.Max(viewport.FirstColumn + viewport.Width, highlightEnd);
+            var start = viewport.FirstColumn + fromColumn;
+            var needed = Math.Max(start + count, highlightEnd);
             if (line.Length < needed)
                 line = line.PadRight(needed);
 
-            var visible = line.Substring(viewport.FirstColumn, viewport.Width);
+            var visible = line.Substring(start, count);
 
-            var from = Math.Clamp(highlightStart - viewport.FirstColumn, 0, visible.Length);
-            var to = Math.Clamp(highlightEnd - viewport.FirstColumn, 0, visible.Length);
+            var from = Math.Clamp(highlightStart - start, 0, visible.Length);
+            var to = Math.Clamp(highlightEnd - start, 0, visible.Length);
 
             if (to <= from)
                 return field.Apply(visible);

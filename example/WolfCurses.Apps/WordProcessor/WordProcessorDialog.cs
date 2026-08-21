@@ -4,6 +4,7 @@
 using System;
 using System.Globalization;
 using System.IO;
+using WolfCurses.Controls;
 using WolfCurses.Documents;
 using WolfCurses.Graphics;
 using WolfCurses.Window;
@@ -99,11 +100,75 @@ namespace WolfCurses.Apps.WordProcessor
         /// <inheritdoc />
         public override string OnRenderForm()
         {
-            ParentWindow.PromptText = "ALT opens a menu, ESC returns to the suite:";
+            ParentWindow.PromptText = "F10 opens the menus, ESC returns to the suite:";
 
             var width = Math.Max(24, AnsiConsole.SafeWindowWidth() - 1);
-            return EditorChrome.Compose(_menuBar, _buffer, _viewport, Title(), StatusText(), width);
+
+            // The leading newline is load-bearing, not spacing. SceneGraph appends a window's text straight onto its
+            // own status row with no separator, so a screen that does not start one gets its first line printed on
+            // the end of "[ - ] - Window(1): ... - WolfCurses Apps". That row cannot be replaced, so everything here
+            // starts below it, and every row offset the mouse hit test uses counts from there.
+            return Environment.NewLine +
+                   EditorChrome.Compose(_menuBar, _buffer, _viewport, Title(), StatusText(), width);
         }
+
+        /// <inheritdoc />
+        public override void OnMousePressed(MouseEvent mouse)
+        {
+            base.OnMousePressed(mouse);
+
+            // The menus get the press first, exactly as they get keys first. A press that shuts an open menu is
+            // consumed, so dismissing one does not also move the caret to whatever was underneath it.
+            if (_menuBar != null && _menuBar.HandleMouse(mouse.Row, mouse.Column))
+            {
+                ResizeViewport();
+                return;
+            }
+
+            if (mouse.Button != MouseButtonEnum.Left)
+                return;
+
+            var row = mouse.Row - FieldTopRow;
+            var column = mouse.Column - 1;
+
+            if (row < 0 || row >= _viewport.Height)
+                return;
+
+            // The scrollbar occupies the column just past the field. Its arrow caps step a line and its track pages,
+            // which is everything a press can mean: dragging the thumb needs pointer motion the library does not
+            // report, so the bar answers -1 there rather than jumping somewhere nobody asked for.
+            if (column == _viewport.Width)
+            {
+                var scrolled = VerticalBar().PositionForPress(row);
+                if (scrolled >= 0)
+                {
+                    _viewport.ScrollTo(scrolled, _viewport.FirstColumn);
+                    _viewport.ClampToDocument(_buffer.LineCount);
+                }
+
+                return;
+            }
+
+            if (column < 0 || column >= _viewport.Width)
+                return;
+
+            // Two translations, and both are needed. The viewport turns a screen cell into a place in the document,
+            // and TabStops turns the screen column into a character index, which are different numbers the moment
+            // the line is indented.
+            var at = _viewport.ToDocument(row, column);
+            var line = Math.Clamp(at.Line, 0, _buffer.LineCount - 1);
+            var documentColumn = TabStops.ToDocumentColumn(_buffer.GetLine(line), at.Column, _buffer.TabWidth);
+
+            _buffer.MoveTo(new TextPosition(line, documentColumn));
+            _message = null;
+            _viewport.EnsureVisible(CaretOnScreen());
+        }
+
+        /// <summary>
+        ///     The screen row the document's first line is drawn on: the scene graph's status row, this screen's
+        ///     leading newline, the menu bar and the frame's top edge, plus whatever an open menu panel is covering.
+        /// </summary>
+        private int FieldTopRow => 3;
 
         /// <summary>
         ///     Never called: <see cref="EditsText" /> is precisely the declaration that ENTER should arrive as a key
@@ -205,8 +270,9 @@ namespace WolfCurses.Apps.WordProcessor
             _menuBar = new MenuBar(
                 new MenuBarMenu("File",
                     new MenuBarEntry("New", NewDocument),
-                    new MenuBarEntry("Open...", null, "F3") {IsEnabled = false},
-                    new MenuBarEntry("Save", null, "F2") {IsEnabled = false},
+                    new MenuBarEntry("Open...", OpenDocument, "F3"),
+                    new MenuBarEntry("Save", SaveDocument, "F2"),
+                    new MenuBarEntry("Save As...", SaveDocumentAs),
                     MenuBarEntry.Separator(),
                     new MenuBarEntry("Exit", () => ParentWindow.ClearForm(), "Esc")),
                 new MenuBarMenu("Edit",
@@ -230,8 +296,102 @@ namespace WolfCurses.Apps.WordProcessor
                 PanelHighlightStyle = DosTheme.MenuHighlight,
 
                 // The bar is the first row this form draws, and the scene graph puts its own status line above it.
-                BarRow = 1
+                BarRow = 1,
+
+                // The panel is drawn over the field rather than under the bar, so the frame's top edge sits between
+                // them and the panel's own first row is the field's.
+                PanelRow = FieldTopRow
             };
+        }
+
+        /// <summary>
+        ///     The scrollbar as the frame draws it, so a press is measured against the same bar that is on screen.
+        ///     Rebuilt rather than kept, because every number in it is derived from the document and the viewport.
+        /// </summary>
+        /// <returns>The vertical bar.</returns>
+        private ScrollBar VerticalBar()
+        {
+            return new ScrollBar
+            {
+                Length = _viewport.Height,
+                Total = _buffer.LineCount,
+                Visible = _viewport.Height,
+                Position = _viewport.FirstLine
+            };
+        }
+
+        /// <summary>Opens the file browser, starting where the samples are.</summary>
+        private void OpenDocument()
+        {
+            FileDialog.OpenFile(
+                SimUnit,
+                DocumentLibrary.BrowseFolder,
+                new[] {".txt", ".md", ".log", ".csv"},
+                LoadDocument,
+                () => _message = "Open cancelled.");
+        }
+
+        /// <summary>Writes the document back where it came from, or asks where to put it when it has no home yet.</summary>
+        private void SaveDocument()
+        {
+            if (string.IsNullOrEmpty(_path))
+            {
+                SaveDocumentAs();
+                return;
+            }
+
+            WriteTo(_path);
+        }
+
+        /// <summary>
+        ///     Asks for a folder and then a name.
+        ///     <para>
+        ///         Two dialogs because the library has no Save As: <c>FileDialog</c> offers opening a file and
+        ///         picking a folder, and neither of those is "name a file that does not exist yet". Composing the
+        ///         two here is the honest version, and if it proves out it is what a <c>FileDialog.SaveFile</c>
+        ///         would be built from.
+        ///     </para>
+        /// </summary>
+        private void SaveDocumentAs()
+        {
+            FileDialog.SelectFolder(
+                SimUnit,
+                DocumentLibrary.BrowseFolder,
+                folder => TextInputDialog.Prompt(
+                    SimUnit,
+                    "Save as which file name?",
+                    name => WriteTo(Path.Combine(folder, name)),
+                    () => _message = "Save cancelled.",
+                    _path == null ? "untitled.txt" : Path.GetFileName(_path),
+                    false,
+                    Validate),
+                () => _message = "Save cancelled.");
+        }
+
+        /// <summary>Refuses a name that is not one, before a dialog closes on it.</summary>
+        /// <param name="name">What the user typed.</param>
+        /// <returns>The complaint, or null when the name is usable.</returns>
+        private static string Validate(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return "A file name is needed.";
+
+            return name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ? "That name has characters a file cannot have." : null;
+        }
+
+        /// <summary>Writes the document to a path and says how it went.</summary>
+        /// <param name="path">Where to write.</param>
+        private void WriteTo(string path)
+        {
+            if (!DocumentLibrary.TrySave(path, _buffer.GetText(), out var error))
+            {
+                _message = $"Could not save {Path.GetFileName(path)}: {error}";
+                return;
+            }
+
+            _path = path;
+            _buffer.MarkSaved();
+            _message = $"Saved {Path.GetFileName(path)}.";
         }
 
         /// <summary>Starts an empty document.</summary>
@@ -279,9 +439,9 @@ namespace WolfCurses.Apps.WordProcessor
         {
             var width = Math.Max(24, AnsiConsole.SafeWindowWidth() - 1);
             var height = AnsiConsole.SafeWindowHeight();
-            var dropdown = _menuBar?.IsOpen == true ? _menuBar.DropdownHeight : 0;
 
-            _viewport.Resize(width - EditorChrome.ChromeColumns, EditorChrome.Rows(height, ReservedRows, dropdown));
+
+            _viewport.Resize(width - EditorChrome.ChromeColumns, EditorChrome.Rows(height, ReservedRows));
             _viewport.ClampToDocument(_buffer.LineCount);
             _viewport.EnsureVisible(CaretOnScreen());
         }

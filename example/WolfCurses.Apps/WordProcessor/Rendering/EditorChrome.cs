@@ -45,11 +45,19 @@ namespace WolfCurses.Apps.WordProcessor
         {
             var sb = new StringBuilder();
 
-            // The bar, and the open panel below it. The panel is drawn over the top of the field rather than beside
-            // it, so the rows it covers come out of the document's share (see Rows below).
-            sb.Append(menuBar.Render(width));
+            // The bar only. The open panel is drawn OVER the field further down rather than appended here: a panel
+            // that adds rows shoves the whole editor down the screen every time a menu opens, which is the tell that
+            // a screen is being stacked rather than composited.
+            sb.Append(menuBar.RenderTitleBar(width)).Append(Environment.NewLine);
 
-            var rows = DocumentView.Render(buffer, viewport, DosTheme.Field, DosTheme.Selection, !menuBar.IsOpen);
+            var panel = menuBar.IsOpen ? menuBar.DropdownRows() : System.Array.Empty<string>();
+            var panelWidth = Math.Min(menuBar.DropdownWidth, viewport.Width);
+
+            // The panel hangs under its own title. That column is measured on the bar, which starts one column left
+            // of the field because the frame's edge sits between them.
+            var panelColumn = panelWidth <= 0
+                ? 0
+                : Math.Clamp(menuBar.DropdownColumn - 1, 0, Math.Max(0, viewport.Width - panelWidth));
 
             // The bar spans the body rows exactly, so its two arrow caps land on the first and last of them. An
             // earlier version made it two cells longer and drew only the middle, which computed both caps and then
@@ -69,12 +77,26 @@ namespace WolfCurses.Apps.WordProcessor
 
             sb.Append(TopBorder(title, width)).Append(Environment.NewLine);
 
-            for (var row = 0; row < rows.Length; row++)
+            for (var row = 0; row < viewport.Height; row++)
             {
-                sb.Append(DosTheme.Frame.Apply("│"))
-                    .Append(rows[row])
-                    .Append(cells[row])
-                    .Append(Environment.NewLine);
+                sb.Append(DosTheme.Frame.Apply("│"));
+
+                if (row < panel.Count && panelWidth > 0)
+                {
+                    // The document either side of the panel, and the panel itself in between. Composed from three
+                    // runs rather than spliced into a finished row, because a styled row is far longer than it is
+                    // wide and cutting it by column would cut an escape in half.
+                    sb.Append(Field(buffer, viewport, row, 0, panelColumn))
+                        .Append(panel[row])
+                        .Append(Field(buffer, viewport, row, panelColumn + panelWidth,
+                            viewport.Width - panelColumn - panelWidth));
+                }
+                else
+                {
+                    sb.Append(Field(buffer, viewport, row, 0, viewport.Width));
+                }
+
+                sb.Append(cells[row]).Append(Environment.NewLine);
             }
 
             sb.Append(BottomBorder(buffer, viewport, width)).Append(Environment.NewLine);
@@ -83,14 +105,23 @@ namespace WolfCurses.Apps.WordProcessor
             return sb.ToString();
         }
 
-        /// <summary>How many rows of document fit, once the frame and any open menu have taken theirs.</summary>
+        /// <summary>
+        ///     How many rows of document fit, once the frame has taken its share. Deliberately not affected by an
+        ///     open menu: the panel is drawn over the field, so the field keeps its size and nothing moves.
+        /// </summary>
         /// <param name="consoleHeight">The console height.</param>
         /// <param name="reserved">Rows the scene graph and the prompt take outside this screen.</param>
-        /// <param name="dropdownHeight">Rows an open menu panel is covering.</param>
         /// <returns>The document's height, never less than one.</returns>
-        public static int Rows(int consoleHeight, int reserved, int dropdownHeight)
+        public static int Rows(int consoleHeight, int reserved)
         {
-            return Math.Max(1, consoleHeight - reserved - ChromeRows - dropdownHeight);
+            return Math.Max(1, consoleHeight - reserved - ChromeRows);
+        }
+
+        /// <summary>One run of the document field, in the theme's colours.</summary>
+        private static string Field(TextBuffer buffer, TextViewport viewport, int row, int fromColumn, int count)
+        {
+            return DocumentView.RenderSegment(buffer, viewport, row, fromColumn, count, DosTheme.Field,
+                DosTheme.Selection);
         }
 
         /// <summary>The frame's top edge, with the file name in a lit tab centred over it.</summary>

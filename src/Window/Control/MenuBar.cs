@@ -92,8 +92,46 @@ namespace WolfCurses.Window.Control
         /// </summary>
         public AnsiColorModeEnum ColorMode { get; set; } = AnsiColorModeEnum.Auto;
 
+        /// <summary>
+        ///     Whether the letter that opens each menu is underlined. On by default, and always on rather than only
+        ///     while ALT is held: a terminal reports no key-up, so "while held" is not a state anything here can
+        ///     know it has left. Showing them permanently is also what the editors this imitates actually did.
+        /// </summary>
+        public bool ShowAccessKeys { get; set; } = true;
+
+        /// <summary>
+        ///     Which screen row the open panel's own top border is drawn on. Negative means "directly under the
+        ///     bar", which is where it hangs when nothing is between them.
+        ///     <para>
+        ///         It is settable because a caller drawing the panel <i>over</i> something usually has a row of its
+        ///         own in between, such as a frame's top edge. Inferring it from <see cref="BarRow" /> would then be
+        ///         off by exactly that much, and a hit test that is off by one lands on the entry above the one
+        ///         under the pointer, which is worse than not working at all.
+        ///     </para>
+        /// </summary>
+        public int PanelRow { get; set; } = -1;
+
+        /// <summary>Where the panel's top border really is, resolved against <see cref="BarRow" />.</summary>
+        private int PanelTop => PanelRow >= 0 ? PanelRow : BarRow + 1;
+
         /// <summary>How many rows the open menu's panel occupies, or zero when nothing is open.</summary>
         public int DropdownHeight => IsOpen ? _menus[OpenIndex].Entries.Count + 2 : 0;
+
+        /// <summary>Which column the open panel starts at, which is the left edge of its own title.</summary>
+        public int DropdownColumn
+        {
+            get
+            {
+                if (!IsOpen)
+                    return 0;
+
+                Layout();
+                return _titleColumns[OpenIndex];
+            }
+        }
+
+        /// <summary>How many columns the open panel occupies, borders included.</summary>
+        public int DropdownWidth => IsOpen ? _menus[OpenIndex].ContentWidth + 4 : 0;
 
         /// <summary>The entry the cursor is on, or null.</summary>
         public MenuBarEntry Highlighted =>
@@ -141,6 +179,20 @@ namespace WolfCurses.Window.Control
 
             if (alt && TryOpenByAccessKey(keyInfo.Key))
                 return true;
+
+            // F10 is the traditional way into a menu bar and the reason every text-mode application had it: ALT is
+            // not reliably delivered as a modifier. Plenty of terminals swallow it, send an escape prefix instead,
+            // or hand it to the window manager, and a menu bar reachable only by ALT is one that simply does not
+            // open on those. F10 arrives as an ordinary key everywhere.
+            if (keyInfo.Key == ConsoleKey.F10)
+            {
+                if (IsOpen)
+                    Close();
+                else
+                    Open(0);
+
+                return true;
+            }
 
             if (!IsOpen)
                 return false;
@@ -279,8 +331,8 @@ namespace WolfCurses.Window.Control
             if (column < left || column >= left + width)
                 return -1;
 
-            // Row BarRow + 1 is the panel's top border, so the first entry is two rows below the bar.
-            var index = row - BarRow - 2;
+            // The panel's own top border is the first of its rows, so the first entry is the one after it.
+            var index = row - PanelTop - 1;
             if (index < 0 || index >= menu.Entries.Count)
                 return -1;
 
@@ -338,7 +390,7 @@ namespace WolfCurses.Window.Control
                 }
 
                 var title = new string(' ', TitlePadding) + _menus[index].Title + new string(' ', TitlePadding);
-                sb.Append(index == OpenIndex ? Emphasis(title, HighlightStyle) : Paint(title, BarStyle));
+                sb.Append(RenderTitle(_menus[index].Title, index == OpenIndex));
                 column += title.Length;
             }
 
@@ -348,6 +400,33 @@ namespace WolfCurses.Window.Control
                 sb.Append(Paint(new string(' ', width - column), BarStyle));
 
             return sb.ToString();
+        }
+
+        /// <summary>
+        ///     Draws one title, with the letter that opens it underlined. Emitted as three runs rather than one so
+        ///     the underline covers exactly the access key: it is a text attribute, not a colour, and a whole title
+        ///     underlined says something different from one letter of it.
+        /// </summary>
+        /// <param name="title">The menu's title.</param>
+        /// <param name="open">Whether this menu is the open one.</param>
+        /// <returns>The drawn title, padding included.</returns>
+        private string RenderTitle(string title, bool open)
+        {
+            var pad = new string(' ', TitlePadding);
+            var style = open ? HighlightStyle : BarStyle;
+
+            if (!ShowAccessKeys || title.Length == 0)
+                return open ? Emphasis(pad + title + pad, HighlightStyle) : Paint(pad + title + pad, BarStyle);
+
+            var head = pad + title.Substring(0, 1);
+            var tail = title.Substring(1) + pad;
+
+            if (style.IsEmpty)
+                return Paint(pad, style) + Emphasis(title.Substring(0, 1), style) + Paint(tail, style);
+
+            return Paint(pad, style) +
+                   style.WithUnderline(true).Apply(title.Substring(0, 1), ColorMode) +
+                   Paint(tail, style);
         }
 
         /// <summary>
@@ -376,15 +455,48 @@ namespace WolfCurses.Window.Control
             return style.IsEmpty ? ListNavigator.Emphasize(text) : style.Apply(text, ColorMode);
         }
 
+        /// <summary>
+        ///     The open panel's rows on their own, with no indent, so a caller can draw them <i>over</i> whatever is
+        ///     behind them rather than pushing it down the screen. A dropped menu that displaces the document is the
+        ///     tell that a screen is being stacked rather than composited.
+        /// </summary>
+        /// <returns>The panel's rows, each exactly <see cref="DropdownWidth" /> columns wide.</returns>
+        public IReadOnlyList<string> DropdownRows()
+        {
+            if (!IsOpen)
+                return Array.Empty<string>();
+
+            Layout();
+            return new List<string>(PanelRows());
+        }
+
+        /// <summary>Draws the bar on its own, for a caller composing the panel separately.</summary>
+        /// <param name="width">How many columns the bar spans.</param>
+        /// <returns>The bar row.</returns>
+        public string RenderTitleBar(int width)
+        {
+            Width = width;
+            Layout();
+            return RenderBar(width);
+        }
+
         /// <summary>Draws the open panel, indented to sit under its own title.</summary>
         /// <returns>The panel's rows.</returns>
         private IEnumerable<string> RenderDropdown()
         {
-            var menu = _menus[OpenIndex];
             var indent = new string(' ', _titleColumns[OpenIndex]);
+            foreach (var row in PanelRows())
+                yield return indent + row;
+        }
+
+        /// <summary>The panel itself, one row at a time.</summary>
+        /// <returns>The panel's rows.</returns>
+        private IEnumerable<string> PanelRows()
+        {
+            var menu = _menus[OpenIndex];
             var inner = menu.ContentWidth + 2;
 
-            yield return indent + Paint("┌" + new string('─', inner) + "┐", PanelStyle);
+            yield return Paint("┌" + new string('─', inner) + "┐", PanelStyle);
 
             for (var i = 0; i < menu.Entries.Count; i++)
             {
@@ -392,17 +504,17 @@ namespace WolfCurses.Window.Control
 
                 if (entry.IsSeparator)
                 {
-                    yield return indent + Paint("├" + new string('─', inner) + "┤", PanelStyle);
+                    yield return Paint("├" + new string('─', inner) + "┤", PanelStyle);
                     continue;
                 }
 
                 var text = " " + entry.Label.PadRight(menu.ContentWidth - entry.Shortcut.Length) + entry.Shortcut + " ";
                 var body = i == HighlightIndex ? Emphasis(text, PanelHighlightStyle) : Paint(text, PanelStyle);
 
-                yield return indent + Paint("│", PanelStyle) + body + Paint("│", PanelStyle);
+                yield return Paint("│", PanelStyle) + body + Paint("│", PanelStyle);
             }
 
-            yield return indent + Paint("└" + new string('─', inner) + "┘", PanelStyle);
+            yield return Paint("└" + new string('─', inner) + "┘", PanelStyle);
         }
 
         /// <summary>

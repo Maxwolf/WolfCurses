@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using WolfCurses.Graphics;
 using WolfCurses.Window.Control;
 using Xunit;
 
@@ -151,6 +152,68 @@ namespace WolfCurses.Tests.Controls
 
             Assert.True(bar.IsOpen);
             Assert.Equal(1, bar.OpenIndex);
+        }
+
+        [Fact]
+        public void F10OpensAndShutsTheBarBecauseAltIsNotAlwaysDelivered()
+        {
+            // The reason every text-mode application had F10. ALT is not reliably reported as a modifier: terminals
+            // swallow it, send an escape prefix instead, or hand it to the window manager, so a bar reachable only
+            // by ALT simply does not open on those. This was found by running the editor rather than by a test,
+            // which is worth remembering about anything that depends on how a terminal reports modifiers.
+            var (bar, _) = NewBar();
+
+            Assert.True(bar.HandleKey(Key(ConsoleKey.F10)));
+            Assert.True(bar.IsOpen);
+            Assert.Equal(0, bar.OpenIndex);
+
+            Assert.True(bar.HandleKey(Key(ConsoleKey.F10)));
+            Assert.False(bar.IsOpen);
+        }
+
+        [Fact]
+        public void TheLetterThatOpensAMenuIsUnderlined()
+        {
+            // Underline rather than colour, because which key opens a menu is not something a colour can say, and
+            // because it is what every text-mode application did. SGR 4 is the sequence.
+            var (bar, _) = NewBar();
+            bar.BarStyle = new TextStyle(ConsoleColor.Black, ConsoleColor.Gray);
+            bar.ColorMode = AnsiColorModeEnum.Palette256;
+
+            var row = bar.Render(60).Split('\n')[0];
+
+            // Underline is written first in the parameter list, so the run opens "ESC[4;<colours>m".
+            Assert.Contains("[4", row, StringComparison.Ordinal);
+
+            // Exactly the access key and no more: the whole title underlined says something different, and the
+            // visible text is unchanged by any of it.
+            Assert.StartsWith(" File  Edit  Search ", StripSgr(row), StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void AnUnstyledBarStillCarriesNoEscapesWhenAccessKeysAreOff()
+        {
+            // The compatibility stance survives the feature: a bar nobody coloured and nobody asked to mark up is
+            // still plain text.
+            var (bar, _) = NewBar();
+            bar.ShowAccessKeys = false;
+
+            Assert.DoesNotContain('\x1b', bar.Render(60));
+        }
+
+        [Fact]
+        public void ARightAlignedMenuIsDrawnAtTheEdgeAndHitTestsThere()
+        {
+            var ran = new List<string>();
+            var bar = new MenuBar(
+                new MenuBarMenu("File", new MenuBarEntry("New", () => ran.Add("new"))),
+                new MenuBarMenu("Help", new MenuBarEntry("About", () => ran.Add("about"))) {AlignRight = true});
+
+            var row = StripSgr(bar.Render(60)).Split('\n')[0];
+            var help = row.IndexOf("Help", StringComparison.Ordinal);
+
+            Assert.True(help > 40, $"Help was not laid at the right-hand edge: column {help}");
+            Assert.Equal(1, bar.TitleAt(help));
         }
 
         [Fact]

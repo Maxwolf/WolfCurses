@@ -102,6 +102,19 @@ namespace WolfCurses.Apps.Tests.Support
             App.PumpInput();
         }
 
+        /// <summary>
+        ///     Presses a mouse button at a screen cell. The row is counted the same way the library reports it,
+        ///     which is relative to the top of the window rather than to the console's scrollback buffer.
+        /// </summary>
+        /// <param name="row">The row pressed, zero being the scene graph's own status line.</param>
+        /// <param name="column">The column pressed.</param>
+        /// <param name="button">Which button; left by default.</param>
+        public void Click(int row, int column, MouseButtonEnum button = MouseButtonEnum.Left)
+        {
+            App.InputManager.SendMousePress(new MouseEvent(column, row, button));
+            App.PumpInput();
+        }
+
         /// <summary>Ticks a fixed number of times, for a screen that advances on its own clock.</summary>
         /// <param name="ticks">How many system ticks to run.</param>
         public void Tick(int ticks = 1)

@@ -306,6 +306,186 @@ namespace WolfCurses.Apps.Tests
         }
 
         [Fact]
+        public void TheEditorStartsBelowTheSceneGraphsOwnHeaderRow()
+        {
+            // SceneGraph appends a window's text straight onto its status row with no separator, so a screen that
+            // does not begin with a newline gets its first line printed on the end of "[ - ] - Window(1): ...".
+            // That row cannot be replaced, so the whole editor has to sit under it, and every mouse row offset
+            // counts from there.
+            using var suite = OpenEditor();
+            var rows = suite.Screen.Split('\n');
+
+            Assert.Contains("WolfCurses Apps", rows[0], StringComparison.Ordinal);
+            Assert.DoesNotContain("File", rows[0], StringComparison.Ordinal);
+
+            // Row 1 is the menu bar, which is what MenuBar.BarRow is told and what a click is measured against.
+            Assert.Contains("File", rows[1], StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void F10OpensTheMenusWhereAltMayNotBeDelivered()
+        {
+            // ALT is not reliably reported as a modifier: terminals swallow it, send an escape prefix, or hand it to
+            // the window manager. F10 is the traditional way in for exactly that reason and arrives everywhere.
+            using var suite = OpenEditor();
+
+            suite.Press(ConsoleKey.F10);
+            Assert.Contains("New", suite.Screen, StringComparison.Ordinal);
+
+            suite.Press(ConsoleKey.F10);
+            Assert.DoesNotContain("New", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void ClickingAMenuTitleOpensItAndClickingAnEntryRunsIt()
+        {
+            using var suite = OpenEditor();
+            var bar = suite.Screen.Split('\n')[1];
+
+            suite.Click(1, bar.IndexOf("Options", StringComparison.Ordinal));
+            Assert.Contains("Tab width 4", suite.Screen, StringComparison.Ordinal);
+
+            // The panel's first entry is two rows below the bar: one for the panel's own top border.
+            var rows = suite.Screen.Split('\n');
+            var entryRow = Array.FindIndex(rows, row => row.Contains("Tab width 4", StringComparison.Ordinal));
+            suite.Click(entryRow, rows[entryRow].IndexOf("Tab width 4", StringComparison.Ordinal));
+
+            Assert.Contains("Tab width is now 4", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void ClickingInTheDocumentPutsTheCaretThere()
+        {
+            // Types its own line rather than clicking into the sample, whose shape is not this test's business: the
+            // RFC's fifth line is blank, and a click past the end of a blank line correctly clamps to column one,
+            // which would look like the hit test being broken.
+            using var suite = OpenEditor();
+            suite.Press(ConsoleKey.F10);
+            suite.Press(ConsoleKey.Enter); // File > New
+            Assert.Contains("Untitled", suite.Screen, StringComparison.Ordinal);
+
+            foreach (var character in "abcdefghij")
+                suite.PressChar(character, ConsoleKey.A);
+
+            // Row 3 is the document's first line: the scene graph's header, this screen's leading newline, the menu
+            // bar and the frame's top edge come first. Column 1 is just inside the frame's left edge.
+            suite.Click(3, 1 + 3);
+
+            Assert.Equal((1, 4), ReportedCaret(suite.Screen));
+        }
+
+        [Fact]
+        public void ClickingPastTheEndOfAShortLineLandsAtItsEnd()
+        {
+            // The ordinary case, not an edge case: most of a document is shorter than the window is wide.
+            using var suite = OpenEditor();
+            suite.Press(ConsoleKey.F10);
+            suite.Press(ConsoleKey.Enter);
+
+            foreach (var character in "abc")
+                suite.PressChar(character, ConsoleKey.A);
+
+            suite.Click(3, 1 + 40);
+
+            Assert.Equal((1, 4), ReportedCaret(suite.Screen));
+        }
+
+        [Fact]
+        public void ClickingOutsideTheFieldLeavesTheCaretAlone()
+        {
+            using var suite = OpenEditor();
+            var before = ReportedCaret(suite.Screen);
+
+            suite.Click(0, 5); // the scene graph's own header row
+            suite.Click(2, 5); // the frame's top edge
+
+            Assert.Equal(before, ReportedCaret(suite.Screen));
+        }
+
+        /// <summary>Which rendered row a phrase first appears on.</summary>
+        private static int RowOf(string screen, string phrase)
+        {
+            var rows = screen.Split('\n');
+            for (var i = 0; i < rows.Length; i++)
+            {
+                if (rows[i].Contains(phrase, StringComparison.Ordinal))
+                    return i;
+            }
+
+            Assert.Fail($"no rendered row contained \"{phrase}\":\n{screen}");
+            return -1;
+        }
+
+        [Fact]
+        public void OpeningAMenuDoesNotMoveTheEditor()
+        {
+            // The reported bug. A panel drawn as extra rows shoves the whole field down the screen every time a menu
+            // opens; drawn over the field, nothing below it moves at all.
+            using var suite = OpenEditor();
+
+            var titleBefore = RowOf(suite.Screen, "rfc1149.txt");
+            var statusBefore = RowOf(suite.Screen, "lines");
+
+            suite.Press(ConsoleKey.F10);
+
+            Assert.Equal(titleBefore, RowOf(suite.Screen, "rfc1149.txt"));
+            Assert.Equal(statusBefore, RowOf(suite.Screen, "lines"));
+        }
+
+        [Fact]
+        public void AnOpenMenuIsDrawnOverTheDocumentRatherThanInsteadOfIt()
+        {
+            // The panel is narrow and the field is wide, so the text to the right of it must survive. Blanking whole
+            // rows would keep the layout still and hide most of the page, which is not the fix.
+            using var suite = OpenEditor();
+            suite.Press(ConsoleKey.DownArrow);
+            suite.Press(ConsoleKey.DownArrow);
+
+            var withoutMenu = suite.Screen.Split('\n');
+            suite.Press(ConsoleKey.F10);
+            var withMenu = suite.Screen.Split('\n');
+
+            // The row the panel's first entry lands on still ends the same way it did, because only the columns the
+            // panel covers were replaced.
+            var entryRow = RowOf(suite.Screen, "New");
+            Assert.True(withoutMenu[entryRow].Length > 20, "the covered row was too short to prove anything");
+            Assert.Equal(withoutMenu[entryRow][^12..], withMenu[entryRow][^12..]);
+        }
+
+        [Fact]
+        public void OpenAndSaveCanBeChosenNow()
+        {
+            // They were drawn but disabled while there was nothing behind them, which reads as the menu being
+            // broken rather than as the feature being unfinished.
+            using var suite = OpenEditor();
+            suite.Press(ConsoleKey.F10);
+
+            suite.Press(ConsoleKey.DownArrow);
+            Assert.Contains("Open...", suite.Screen, StringComparison.Ordinal);
+
+            // The highlight really lands on it, which a disabled entry never allows.
+            suite.Press(ConsoleKey.Enter);
+            Assert.DoesNotContain("Ln 1, Col 1   115 lines", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void ClickingTheScrollBarArrowMovesThroughTheDocument()
+        {
+            using var suite = OpenEditor();
+            var before = RowOf(suite.Screen, "█");
+
+            // The bar sits in the column just past the field, and its last cell is the down arrow.
+            var barRow = suite.Screen.Split('\n');
+            var fieldRow = barRow[3];
+            var column = fieldRow.Length - 1;
+
+            for (var press = 0; press < 30; press++)
+                suite.Click(3 + 12, column);
+
+            Assert.True(RowOf(suite.Screen, "█") >= before, "the thumb moved the wrong way");
+        }
+
+        [Fact]
         public void EscapeShutsAnOpenMenuRatherThanLeavingTheEditor()
         {
             // The hand-off: AppsWindow claims ESC for every application, but asks the application first, so a menu

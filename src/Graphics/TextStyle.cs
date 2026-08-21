@@ -50,11 +50,14 @@ namespace WolfCurses.Graphics
         /// <param name="foreground">The text color, or null to leave the terminal's foreground alone.</param>
         /// <param name="background">The color behind the text, or null to leave the terminal's background alone.</param>
         /// <param name="bold">Whether to request bold (SGR 1).</param>
-        public TextStyle(TextColor? foreground = null, TextColor? background = null, bool bold = false)
+        /// <param name="underline">Whether to request underline (SGR 4).</param>
+        public TextStyle(TextColor? foreground = null, TextColor? background = null, bool bold = false,
+            bool underline = false)
         {
             Foreground = foreground;
             Background = background;
             Bold = bold;
+            Underline = underline;
         }
 
         /// <summary>The text color, or null to leave the terminal's foreground alone.</summary>
@@ -67,10 +70,21 @@ namespace WolfCurses.Graphics
         public bool Bold { get; }
 
         /// <summary>
+        ///     Whether underline (SGR 4) is requested. Emitted in every mode except
+        ///     <see cref="AnsiColorModeEnum.None" />, on the same rule as <see cref="Bold" />: a terminal told to use
+        ///     no colour asked for no escapes at all rather than for a subset of them.
+        ///     <para>
+        ///         It is here because underlining one letter of a word is how a menu bar has always shown which key
+        ///         opens it, and that is not something a colour can say.
+        ///     </para>
+        /// </summary>
+        public bool Underline { get; }
+
+        /// <summary>
         ///     True when this style asks for nothing at all — no foreground, no background, not bold. The fast path
         ///     every widget checks before it does any work: an empty style is a guaranteed no-op.
         /// </summary>
-        public bool IsEmpty => !Foreground.HasValue && !Background.HasValue && !Bold;
+        public bool IsEmpty => !Foreground.HasValue && !Background.HasValue && !Bold && !Underline;
 
         /// <summary>
         ///     The escape sequence that closes any style this type opened. Public because a caller composing its own
@@ -125,21 +139,29 @@ namespace WolfCurses.Graphics
         /// <param name="foreground">The new foreground color, or null to leave the terminal's foreground alone.</param>
         public TextStyle WithForeground(TextColor? foreground)
         {
-            return new TextStyle(foreground, Background, Bold);
+            return new TextStyle(foreground, Background, Bold, Underline);
         }
 
         /// <summary>Returns a copy of this style with a different background.</summary>
         /// <param name="background">The new background color, or null to leave the terminal's background alone.</param>
         public TextStyle WithBackground(TextColor? background)
         {
-            return new TextStyle(Foreground, background, Bold);
+            return new TextStyle(Foreground, background, Bold, Underline);
         }
 
         /// <summary>Returns a copy of this style with bold turned on or off.</summary>
         /// <param name="bold">Whether to request bold.</param>
         public TextStyle WithBold(bool bold)
         {
-            return new TextStyle(Foreground, Background, bold);
+            return new TextStyle(Foreground, Background, bold, Underline);
+        }
+
+        /// <summary>The same style with underline turned on or off.</summary>
+        /// <param name="underline">Whether to request underline.</param>
+        /// <returns>The adjusted style.</returns>
+        public TextStyle WithUnderline(bool underline)
+        {
+            return new TextStyle(Foreground, Background, Bold, underline);
         }
 
         /// <summary>
@@ -214,6 +236,15 @@ namespace WolfCurses.Graphics
                 written = true;
             }
 
+            if (Underline)
+            {
+                if (written)
+                    sb.Append(';');
+
+                sb.Append('4');
+                written = true;
+            }
+
             if (Foreground.HasValue)
             {
                 var body = Foreground.Value.ForegroundSequence(resolved);
@@ -258,7 +289,8 @@ namespace WolfCurses.Graphics
             // same decision.
             return Nullable.Equals(Foreground, other.Foreground) &&
                    Nullable.Equals(Background, other.Background) &&
-                   Bold == other.Bold;
+                   Bold == other.Bold &&
+                   Underline == other.Underline;
         }
 
         /// <summary>Whether this style asks for exactly the same thing as another object.</summary>
@@ -271,7 +303,7 @@ namespace WolfCurses.Graphics
         /// <summary>A hash consistent with <see cref="Equals(TextStyle)" />.</summary>
         public override int GetHashCode()
         {
-            return HashCode.Combine(Foreground, Background, Bold);
+            return HashCode.Combine(Foreground, Background, Bold, Underline);
         }
 
         /// <summary>A short description of the style, for debugging and test failure messages.</summary>

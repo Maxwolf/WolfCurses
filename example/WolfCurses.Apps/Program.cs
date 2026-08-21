@@ -41,11 +41,13 @@ namespace WolfCurses.Apps
             // string, and that is the entire contract.
             AppsSimulationApp.Create();
 
-            // AnsiConsole.EnableMouse() belongs on the next line, after Create() so that the constructor's graphics
-            // probe has had standard input to itself. It is deliberately NOT called yet: switching the mouse on
-            // takes click-drag text selection away from the user for as long as the program runs, and nothing on
-            // this menu wants a pointer. The calculator's keypad is the first thing that will, and turning it on is
-            // one line here plus the matching DisableMouse below, exactly as WolfCurses.Games does it.
+            // Asked for AFTER the app is built, because the SimulationApp constructor probes the terminal for a
+            // graphics protocol and that probe reads standard input. Opt-in and host-owned on purpose: switching it
+            // on takes click-drag text selection away from the user for as long as the program runs, so the library
+            // never does it behind an application's back. It answers false on a terminal with no mouse to give, and
+            // every application here is still fully driveable from the keyboard.
+            AnsiConsole.EnableMouse();
+
             while (AppsSimulationApp.Instance != null)
             {
                 AppsSimulationApp.Instance.OnTick(true);
@@ -55,6 +57,11 @@ namespace WolfCurses.Apps
                 // default timer granularity is about 15ms, so "one tick" is not a unit of time to build on.
                 Thread.Sleep(1);
             }
+
+            // Handed back before anything else. On a classic console host the mouse mode belongs to the WINDOW rather
+            // than to this process, so exiting without restoring it leaves that window with the user's own text
+            // selection switched off until they close and reopen it.
+            AnsiConsole.DisableMouse();
 
             Console.Clear();
             Console.WriteLine("Goodbye!");
@@ -67,6 +74,7 @@ namespace WolfCurses.Apps
         /// <param name="e">The console cancel event arguments.</param>
         private static void Console_CancelKeyPress(object sender, ConsoleCancelEventArgs e)
         {
+            AnsiConsole.DisableMouse();
             AppsSimulationApp.Instance?.Destroy();
             e.Cancel = true;
         }
