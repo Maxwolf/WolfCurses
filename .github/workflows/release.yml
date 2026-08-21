@@ -206,7 +206,7 @@ jobs:
 
           | App | What it is |
           | --- | --- |
-          | \`WolfCurses.Apps\` | A small office suite. Scaffolding only for now: the menu is up and the applications are on their way. |
+          | \`WolfCurses.Apps\` | A small office suite. A word processor after the MS-DOS Editor so far: pull-down menus, mouse selection, scrollbars and tabs. |
           | \`WolfCurses.Demo\` | The library tour: image rendering (kitty/sixel/half blocks), sprites, progress bars and graphs, colored widgets, file and list dialogs. |
           | \`WolfCurses.Games\` | A small arcade: Snake, Minesweeper, Tetris, WolfChess 5000, Missile Command, Labyrinth, Pac-Man, blackjack, poker and Battlezone. |
 

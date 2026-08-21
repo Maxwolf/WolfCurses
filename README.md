@@ -92,7 +92,7 @@ Menus are steerable with the arrow keys as well as by typing a number, and typed
 Three example apps live in this repo, each with its own README:
 
 - **[The library tour](example/WolfCurses.Demo/README.md)**: images, sprites, widgets, colour, and every dialog.
-- **[The office suite](example/WolfCurses.Apps/README.md)**: small productivity applications. Scaffolding only so far, with the menu up and the applications on their way.
+- **[The office suite](example/WolfCurses.Apps/README.md)**: small productivity applications. A word processor after the MS-DOS Editor so far, with menus, mouse selection and a real document model behind it.
 - **[The arcade](example/WolfCurses.Games/README.md)**: ten games, each built on a different part of the library. Snake, Minesweeper, Tetris, WolfChess 5000, Missile Command, Labyrinth, Pac-Man, Blackjack, Poker and Battlezone.
 
 ```cmd
@@ -256,7 +256,7 @@ All of them ship inside the library and are discovered automatically. (If you ov
 ## Input
 
 - **Keys arrive as you'd expect.** ENTER submits the typed command, BACKSPACE edits it, everything else both fills the prompt and reaches the focused form.
-- **Mouse is opt-in.** `AnsiConsole.EnableMouse()` and presses start arriving as `OnMousePressed(MouseEvent)` with the cell that was clicked. Presses only: no motion, drag or wheel. **Windows only for now**; elsewhere it returns false having written nothing, so nothing changes.
+- **Mouse is opt-in.** `AnsiConsole.EnableMouse()` and presses start arriving as `OnMousePressed(MouseEvent)` with the cell that was clicked. Releases, moves and wheel notches arrive as `OnMouseEvent(MouseEvent)`, which is what click-and-drag, a pointer you draw yourself and scrolling are built from; motion is a further opt-in (`InputManager.ReportsMouseMotion`) because it is one event per cell the pointer crosses. The wheel is its own event kind rather than a button, so nothing that acts on a click can be triggered by a scroll. **Windows only for now**; elsewhere it returns false having written nothing, so nothing changes.
 - **`HeldAxis`** solves a problem every real-time terminal app hits: a terminal never reports a key being *let go*, so a held key arrives as a burst of presses. Feed it `Press(-1)` and read `Direction`; it infers the key-up from silence.
 
 ## Building from source

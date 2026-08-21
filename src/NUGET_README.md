@@ -111,7 +111,9 @@ Every widget takes colours and ramps, and colour is entirely opt-in: with styles
 
 **[Dialogs, panels and pickers](https://github.com/Maxwolf/WolfCurses#dialogs-panels-and-pickers).** `MessageBox`, `SelectList`, `TextInputDialog` and `FileDialog` push themselves on top of the current screen, take over input, and call you back with the result before closing themselves. `Box` borders any text, measuring width past ANSI escapes.
 
-**[Input](https://github.com/Maxwolf/WolfCurses#input).** Mouse support is opt-in through `AnsiConsole.EnableMouse()` and Windows-only for now. `HeldAxis` recovers a held direction from the burst of presses a terminal actually delivers, since a terminal never reports a key being let go.
+**[Input](https://github.com/Maxwolf/WolfCurses#input).** Mouse support is opt-in through `AnsiConsole.EnableMouse()` and Windows-only for now; presses, releases, wheel notches and (with a further opt-in) pointer motion, which is what click-and-drag is built from. `HeldAxis` recovers a held direction from the burst of presses a terminal actually delivers, since a terminal never reports a key being let go.
+
+**[Editable text](https://github.com/Maxwolf/WolfCurses#editable-documents).** `TextBuffer`, `TextViewport` and `TabStops` in `WolfCurses.Documents` are a document, the window onto it and the translation between where a character is stored and where it is drawn, so an editor-shaped screen does not start by writing all three. `MenuBar` and `ScrollBar` are the pull-down bar and the bar down the side.
 
 **Real-time screens.** `IntervalTimer` paces anything that moves on its own, off the system tick rather than the once-a-second simulation tick. A late period is dropped rather than banked, so a slow frame is never repaid as a burst of instant ones.
 
@@ -123,7 +125,7 @@ Three example apps ship in the repository, each with its own guide:
 
 - **[The library tour](https://github.com/Maxwolf/WolfCurses/blob/master/example/WolfCurses.Demo/README.md)**: images, sprites, widgets, colour, and every dialog.
 - **[The arcade](https://github.com/Maxwolf/WolfCurses/blob/master/example/WolfCurses.Games/README.md)**: ten games, each built on a different part of the library.
-- **[The office suite](https://github.com/Maxwolf/WolfCurses/blob/master/example/WolfCurses.Apps/README.md)**: small productivity applications, scaffolding only so far.
+- **[The office suite](https://github.com/Maxwolf/WolfCurses/blob/master/example/WolfCurses.Apps/README.md)**: small productivity applications, starting with a word processor after the MS-DOS Editor.
 
 Prebuilt, self-contained downloads for Windows, macOS and Linux are on the [releases page](https://github.com/Maxwolf/WolfCurses/releases), all of them in a single archive with no .NET install needed.
 

@@ -6,7 +6,7 @@ Three runnable console applications built on [WolfCurses](../README.md). Each is
 | --- | --- | --- |
 | **[WolfCurses.Demo](WolfCurses.Demo/README.md)** | The library tour | Images, sprites, widgets, colour, and every dialog |
 | **[WolfCurses.Games](WolfCurses.Games/README.md)** | The arcade | Ten games, each built on a different part of the library |
-| **[WolfCurses.Apps](WolfCurses.Apps/README.md)** | The office suite | Scaffolding so far: the menu is up, the applications are on their way |
+| **[WolfCurses.Apps](WolfCurses.Apps/README.md)** | The office suite | A word processor after the MS-DOS Editor; more applications on their way |
 
 ```cmd
 dotnet run --project example/WolfCurses.Demo
