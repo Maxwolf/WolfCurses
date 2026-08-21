@@ -16,6 +16,9 @@ namespace WolfCurses.Window.Control
     /// </summary>
     public sealed class MenuBarEntry
     {
+        /// <summary>What <see cref="IsEnabled" /> answers when no <see cref="EnabledWhen" /> was given.</summary>
+        private bool _isEnabled = true;
+
         /// <summary>Initializes a new instance of the <see cref="MenuBarEntry" /> class.</summary>
         /// <param name="label">What the line reads.</param>
         /// <param name="action">What choosing it does; null makes the entry unselectable.</param>
@@ -50,8 +53,33 @@ namespace WolfCurses.Window.Control
         /// <summary>
         ///     Whether the entry can be chosen right now. A disabled entry is still drawn, because a menu whose items
         ///     come and go is one nobody can learn the shape of.
+        ///     <para>
+        ///         Reading this consults <see cref="EnabledWhen" /> when one was given, so an entry whose validity
+        ///         moves is answered fresh every time rather than remembered from whenever somebody last thought to
+        ///         set it. Assigning still works and is the right thing for an entry that is switched on once.
+        ///     </para>
         /// </summary>
-        public bool IsEnabled { get; set; } = true;
+        public bool IsEnabled
+        {
+            get => EnabledWhen?.Invoke() ?? _isEnabled;
+            set => _isEnabled = value;
+        }
+
+        /// <summary>
+        ///     Asked, each time, whether the entry can be chosen: a Cut that means nothing without a selection, a
+        ///     Paste that means nothing with an empty clipboard, a Save that only applies to a file already open.
+        ///     <para>
+        ///         A predicate rather than a flag the owner keeps up to date, because <see cref="IsEnabled" /> is
+        ///         read at three separate moments - drawing the panel, walking it with the arrow keys, and choosing
+        ///         an entry - and an owner refreshing a flag has to do so before all three. Missing one draws a live
+        ///         entry as dead, or runs a dead one.
+        ///     </para>
+        ///     <para>
+        ///         Only consulted while a menu is open, but it is consulted per row per frame while it is, so keep
+        ///         it to reading state rather than working anything out.
+        ///     </para>
+        /// </summary>
+        public Func<bool> EnabledWhen { get; set; }
 
         /// <summary>
         ///     Whether the highlight may land here at all. Separators and entries with nothing to run are skipped

@@ -417,5 +417,71 @@ namespace WolfCurses.Tests.Controls
             bar.Open(-1);
             Assert.False(bar.IsOpen);
         }
+
+        [Fact]
+        public void AnEntryThatSaysWhenItIsEnabledIsAskedAgainRatherThanRemembered()
+        {
+            // The whole reason the predicate exists. Nothing tells a menu that a selection appeared, so an entry
+            // built dead has to come alive by itself; a flag somebody has to remember to set is one that is stale
+            // exactly as often as it is forgotten.
+            var hasSelection = false;
+            var ran = new List<string>();
+
+            var bar = new MenuBar(new MenuBarMenu("Edit",
+                new MenuBarEntry("Copy", () => ran.Add("copy")),
+                new MenuBarEntry("Cut", () => ran.Add("cut")) {EnabledWhen = () => hasSelection}));
+
+            bar.Open(0);
+            bar.HandleKey(Key(ConsoleKey.DownArrow));
+            Assert.Equal(0, bar.HighlightIndex);
+
+            hasSelection = true;
+
+            bar.HandleKey(Key(ConsoleKey.DownArrow));
+            Assert.Equal(1, bar.HighlightIndex);
+
+            bar.HandleKey(Key(ConsoleKey.Enter));
+            Assert.Equal(new[] {"cut"}, ran);
+        }
+
+        [Fact]
+        public void AnEntryThatGoesDeadWhileTheMenuIsOpenCannotStillBeChosen()
+        {
+            // Enablement is read again when an entry is chosen, not only when the panel was drawn. Asking only at
+            // draw time would leave the cursor sitting on an entry that had since stopped meaning anything, and
+            // ENTER would run it.
+            var enabled = true;
+            var ran = 0;
+
+            var bar = new MenuBar(new MenuBarMenu("Edit",
+                new MenuBarEntry("Paste", () => ran++) {EnabledWhen = () => enabled}));
+
+            bar.Open(0);
+            Assert.Equal(0, bar.HighlightIndex);
+
+            enabled = false;
+
+            bar.HandleKey(Key(ConsoleKey.Enter));
+            Assert.Equal(0, ran);
+
+            bar.HandleMouse(1, 2);
+            Assert.Equal(0, ran);
+        }
+
+        [Fact]
+        public void AnEntryWithNoPredicateStillAnswersToItsFlag()
+        {
+            // The compatibility half: EnabledWhen is an addition, so an entry that was never given one behaves
+            // exactly as it did, both ways round.
+            var entry = new MenuBarEntry("Save", () => { });
+            Assert.True(entry.IsEnabled);
+
+            entry.IsEnabled = false;
+            Assert.False(entry.IsEnabled);
+            Assert.False(entry.IsSelectable);
+
+            entry.IsEnabled = true;
+            Assert.True(entry.IsSelectable);
+        }
     }
 }

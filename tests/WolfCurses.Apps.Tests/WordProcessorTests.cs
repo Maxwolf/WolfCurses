@@ -692,6 +692,182 @@ namespace WolfCurses.Apps.Tests
             Assert.Contains("Which application?", suite.Screen, StringComparison.Ordinal);
         }
 
+        /// <summary>
+        ///     A fresh empty document with known text in it. Sample files are fixtures and a test that quotes one
+        ///     breaks when the fixture is swapped, so anything asserting about characters types its own.
+        /// </summary>
+        /// <param name="text">What to type into it.</param>
+        /// <returns>The running suite.</returns>
+        private static DrivenAppsApp EditorWithText(string text)
+        {
+            var suite = OpenEditor();
+
+            // File > New through the menu rather than by reaching into the form, so the shortest way to a known
+            // document is also a test that the menu still runs things.
+            suite.Press(ConsoleKey.F, ConsoleModifiers.Alt);
+            suite.Press(ConsoleKey.Enter);
+
+            foreach (var character in text)
+                suite.PressChar(character, ConsoleKey.NoName);
+
+            return suite;
+        }
+
+        /// <summary>Selects the line the caret is on, which is the shortest honest way to have something selected.</summary>
+        /// <param name="suite">The running suite.</param>
+        private static void SelectTheLine(DrivenAppsApp suite)
+        {
+            suite.Press(ConsoleKey.Home);
+            suite.Press(ConsoleKey.End, ConsoleModifiers.Shift);
+        }
+
+        [Fact]
+        public void CuttingTakesTheSelectionAwayAndPastingBringsItBack()
+        {
+            using var suite = EditorWithText("hello");
+            SelectTheLine(suite);
+
+            suite.Press(ConsoleKey.X, ConsoleModifiers.Control);
+
+            Assert.Contains("Cut 5 characters", suite.Screen, StringComparison.Ordinal);
+            Assert.DoesNotContain("hello", suite.Screen, StringComparison.Ordinal);
+
+            suite.Press(ConsoleKey.V, ConsoleModifiers.Control);
+
+            Assert.Contains("Pasted 5 characters", suite.Screen, StringComparison.Ordinal);
+            Assert.Contains("hello", suite.Screen, StringComparison.Ordinal);
+            Assert.Contains("Ln 1, Col 6", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void CopyingLeavesTheDocumentAloneAndSaysSoOutLoud()
+        {
+            // The one edit with nothing to show for itself: without the status line a copy and a key that did
+            // nothing at all look exactly alike, which is why it reports rather than staying silent.
+            using var suite = EditorWithText("hello");
+            SelectTheLine(suite);
+
+            suite.Press(ConsoleKey.Insert, ConsoleModifiers.Control);
+
+            Assert.Contains("Copied 5 characters", suite.Screen, StringComparison.Ordinal);
+            Assert.Contains("hello", suite.Screen, StringComparison.Ordinal);
+
+            suite.Press(ConsoleKey.End);
+            suite.Press(ConsoleKey.V, ConsoleModifiers.Control);
+
+            Assert.Contains("hellohello", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void PastingReplacesWhateverWasSelected()
+        {
+            using var suite = EditorWithText("hello");
+            SelectTheLine(suite);
+            suite.Press(ConsoleKey.Insert, ConsoleModifiers.Control);
+
+            // The selection is still standing, so this pastes over itself: one copy of the word and not two.
+            suite.Press(ConsoleKey.V, ConsoleModifiers.Control);
+
+            Assert.Contains("hello", suite.Screen, StringComparison.Ordinal);
+            Assert.DoesNotContain("hellohello", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void TheEditorsOwnDosClipboardKeysWorkAsWell()
+        {
+            // SHIFT+DEL and SHIFT+INS are what the editor this imitates used, and they cost nothing to keep: both
+            // keys were otherwise unspoken for, and a person who learned them in 1991 still has them.
+            using var suite = EditorWithText("abc");
+            SelectTheLine(suite);
+
+            suite.Press(ConsoleKey.Delete, ConsoleModifiers.Shift);
+            Assert.Contains("Cut 3 characters", suite.Screen, StringComparison.Ordinal);
+
+            suite.Press(ConsoleKey.Insert, ConsoleModifiers.Shift);
+            Assert.Contains("Pasted 3 characters", suite.Screen, StringComparison.Ordinal);
+            Assert.Contains("abc", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void AnUnshiftedDeleteStillDeletesRatherThanQuietlyCutting()
+        {
+            // Not about the order of those two cases, which the compiler settles on its own: putting plain DEL
+            // ahead of the shifted one is CS8120 rather than a quiet bug. What this pins is that DEL reaches
+            // Delete and not Cut, asserted by what the clipboard turns out to hold rather than by the absence of
+            // a message, since "no message" is also what an unhandled key looks like.
+            using var suite = EditorWithText("abc");
+            suite.Press(ConsoleKey.Home);
+            suite.Press(ConsoleKey.Delete);
+
+            Assert.DoesNotContain("abc", suite.Screen, StringComparison.Ordinal);
+            Assert.Contains("bc", suite.Screen, StringComparison.Ordinal);
+
+            suite.Press(ConsoleKey.V, ConsoleModifiers.Control);
+            Assert.DoesNotContain("Pasted", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void AMultipleLineCutIsCountedInLinesRatherThanCharacters()
+        {
+            using var suite = EditorWithText("a");
+            suite.Press(ConsoleKey.Enter);
+            suite.PressChar('b', ConsoleKey.NoName);
+
+            suite.Press(ConsoleKey.A, ConsoleModifiers.Control);
+            suite.Press(ConsoleKey.X, ConsoleModifiers.Control);
+
+            Assert.Contains("Cut 2 lines", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void TheEditMenuOpensPastEverythingThatMeansNothingYet()
+        {
+            // Nothing selected and nothing on the clipboard, so Cut, Copy, Paste and Clear are all dead and the
+            // cursor lands on the first entry that is not: Select All. Choosing it selects the document, which is
+            // what proves the highlight really was down there rather than sitting on a dead line.
+            using var suite = EditorWithText("hello");
+
+            suite.Press(ConsoleKey.E, ConsoleModifiers.Alt);
+            suite.Press(ConsoleKey.Enter);
+
+            Assert.Contains("5 selected", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void TheEditMenuOpensOnCutOnceSomethingIsSelected()
+        {
+            // Same menu, same keys, a different answer, and nothing told it a selection had appeared. That is what
+            // the entries declaring their own enablement buys.
+            using var suite = EditorWithText("hello");
+            SelectTheLine(suite);
+
+            suite.Press(ConsoleKey.E, ConsoleModifiers.Alt);
+            suite.Press(ConsoleKey.Enter);
+
+            Assert.Contains("Cut 5 characters", suite.Screen, StringComparison.Ordinal);
+            Assert.DoesNotContain("hello", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void TheClipboardOutlivesTheEditorThatFilledIt()
+        {
+            // Which is the entire reason it lives on the window's data rather than inside the form. A copy taken in
+            // one application has to survive that application being closed before it can land in another, and the
+            // window's data object is the only thing in the suite that outlives both.
+            using var suite = EditorWithText("wolf");
+            SelectTheLine(suite);
+            suite.Press(ConsoleKey.Insert, ConsoleModifiers.Control);
+
+            suite.Escape();
+            suite.ChooseMenuItem((int) AppsCommandsEnum.WordProcessor);
+
+            // A new form on a new document: the typed text is long gone.
+            Assert.DoesNotContain("wolf", suite.Screen, StringComparison.Ordinal);
+
+            suite.Press(ConsoleKey.V, ConsoleModifiers.Control);
+            Assert.Contains("Pasted 4 characters", suite.Screen, StringComparison.Ordinal);
+        }
+
         [Fact]
         public void ReopeningTheEditorStartsFromTheFileAgain()
         {

@@ -348,6 +348,25 @@ namespace WolfCurses.Apps.WordProcessor
                 case ConsoleKey.A when control:
                     _buffer.SelectAll();
                     break;
+
+                // The clipboard three, each returning rather than breaking: they have something to say afterwards
+                // and the tail below this switch clears the status line, which is right for typing and would wipe
+                // them. They reveal the caret themselves for the same reason, since the menu reaches them too.
+                //
+                // There is no CTRL+C case and adding one would be dead code that compiles. The console processes
+                // CTRL+C into a signal before anything can read it as a key, which is what keeps it the way out of
+                // a program, so the key that copies is CTRL+INS.
+                case ConsoleKey.X when control:
+                case ConsoleKey.Delete when shift:
+                    Cut();
+                    return;
+                case ConsoleKey.Insert when control:
+                    Copy();
+                    return;
+                case ConsoleKey.V when control:
+                case ConsoleKey.Insert when shift:
+                    Paste();
+                    return;
                 case ConsoleKey.Enter:
                     _buffer.InsertNewLine();
                     break;
@@ -375,6 +394,83 @@ namespace WolfCurses.Apps.WordProcessor
             _viewport.EnsureVisible(CaretOnScreen());
         }
 
+        /// <summary>
+        ///     Takes the selection onto the clipboard and removes it. Three lines because
+        ///     <see cref="TextBuffer" /> already knows what is selected and how to remove it; all this adds is
+        ///     where the text goes in between.
+        /// </summary>
+        private void Cut()
+        {
+            if (!_buffer.HasSelection)
+                return;
+
+            var text = _buffer.GetSelectedText();
+            UserData.Clipboard = text;
+            _buffer.DeleteSelection();
+
+            _message = Describe("Cut", text);
+            _viewport.EnsureVisible(CaretOnScreen());
+        }
+
+        /// <summary>
+        ///     Takes the selection onto the clipboard and leaves the document alone. It says how much it took
+        ///     because it is the one edit with nothing to show for itself: without the status line, a copy and a key
+        ///     that did nothing look exactly alike.
+        /// </summary>
+        private void Copy()
+        {
+            if (!_buffer.HasSelection)
+                return;
+
+            var text = _buffer.GetSelectedText();
+            UserData.Clipboard = text;
+            _message = Describe("Copied", text);
+        }
+
+        /// <summary>
+        ///     Drops the clipboard in at the caret, over the selection when there is one, which is what every editor
+        ///     does and what makes paste a replace as well as an insert. <c>TextBuffer.Insert</c> honours the
+        ///     newlines inside it, so a paragraph arrives as a paragraph.
+        /// </summary>
+        private void Paste()
+        {
+            if (!UserData.HasClipboard)
+                return;
+
+            _buffer.Insert(UserData.Clipboard);
+
+            _message = Describe("Pasted", UserData.Clipboard);
+            _viewport.EnsureVisible(CaretOnScreen());
+        }
+
+        /// <summary>Removes the selection without touching the clipboard, which is the difference from Cut.</summary>
+        private void ClearSelection()
+        {
+            if (!_buffer.HasSelection)
+                return;
+
+            _buffer.DeleteSelection();
+            _viewport.EnsureVisible(CaretOnScreen());
+        }
+
+        /// <summary>Says what an edit moved, counted in whichever unit the amount makes readable.</summary>
+        /// <param name="verb">What happened to it.</param>
+        /// <param name="text">The text it happened to.</param>
+        /// <returns>The status line to show.</returns>
+        private static string Describe(string verb, string text)
+        {
+            var lines = 1;
+            foreach (var character in text)
+            {
+                if (character == '\n')
+                    lines++;
+            }
+
+            return lines > 1
+                ? string.Format(CultureInfo.InvariantCulture, "{0} {1} lines.", verb, lines)
+                : string.Format(CultureInfo.InvariantCulture, "{0} {1} characters.", verb, text.Length);
+        }
+
         /// <summary>Builds the pull-downs, styled to match the field they sit over.</summary>
         private void BuildMenus()
         {
@@ -387,12 +483,21 @@ namespace WolfCurses.Apps.WordProcessor
                     MenuBarEntry.Separator(),
                     new MenuBarEntry("Exit", () => ParentWindow.ClearForm(), "Esc")),
                 new MenuBarMenu("Edit",
-                    new MenuBarEntry("Cut", null, "Ctrl+X") {IsEnabled = false},
-                    new MenuBarEntry("Copy", null, "Ctrl+C") {IsEnabled = false},
-                    new MenuBarEntry("Paste", null, "Ctrl+V") {IsEnabled = false},
+                    // Each says for itself when it means anything, rather than being switched on and off from
+                    // wherever the selection last changed. The menu asks at the moment it is drawn and at the
+                    // moment an entry is chosen, so the greyed lines are always telling the truth.
+                    //
+                    // Copy answers to CTRL+INS rather than to CTRL+C, and that is not nostalgia. The console keeps
+                    // ENABLE_PROCESSED_INPUT switched on so that CTRL+C stays the way out of a program, which means
+                    // it is turned into a signal and never arrives here as a key at all. Printing "Ctrl+C" beside
+                    // Copy would advertise a shortcut that quits the suite. CTRL+INS is what the editor this
+                    // imitates used, and it arrives.
+                    new MenuBarEntry("Cut", Cut, "Ctrl+X") {EnabledWhen = () => _buffer.HasSelection},
+                    new MenuBarEntry("Copy", Copy, "Ctrl+Ins") {EnabledWhen = () => _buffer.HasSelection},
+                    new MenuBarEntry("Paste", Paste, "Ctrl+V") {EnabledWhen = () => UserData.HasClipboard},
                     MenuBarEntry.Separator(),
                     new MenuBarEntry("Select All", _buffer.SelectAll, "Ctrl+A"),
-                    new MenuBarEntry("Clear", _buffer.DeleteSelection, "Del")),
+                    new MenuBarEntry("Clear", ClearSelection, "Del") {EnabledWhen = () => _buffer.HasSelection}),
                 new MenuBarMenu("Search",
                     new MenuBarEntry("Find...", null, "Ctrl+F") {IsEnabled = false}),
                 new MenuBarMenu("Options",
