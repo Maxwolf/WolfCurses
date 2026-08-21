@@ -4,7 +4,7 @@
 using System;
 using WolfCurses.Graphics;
 
-namespace WolfCurses.Apps.WordProcessor
+namespace WolfCurses.Apps
 {
     /// <summary>
     ///     The MS-DOS Editor's colours, which cost nothing to reproduce because of one accident of history: the

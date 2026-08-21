@@ -41,5 +41,8 @@
          decodes PNG, JPEG and GIF - exactly the situation that made only SmallPng/ usable for the chess pieces. -->
     <None Include="Assets\cards\*.png" Link="cards\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <ItemGroup>
+    <None Remove="CLAUDE.md" />
+  </ItemGroup>
 
 </Project>

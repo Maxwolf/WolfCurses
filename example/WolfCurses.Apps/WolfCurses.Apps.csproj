@@ -42,6 +42,12 @@
          licensing rather than on size. -->
     <None Include="Assets\dictionary\words.txt" Link="dictionary\words.txt"
           CopyToOutputDirectory="PreserveNewest" />
+
+    <!-- The sample BASIC programs, in their own folder so the environment's Open dialog starts among them. All of
+         them were written for this repository: the QBasic samples everybody remembers are Microsoft's and are not
+         redistributable, so a program like GORILLA.BAS is opened from your own disk rather than shipped here. -->
+    <None Include="Assets\programs\*.bas" Link="programs\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

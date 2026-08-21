@@ -29,6 +29,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="CLAUDE.md" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- The demo helpers (DemoImages, RendererSwitch, FrameCounter) are internal because nothing outside this app
          should build on them - but its own test project has to reach them, the same way the library opens itself
          to WolfCurses.Tests. Nothing else is granted access. -->

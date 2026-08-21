@@ -2,15 +2,21 @@
 // Timestamp 08/20/2026
 
 using System;
-using WolfCurses.Documents;
 using WolfCurses.Graphics;
 
-namespace WolfCurses.Apps.WordProcessor
+namespace WolfCurses.Documents
 {
     /// <summary>
     ///     Draws the visible part of a document: the lines the viewport is over, with the selection and the caret
-    ///     marked. Pure, taking a buffer and a viewport and returning rows, so what the editor looks like can be
+    ///     marked. Pure, taking a buffer and a viewport and returning rows, so what a screen looks like can be
     ///     asserted without a console.
+    ///     <para>
+    ///         This is the last piece an editor-shaped screen would otherwise write for itself. <see cref="TextBuffer" />
+    ///         holds the document, <see cref="TextViewport" /> decides what is on screen and <see cref="TabStops" />
+    ///         and <see cref="ControlPictures" /> turn a stored line into a drawable one; putting them together into
+    ///         rows is the same loop every time, and getting the selection and the tab columns to agree is the part
+    ///         that is easy to get subtly wrong.
+    ///     </para>
     ///     <para>
     ///         <b>Every row comes back exactly the viewport's width.</b> That is what lets the frame around it stay a
     ///         rectangle and what makes the blue field cover the whole page rather than stopping after each line's
@@ -23,7 +29,7 @@ namespace WolfCurses.Apps.WordProcessor
     ///         into the highlighted run, which is also what a terminal editor does.
     ///     </para>
     /// </summary>
-    internal static class DocumentView
+    public static class DocumentView
     {
         /// <summary>Renders the visible rows of a document, each padded to the viewport's exact width.</summary>
         /// <param name="buffer">The document.</param>

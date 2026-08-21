@@ -23,7 +23,13 @@ namespace WolfCurses.Apps
         /// </summary>
         [Description("Word processor - edit a document.")] WordProcessor = 1,
 
+        /// <summary>
+        ///     A BASIC environment after the one that shipped with MS-DOS: a program in an editor, and the screen it
+        ///     draws on when you run it. The editing is the library's, the language is this application's own.
+        /// </summary>
+        [Description("BASIC - write and run a program.")] Basic = 2,
+
         /// <summary>Closes the suite and returns to the operating system.</summary>
-        [Description("Quit.")] Quit = 2
+        [Description("Quit.")] Quit = 3
     }
 }
