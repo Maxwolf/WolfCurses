@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using WolfCurses.Graphics;
 using WolfCurses.Window.Control;
 
@@ -68,10 +69,18 @@ namespace WolfCurses.Apps.Basic
         /// <summary>Initializes a new instance of the <see cref="BasicScreen" /> class.</summary>
         /// <param name="width">How many columns.</param>
         /// <param name="height">How many rows.</param>
-        public BasicScreen(int width, int height)
+        /// <param name="audible">
+        ///     Whether notes are actually played. <b>Off by default, and that default is load-bearing:</b> the test
+        ///     suite runs the shipped programs, one of which is a hundred and fifty notes of Grieg, and a screen
+        ///     that made noise by construction would turn a test run into several minutes of beeping.
+        /// </param>
+        public BasicScreen(int width, int height, bool audible = false)
         {
             _grid = new TextGrid(Math.Max(1, width), Math.Max(1, height));
             _style = new TextStyle(ConsoleColor.Gray, ConsoleColor.Black);
+
+            // Non-Windows has no Console.Beep to speak of, so it stays quiet rather than throwing per note.
+            Audible = audible && OperatingSystem.IsWindows();
 
             Clear();
         }
@@ -250,22 +259,138 @@ namespace WolfCurses.Apps.Basic
             return ColorAt(x, y);
         }
 
-        /// <summary>
-        ///     What a program asked to hear, and how long for.
-        ///     <para>
-        ///         <b>Nothing is actually played, and that is deliberate rather than unfinished.</b> The only
-        ///         pitched sound available here blocks for the length of the note, and blocking is exactly what this
-        ///         screen exists not to do: a program is run in slices so that it stays interruptible, and a tune
-        ///         would freeze the loop that keeps ESC working. So the notes are counted and gone through, which
-        ///         means a program with music in it runs correctly and silently rather than not running.
-        ///     </para>
-        /// </summary>
+        /// <summary>What a program asked to hear, and how long for, whether or not anybody heard it.</summary>
         public List<(double Frequency, double Milliseconds)> Notes { get; } = new();
 
-        /// <inheritdoc />
+        /// <summary>Whether notes are actually played.</summary>
+        public bool Audible { get; }
+
+        /// <summary>
+        ///     How many notes may be waiting before further ones are dropped.
+        ///     <para>
+        ///         A cap rather than an unbounded queue, because a program can ask for notes far faster than they
+        ///         can be played: a SOUND inside a loop would otherwise pile up a tune that goes on playing minutes
+        ///         after the program has stopped, which is worse than missing a few notes.
+        ///     </para>
+        /// </summary>
+        private const int MaxQueuedNotes = 64;
+
+        /// <summary>The notes waiting to be played.</summary>
+        private readonly Queue<(double Frequency, double Milliseconds)> _pending = new();
+
+        /// <summary>Guards the queue, which two threads reach.</summary>
+        private readonly object _gate = new();
+
+        /// <summary>The thread doing the beeping, started when the first note arrives.</summary>
+        private Thread _player;
+
+        /// <summary>Whether the player should give up and go home.</summary>
+        private bool _finished;
+
+        /// <summary>
+        ///     Hands a note to the speaker.
+        ///     <para>
+        ///         <b>Queued for another thread rather than played here, because playing a note blocks for its
+        ///         whole length.</b> This is called from the middle of running a program, and a program is run in
+        ///         slices precisely so that the screen stays alive and ESC keeps working: beeping on this thread
+        ///         would freeze the interface for the length of the tune.
+        ///     </para>
+        /// </summary>
+        /// <param name="frequency">The pitch in hertz; zero is a rest.</param>
+        /// <param name="milliseconds">How long it lasts.</param>
         public void Sound(double frequency, double milliseconds)
         {
             Notes.Add((frequency, milliseconds));
+
+            if (!Audible)
+                return;
+
+            lock (_gate)
+            {
+                if (_pending.Count >= MaxQueuedNotes)
+                    return;
+
+                _pending.Enqueue((frequency, milliseconds));
+                Monitor.Pulse(_gate);
+            }
+
+            StartPlayer();
+        }
+
+        /// <summary>
+        ///     Throws away whatever has not been played yet, which is what stopping a program has to do: a tune
+        ///     going on after ESC would be the clearest possible sign that ESC had not worked.
+        /// </summary>
+        public void Silence()
+        {
+            lock (_gate)
+            {
+                _pending.Clear();
+                _finished = true;
+                Monitor.PulseAll(_gate);
+            }
+
+            _player = null;
+        }
+
+        /// <summary>Starts the player thread if it is not already going.</summary>
+        private void StartPlayer()
+        {
+            if (_player != null)
+                return;
+
+            _finished = false;
+
+            // A background thread so that it can never hold the process open: a half-played tune must not be the
+            // reason the program will not close.
+            _player = new Thread(Play) {IsBackground = true, Name = "BASIC notes"};
+            _player.Start();
+        }
+
+        /// <summary>Plays whatever turns up, one note at a time, until told to stop.</summary>
+        private void Play()
+        {
+            while (true)
+            {
+                (double Frequency, double Milliseconds) note;
+
+                lock (_gate)
+                {
+                    while (_pending.Count == 0 && !_finished)
+                        Monitor.Wait(_gate);
+
+                    if (_finished)
+                        return;
+
+                    note = _pending.Dequeue();
+                }
+
+                Emit(note.Frequency, note.Milliseconds);
+            }
+        }
+
+        /// <summary>Makes one note, or waits out a rest.</summary>
+        private static void Emit(double frequency, double milliseconds)
+        {
+            var length = (int) Math.Clamp(milliseconds, 1d, 10000d);
+
+            // Thirty-seven hertz is the lowest the speaker will take, and below it there is nothing to play: a rest
+            // arrives as a frequency of zero and is simply waited out.
+            if (frequency < 37d)
+            {
+                Thread.Sleep(length);
+                return;
+            }
+
+            try
+            {
+                if (OperatingSystem.IsWindows())
+                    Console.Beep((int) Math.Clamp(frequency, 37d, 32767d), length);
+            }
+            catch (PlatformNotSupportedException)
+            {
+                // No speaker to talk to, which is not worth stopping a program over.
+            }
         }
 
         /// <inheritdoc />

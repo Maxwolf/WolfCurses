@@ -341,7 +341,9 @@ namespace WolfCurses.Apps.Basic
             var height = AnsiConsole.SafeWindowHeight();
             var width = Math.Max(24, AnsiConsole.SafeWindowWidth() - 1);
 
-            _screen = new BasicScreen(width, Math.Max(1, height - ReservedRows - 1));
+            // Audible here and nowhere else. The screen is silent by construction so that a test run does not
+            // beep its way through the shipped programs.
+            _screen = new BasicScreen(width, Math.Max(1, height - ReservedRows - 1), true);
             _runtime = new BasicRuntime(_screen);
             _awaitingInput = false;
             _typed.Clear();
@@ -366,6 +368,9 @@ namespace WolfCurses.Apps.Basic
         /// <param name="reason">What to say about it.</param>
         private void Stop(string reason)
         {
+            // A tune going on after ESC would be the clearest possible sign that ESC had not worked.
+            _screen?.Silence();
+
             _awaitingInput = false;
             _typed.Clear();
             _program = null;

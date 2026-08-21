@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using WolfCurses.Apps.Basic;
+using WolfCurses.Apps.Tests.Support;
 using Xunit;
 
 namespace WolfCurses.Apps.Tests
@@ -54,6 +55,26 @@ namespace WolfCurses.Apps.Tests
             BasicProgram.Compile(source).Run(new BasicRuntime(screen, 1));
 
             Assert.Contains("Try editing this", screen.Render(), StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void TheMusicSampleReallyWorksOutItsNotes()
+        {
+            // A tune that parses and produces nothing at all would pass every other test here, and nothing about
+            // this environment would make the silence noticeable.
+            var source = File.ReadAllText(Path.Combine(BasicLibrary.Folder, "music.bas"));
+            var host = new RecordingBasicHost();
+
+            BasicProgram.Compile(source).Run(new BasicRuntime(host, 1));
+
+            Assert.True(host.Notes.Count > 100, "the sample worked out only " + host.Notes.Count + " notes");
+
+            // The one pitch in it that is written as a number rather than a letter, so it can be checked outright:
+            // 440 Hz is the A above middle C.
+            Assert.Contains(host.Notes, note => Math.Abs(note.Frequency - 440d) < 0.01d);
+
+            // And a rest really is a note with no pitch rather than a missing one.
+            Assert.Contains(host.Notes, note => note.Frequency == 0d);
         }
 
         [Fact]
