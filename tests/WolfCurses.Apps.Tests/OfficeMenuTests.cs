@@ -8,13 +8,14 @@ namespace WolfCurses.Apps.Tests
     ///     The suite as a person meets it: keys go in, frames come out, and the assertions are about what is on
     ///     screen. Nothing here reaches inside a form.
     ///     <para>
-    ///         There are no applications yet, so what is pinned is the scaffolding every one of them will hang off:
-    ///         the menu comes up on its own, the enum is what a test names a choice by, ESC is harmless with nothing
-    ///         to back out of, and Quit really does close the simulation rather than merely saying so.
+    ///         What is pinned here is the scaffolding every application hangs off rather than any one of them: the
+    ///         menu comes up on its own, the enum is what a test names a choice by, ESC is harmless with nothing to
+    ///         back out of, and Quit really does close the simulation rather than merely saying so. Each
+    ///         application has a test file of its own.
     ///     </para>
     /// </summary>
     [Collection("Suite")]
-    public class AppsMenuTests
+    public class OfficeMenuTests
     {
         [Fact]
         public void TheMenuComesUpByItselfAndAsksWhichApplication()
@@ -36,7 +37,7 @@ namespace WolfCurses.Apps.Tests
             // the test that fails when somebody does one and forgets the other.
             using var suite = new DrivenSuite();
 
-            foreach (AppsCommandsEnum choice in Enum.GetValues<AppsCommandsEnum>())
+            foreach (OfficeCommandsEnum choice in Enum.GetValues<OfficeCommandsEnum>())
             {
                 var number = ((int) choice).ToString(System.Globalization.CultureInfo.InvariantCulture);
                 Assert.Contains($"{number}. ", suite.Screen, StringComparison.Ordinal);
@@ -65,7 +66,7 @@ namespace WolfCurses.Apps.Tests
             // ended" as far as anything but the console can see.
             using var suite = new DrivenSuite();
 
-            suite.ChooseMenuItem((int) AppsCommandsEnum.Quit);
+            suite.ChooseMenuItem((int) OfficeCommandsEnum.Quit);
 
             Assert.Null(OfficeSimulationApp.Instance);
         }

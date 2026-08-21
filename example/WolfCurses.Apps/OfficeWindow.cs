@@ -13,20 +13,20 @@ namespace WolfCurses.Apps
     ///     single ESC handler below cover all of them at once.
     ///     <para>
     ///         Adding an application is a folder, a form carrying
-    ///         <c>[ParentWindow(typeof(AppsWindow))]</c>, a value on <see cref="AppsCommandsEnum" /> above Quit, and
+    ///         <c>[ParentWindow(typeof(OfficeWindow))]</c>, a value on <see cref="OfficeCommandsEnum" /> above Quit, and
     ///         one <c>AddCommand</c> line here. There is no registration step: the library discovers the window from
     ///         this assembly and the form from its attribute.
     ///     </para>
     /// </summary>
-    public sealed class AppsWindow : Window<AppsCommandsEnum, AppsWindowInfo>
+    public sealed class OfficeWindow : Window<OfficeCommandsEnum, OfficeWindowInfo>
     {
         /// <summary>What is asked under the menu, restored whenever an application hands control back.</summary>
         private const string MenuPrompt = "Which application?";
 
-        /// <summary>Initializes a new instance of the <see cref="AppsWindow" /> class.</summary>
+        /// <summary>Initializes a new instance of the <see cref="OfficeWindow" /> class.</summary>
         /// <param name="simUnit">Core simulation which is controlling the form factory.</param>
         // ReSharper disable once UnusedMember.Global
-        public AppsWindow(SimulationApp simUnit) : base(simUnit)
+        public OfficeWindow(SimulationApp simUnit) : base(simUnit)
         {
         }
 
@@ -36,11 +36,11 @@ namespace WolfCurses.Apps
             base.OnWindowPostCreate();
 
             // Applications go above this line, one AddCommand each, in the order they appear on the menu. Quit stays
-            // last, which is what the renumbering note on AppsCommandsEnum is about.
-            AddCommand(OpenWordProcessor, AppsCommandsEnum.WordProcessor);
-            AddCommand(OpenBasic, AppsCommandsEnum.Basic);
-            AddCommand(OpenSpreadsheet, AppsCommandsEnum.Spreadsheet);
-            AddCommand(Quit, AppsCommandsEnum.Quit);
+            // last, which is what the renumbering note on OfficeCommandsEnum is about.
+            AddCommand(OpenWordProcessor, OfficeCommandsEnum.WordProcessor);
+            AddCommand(OpenBasic, OfficeCommandsEnum.Basic);
+            AddCommand(OpenSpreadsheet, OfficeCommandsEnum.Spreadsheet);
+            AddCommand(Quit, OfficeCommandsEnum.Quit);
 
             RestoreMenuChrome();
         }

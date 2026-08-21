@@ -6,7 +6,7 @@ using WolfCurses.Utility;
 namespace WolfCurses.Apps
 {
     /// <summary>
-    ///     The suite menu. Each value becomes a numbered choice on <see cref="AppsWindow" />, and the
+    ///     The suite menu. Each value becomes a numbered choice on <see cref="OfficeWindow" />, and the
     ///     <see cref="DescriptionAttribute" /> is the line the user reads.
     ///     <para>
     ///         Only Quit so far. Applications are added <b>above</b> it and Quit is renumbered to stay last, because
@@ -15,7 +15,7 @@ namespace WolfCurses.Apps
     ///         these values and the example apps are exempt from the library's enum contract tests.
     ///     </para>
     /// </summary>
-    public enum AppsCommandsEnum
+    public enum OfficeCommandsEnum
     {
         /// <summary>
         ///     A full-screen text editor over the library's <see cref="WolfCurses.Documents.TextBuffer" />: the only

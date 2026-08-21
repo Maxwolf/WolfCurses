@@ -9,7 +9,7 @@ namespace WolfCurses.Apps
     ///     State shared between the menu and the applications attached to it. A window's data object outlives its
     ///     forms, which is what makes it the right home for anything one application hands to another.
     /// </summary>
-    public sealed class AppsWindowInfo : WindowData
+    public sealed class OfficeWindowInfo : WindowData
     {
         /// <summary>
         ///     The suite clipboard: what was last cut or copied, waiting to be pasted.

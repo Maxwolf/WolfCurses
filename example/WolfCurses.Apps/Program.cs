@@ -14,7 +14,7 @@ namespace WolfCurses.Apps
     ///     <para>
     ///         Three of them so far: a word processor, a BASIC environment and a spreadsheet. The scaffolding went
     ///         in before any of them, on the claim that adding one would be a folder plus one <c>AddCommand</c>
-    ///         line in <see cref="AppsWindow" /> with no registration step anywhere, and that has held.
+    ///         line in <see cref="OfficeWindow" /> with no registration step anywhere, and that has held.
     ///     </para>
     /// </summary>
     internal static class Program

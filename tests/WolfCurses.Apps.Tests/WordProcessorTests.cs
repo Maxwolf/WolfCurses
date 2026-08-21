@@ -21,7 +21,7 @@ namespace WolfCurses.Apps.Tests
         private static DrivenSuite OpenEditor()
         {
             var suite = new DrivenSuite();
-            suite.ChooseMenuItem((int) AppsCommandsEnum.WordProcessor);
+            suite.ChooseMenuItem((int) OfficeCommandsEnum.WordProcessor);
             return suite;
         }
 
@@ -637,7 +637,7 @@ namespace WolfCurses.Apps.Tests
         [Fact]
         public void EscapeShutsAnOpenMenuRatherThanLeavingTheEditor()
         {
-            // The hand-off: AppsWindow claims ESC for every application, but asks the application first, so a menu
+            // The hand-off: OfficeWindow claims ESC for every application, but asks the application first, so a menu
             // that is open is what gets dismissed. Without it, opening a menu and pressing ESC drops you out of the
             // program entirely.
             using var suite = OpenEditor();
@@ -683,7 +683,7 @@ namespace WolfCurses.Apps.Tests
         [Fact]
         public void EscapeReturnsToTheMenuWithoutTheEditorHandlingIt()
         {
-            // One override on AppsWindow backs every application out, which is why this form has no ESC handling of
+            // One override on OfficeWindow backs every application out, which is why this form has no ESC handling of
             // its own at all.
             using var suite = OpenEditor();
 
@@ -859,7 +859,7 @@ namespace WolfCurses.Apps.Tests
             suite.Press(ConsoleKey.Insert, ConsoleModifiers.Control);
 
             suite.Escape();
-            suite.ChooseMenuItem((int) AppsCommandsEnum.WordProcessor);
+            suite.ChooseMenuItem((int) OfficeCommandsEnum.WordProcessor);
 
             // A new form on a new document: the typed text is long gone.
             Assert.DoesNotContain("wolf", suite.Screen, StringComparison.Ordinal);
@@ -1102,7 +1102,7 @@ namespace WolfCurses.Apps.Tests
             Assert.Contains("rfc1149.txt *", suite.Screen, StringComparison.Ordinal);
 
             suite.Escape();
-            suite.ChooseMenuItem((int) AppsCommandsEnum.WordProcessor);
+            suite.ChooseMenuItem((int) OfficeCommandsEnum.WordProcessor);
 
             Assert.DoesNotContain("rfc1149.txt *", suite.Screen, StringComparison.Ordinal);
             Assert.Contains("Ln 1, Col 1", suite.Screen, StringComparison.Ordinal);

@@ -15,7 +15,7 @@ namespace WolfCurses.Apps
         /// <summary>Singleton instance for the whole suite; the host loop ticks this until it goes null.</summary>
         public static OfficeSimulationApp Instance { get; private set; }
 
-        // AllowedWindows is deliberately NOT overridden. The base class discovers AppsWindow from this assembly and
+        // AllowedWindows is deliberately NOT overridden. The base class discovers OfficeWindow from this assembly and
         // the built-in control windows (file dialog, select list, message box, text input) from the library, so an
         // application can open a file browser or put up a message box with nothing registered anywhere. An override
         // replaces discovery outright rather than adding to it, so it is how you would EXCLUDE a window, not how
@@ -60,7 +60,7 @@ namespace WolfCurses.Apps
         {
             base.Restart();
 
-            WindowManager.Add(typeof (AppsWindow));
+            WindowManager.Add(typeof (OfficeWindow));
         }
     }
 }

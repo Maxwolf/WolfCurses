@@ -30,7 +30,7 @@ namespace WolfCurses.Apps.Tests
         private static DrivenSuite OpenSpreadsheet()
         {
             var suite = new DrivenSuite();
-            suite.ChooseMenuItem((int) AppsCommandsEnum.Spreadsheet);
+            suite.ChooseMenuItem((int) OfficeCommandsEnum.Spreadsheet);
 
             return suite;
         }

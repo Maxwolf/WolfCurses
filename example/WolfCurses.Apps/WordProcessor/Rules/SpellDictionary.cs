@@ -14,7 +14,7 @@ namespace WolfCurses.Apps.WordProcessor
     ///     <para>
     ///         <b>Loaded once per process and not once per editor.</b> It is 4 MB on disk and roughly 25 MB as a
     ///         set, so a form that reloaded it every time somebody reopened the word processor would be noticeably
-    ///         worse for no reason. A static cache rather than something on <see cref="AppsWindowInfo" /> because
+    ///         worse for no reason. A static cache rather than something on <see cref="OfficeWindowInfo" /> because
     ///         this is not shared <i>state</i>: nothing mutates it, nothing needs to see anybody else's changes to
     ///         it, and a suite-wide clipboard genuinely is a different thing from a file that is read once.
     ///     </para>

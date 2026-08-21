@@ -33,8 +33,8 @@ namespace WolfCurses.Apps.WordProcessor
     ///         menu rather than leaving the editor.
     ///     </para>
     /// </summary>
-    [ParentWindow(typeof (AppsWindow))]
-    public sealed class WordProcessorDialog : Form<AppsWindowInfo>, IHandlesEscape
+    [ParentWindow(typeof (OfficeWindow))]
+    public sealed class WordProcessorDialog : Form<OfficeWindowInfo>, IHandlesEscape
     {
         /// <summary>Rows outside this screen: the scene graph's status line above and the input prompt below.</summary>
         private const int ReservedRows = 3;

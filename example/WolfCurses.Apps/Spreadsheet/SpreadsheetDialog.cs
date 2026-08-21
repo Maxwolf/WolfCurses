@@ -32,8 +32,8 @@ namespace WolfCurses.Apps.Spreadsheet
     ///         the ones the MS-DOS editor bound too.
     ///     </para>
     /// </summary>
-    [ParentWindow(typeof (AppsWindow))]
-    public sealed class SpreadsheetDialog : Form<AppsWindowInfo>, IHandlesEscape
+    [ParentWindow(typeof (OfficeWindow))]
+    public sealed class SpreadsheetDialog : Form<OfficeWindowInfo>, IHandlesEscape
     {
         /// <summary>Rows outside this screen: the scene graph's status line above and the input prompt below.</summary>
         private const int ReservedRows = 3;

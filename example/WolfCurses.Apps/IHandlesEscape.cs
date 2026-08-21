@@ -6,7 +6,7 @@ namespace WolfCurses.Apps
     /// <summary>
     ///     Implemented by an application that sometimes has something of its own to dismiss with ESC.
     ///     <para>
-    ///         <see cref="AppsWindow" /> claims ESC for every application at once, which is what stops each of them
+    ///         <see cref="OfficeWindow" /> claims ESC for every application at once, which is what stops each of them
     ///         writing the same handler. That is right until an application grows something nested, like an open
     ///         menu: pressing ESC then should shut the menu rather than leave the program, and only the application
     ///         knows whether it has anything open.

@@ -28,8 +28,8 @@ namespace WolfCurses.Apps.Basic
     ///         keeps the interface alive and what lets ESC stop a program that has no intention of stopping.
     ///     </para>
     /// </summary>
-    [ParentWindow(typeof (AppsWindow))]
-    public sealed class BasicDialog : Form<AppsWindowInfo>, IHandlesEscape
+    [ParentWindow(typeof (OfficeWindow))]
+    public sealed class BasicDialog : Form<OfficeWindowInfo>, IHandlesEscape
     {
         /// <summary>How many statements to run per frame. Enough to feel instant, few enough to stay responsive.</summary>
         private const int StatementsPerFrame = 2000;

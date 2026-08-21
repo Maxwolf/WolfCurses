@@ -20,7 +20,7 @@ namespace WolfCurses.Apps.Tests
         private static DrivenSuite OpenBasic()
         {
             var suite = new DrivenSuite();
-            suite.ChooseMenuItem((int) AppsCommandsEnum.Basic);
+            suite.ChooseMenuItem((int) OfficeCommandsEnum.Basic);
 
             return suite;
         }

@@ -8,7 +8,7 @@ dotnet run --project example/WolfCurses.Apps
 
 **Three applications so far**: a word processor laid out after the MS-DOS Editor, a BASIC environment after the one that shipped with MS-DOS, and a spreadsheet. Database, calculator and diary are planned and unwritten.
 
-That order is deliberate. Adding an application is meant to be a folder, a form carrying `[ParentWindow(typeof(AppsWindow))]`, a value on `AppsCommandsEnum`, and one `AddCommand` line in `AppsWindow`, with no registration step anywhere. It is worth proving that claim before writing anything that depends on it.
+That order is deliberate. Adding an application is meant to be a folder, a form carrying `[ParentWindow(typeof(OfficeWindow))]`, a value on `OfficeCommandsEnum`, and one `AddCommand` line in `OfficeWindow`, with no registration step anywhere. It is worth proving that claim before writing anything that depends on it.
 
 This is an interactive terminal UI, so run it from a real terminal window rather than by double-clicking, and give the window some room.
 
@@ -66,6 +66,6 @@ Four pieces of this are in the library rather than here: `TableViewport` (which 
 
 ## ESC
 
-**ESC backs out of any application to the menu**, done as a single `AppsWindow.OnKeyPressed` override rather than in each application, exactly as the other two examples do it.
+**ESC backs out of any application to the menu**, done as a single `OfficeWindow.OnKeyPressed` override rather than in each application, exactly as the other two examples do it.
 
 An application with something nested open gets first refusal, through a small `IHandlesEscape` interface, so pressing ESC with a menu down shuts the menu rather than dropping you out of the editor. The library ships no ESC handling of its own on purpose; this is the five lines of the pattern it declined to make everyone's business.
