@@ -38,6 +38,12 @@ namespace WolfCurses.Apps.Basic
         public Stack<int> ReturnAddresses { get; } = new();
 
         /// <summary>
+        ///     The values the open SELECT CASE constructs are testing, innermost on top. A stack for the same
+        ///     reason the loops are one: a SELECT inside a SELECT has to test its own value.
+        /// </summary>
+        public Stack<BasicValue> SelectValues { get; } = new();
+
+        /// <summary>
         ///     The FOR loops currently running, innermost on top. A stack is what lets a bare NEXT know which loop
         ///     it belongs to, which is the whole reason BASIC allows one to be written without a variable.
         /// </summary>

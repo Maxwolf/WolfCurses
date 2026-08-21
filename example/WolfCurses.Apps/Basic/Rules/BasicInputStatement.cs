@@ -35,7 +35,20 @@ namespace WolfCurses.Apps.Basic
         /// <inheritdoc />
         public override int Execute(BasicRuntime runtime, int index)
         {
-            var answer = runtime.Host.ReadLine(_prompt) ?? string.Empty;
+            string answer;
+
+            try
+            {
+                answer = runtime.Host.ReadLine(_prompt) ?? string.Empty;
+            }
+            catch (BasicInputRequest request)
+            {
+                // A host with no answer to give signals out instead of blocking, and only this statement knows
+                // where it sits, so it is the one that can say where to carry on from. Running the whole statement
+                // again afterwards is safe because asking is the first thing it does.
+                request.ResumeAt = index;
+                throw;
+            }
             var parts = answer.Split(',');
 
             for (var i = 0; i < _targets.Count; i++)

@@ -185,6 +185,14 @@ namespace WolfCurses.Apps.Basic
                     _at++;
                     ParseWend(token.Line);
                     return;
+                case "SELECT":
+                    _at++;
+                    ParseSelect(token.Line);
+                    return;
+                case "CASE":
+                    _at++;
+                    ParseCase(token.Line);
+                    return;
                 case "DO":
                     _at++;
                     ParseDo(token.Line);
@@ -218,6 +226,13 @@ namespace WolfCurses.Apps.Basic
                     {
                         _at++;
                         ParseEndIf(token.Line);
+                        return;
+                    }
+
+                    if (Current.IsWord("SELECT"))
+                    {
+                        _at++;
+                        ParseEndSelect(token.Line);
                         return;
                     }
 
@@ -606,6 +621,116 @@ namespace WolfCurses.Apps.Basic
             _blocks.RemoveAt(_blocks.Count - 1);
         }
 
+        /// <summary>Reads SELECT CASE, which works its value out once and leaves it for the CASE tests.</summary>
+        private void ParseSelect(int line)
+        {
+            if (!Current.IsWord("CASE"))
+                throw new BasicError("Expected CASE after SELECT", line);
+
+            _at++;
+            Emit(new BasicSelectStatement(ParseExpression(), line));
+            _blocks.Add(Block.Select(line));
+        }
+
+        /// <summary>Reads one CASE, closing whichever arm came before it.</summary>
+        private void ParseCase(int line)
+        {
+            var block = Open(BlockKindEnum.Select, line);
+
+            if (block.Started)
+            {
+                // The arm above this one runs to the end of the construct rather than falling into this test, which
+                // is the whole difference between SELECT CASE and a switch that needs breaking out of.
+                var skip = new BasicJumpStatement(null, true, line);
+                Emit(skip);
+                block.Exits.Add(skip);
+
+                if (block.Pending != null)
+                    block.Pending.Target = _statements.Count;
+            }
+
+            block.Started = true;
+
+            if (Current.IsWord("ELSE"))
+            {
+                _at++;
+                block.Pending = null;
+                return;
+            }
+
+            var next = new BasicJumpStatement(ParseCaseTests(line), false, line);
+            Emit(next);
+            block.Pending = next;
+        }
+
+        /// <summary>Reads END SELECT, where every arm lands and the selected value is thrown away.</summary>
+        private void ParseEndSelect(int line)
+        {
+            var block = Open(BlockKindEnum.Select, line);
+
+            if (block.Pending != null)
+                block.Pending.Target = _statements.Count;
+
+            foreach (var exit in block.Exits)
+                exit.Target = _statements.Count;
+
+            // Emitted after the patching, so every path lands on it and the value is discarded exactly once.
+            Emit(new BasicEndSelectStatement(line));
+            _blocks.RemoveAt(_blocks.Count - 1);
+        }
+
+        /// <summary>Reads the comma separated tests of one CASE into a single condition.</summary>
+        private BasicExpression ParseCaseTests(int line)
+        {
+            BasicExpression condition = null;
+
+            while (true)
+            {
+                var test = ParseCaseTest(line);
+
+                // OR rather than anything cleverer: a comparison is 0 or -1, so a bitwise OR of two of them is
+                // exactly the logical one, and the ordinary conditional jump then runs the whole construct.
+                condition = condition == null
+                    ? test
+                    : new BasicBinaryExpression("OR", condition, test, line);
+
+                if (!Current.IsSymbol(","))
+                    return condition;
+
+                _at++;
+            }
+        }
+
+        /// <summary>Reads one CASE test: a value, a range, or a comparison introduced by IS.</summary>
+        private BasicExpression ParseCaseTest(int line)
+        {
+            if (Current.IsWord("IS"))
+            {
+                _at++;
+
+                if (Current.Kind != BasicTokenKindEnum.Symbol ||
+                    Current.Text is not ("=" or "<>" or "<" or ">" or "<=" or ">="))
+                    throw new BasicError("Expected a comparison after IS", line);
+
+                var op = Current.Text;
+                _at++;
+
+                return new BasicBinaryExpression(op, new BasicSelectValueExpression(line), ParseExpression(), line);
+            }
+
+            var first = ParseExpression();
+
+            if (!Current.IsWord("TO"))
+                return new BasicBinaryExpression("=", new BasicSelectValueExpression(line), first, line);
+
+            _at++;
+            var last = ParseExpression();
+
+            return new BasicBinaryExpression("AND",
+                new BasicBinaryExpression(">=", new BasicSelectValueExpression(line), first, line),
+                new BasicBinaryExpression("<=", new BasicSelectValueExpression(line), last, line), line);
+        }
+
         /// <summary>Reads GOTO.</summary>
         private void ParseGoto(int line)
         {
@@ -738,6 +863,7 @@ namespace WolfCurses.Apps.Basic
                     BlockKindEnum.For => "NEXT without FOR",
                     BlockKindEnum.While => "WEND without WHILE",
                     BlockKindEnum.Do => "LOOP without DO",
+                    BlockKindEnum.Select => "CASE without SELECT CASE",
                     _ => "ELSE or END IF without IF"
                 }, line);
             }
@@ -979,7 +1105,10 @@ namespace WolfCurses.Apps.Basic
             While,
 
             /// <summary>A DO waiting for its LOOP.</summary>
-            Do
+            Do,
+
+            /// <summary>A SELECT CASE waiting for its END SELECT.</summary>
+            Select
         }
 
         /// <summary>A block the parser is inside, and the jumps that still need pointing somewhere.</summary>
@@ -1000,6 +1129,12 @@ namespace WolfCurses.Apps.Basic
             /// <summary>The jump waiting to be told where the current arm ends.</summary>
             public BasicJumpStatement Pending { get; set; }
 
+            /// <summary>
+            ///     Whether a SELECT CASE has had a CASE yet, which is what tells the first one from the rest: only
+            ///     the ones after the first have a previous arm to close off.
+            /// </summary>
+            public bool Started { get; set; }
+
             /// <summary>The first statement of the body, for the loops that jump back to it.</summary>
             public int Top { get; private init; }
 
@@ -1009,6 +1144,7 @@ namespace WolfCurses.Apps.Basic
                 BlockKindEnum.If => "END IF",
                 BlockKindEnum.For => "NEXT",
                 BlockKindEnum.While => "WEND",
+                BlockKindEnum.Select => "END SELECT",
                 _ => "LOOP"
             };
 
@@ -1034,6 +1170,12 @@ namespace WolfCurses.Apps.Basic
             public static Block Do(int top, BasicJumpStatement exit, int line)
             {
                 return new Block {Kind = BlockKindEnum.Do, Top = top, Pending = exit, Line = line};
+            }
+
+            /// <summary>An open SELECT CASE.</summary>
+            public static Block Select(int line)
+            {
+                return new Block {Kind = BlockKindEnum.Select, Line = line};
             }
         }
 

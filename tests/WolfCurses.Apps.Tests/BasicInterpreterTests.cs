@@ -296,6 +296,82 @@ namespace WolfCurses.Apps.Tests
             Assert.Equal("HI", Run("REM this does nothing\nPRINT \"HI\" ' nor does this"), StringComparer.Ordinal);
         }
 
+        [Fact]
+        public void SelectCasePicksTheArmThatMatches()
+        {
+            const string program = "A = 2\nSELECT CASE A\nCASE 1\nPRINT \"ONE\"\nCASE 2\nPRINT \"TWO\"\n" +
+                                   "CASE 3\nPRINT \"THREE\"\nEND SELECT\nPRINT \"AFTER\"";
+
+            Assert.Equal("TWO\nAFTER", Run(program), StringComparer.Ordinal);
+        }
+
+        [Fact]
+        public void OneCaseCanListSeveralValues()
+        {
+            const string program = "SELECT CASE A\nCASE 1, 2, 3\nPRINT \"SMALL\"\nCASE ELSE\n" +
+                                   "PRINT \"OTHER\"\nEND SELECT";
+
+            Assert.Equal("OTHER", Run("A = 9\n" + program), StringComparer.Ordinal);
+            Assert.Equal("SMALL", Run("A = 2\n" + program), StringComparer.Ordinal);
+        }
+
+        [Fact]
+        public void CaseIsTakesAComparisonAndCaseToTakesARange()
+        {
+            const string program = "SELECT CASE A\nCASE IS < 0\nPRINT \"NEGATIVE\"\nCASE 0\nPRINT \"ZERO\"\n" +
+                                   "CASE 1 TO 9\nPRINT \"DIGIT\"\nCASE ELSE\nPRINT \"BIG\"\nEND SELECT";
+
+            Assert.Equal("NEGATIVE", Run("A = -5\n" + program), StringComparer.Ordinal);
+            Assert.Equal("ZERO", Run("A = 0\n" + program), StringComparer.Ordinal);
+            Assert.Equal("DIGIT", Run("A = 7\n" + program), StringComparer.Ordinal);
+            Assert.Equal("BIG", Run("A = 99\n" + program), StringComparer.Ordinal);
+
+            // The ends of a range are included, which is what TO means and is the off-by-one worth pinning.
+            Assert.Equal("DIGIT", Run("A = 1\n" + program), StringComparer.Ordinal);
+            Assert.Equal("DIGIT", Run("A = 9\n" + program), StringComparer.Ordinal);
+        }
+
+        [Fact]
+        public void OnlyOneArmRunsAndTheValueDoesNotChangeUnderneathIt()
+        {
+            // Two things at once, and both are what separate SELECT CASE from a switch that falls through: the
+            // matching arm does not run into the next one, and an arm that changes the selected variable does not
+            // make a later CASE match, because the value was taken once at the top.
+            const string program = "X = 1\nSELECT CASE X\nCASE 1\nX = 2\nPRINT \"ONE\"\nCASE 2\n" +
+                                   "PRINT \"TWO\"\nEND SELECT";
+
+            Assert.Equal("ONE", Run(program), StringComparer.Ordinal);
+        }
+
+        [Fact]
+        public void NothingMatchingAndNoElseSimplyCarriesOn()
+        {
+            const string program = "SELECT CASE 99\nCASE 1\nPRINT \"ONE\"\nEND SELECT\nPRINT \"AFTER\"";
+
+            Assert.Equal("AFTER", Run(program), StringComparer.Ordinal);
+        }
+
+        [Fact]
+        public void SelectCaseWorksOnStringsToo()
+        {
+            const string program = "SELECT CASE A$\nCASE \"YES\"\nPRINT \"AGREED\"\nCASE ELSE\n" +
+                                   "PRINT \"DECLINED\"\nEND SELECT";
+
+            Assert.Equal("AGREED", Run("A$ = \"YES\"\n" + program), StringComparer.Ordinal);
+            Assert.Equal("DECLINED", Run("A$ = \"NO\"\n" + program), StringComparer.Ordinal);
+        }
+
+        [Fact]
+        public void ASelectInsideASelectTestsItsOwnValue()
+        {
+            // Which is why the selected values are a stack rather than one slot.
+            const string program = "A = 1\nB = 2\nSELECT CASE A\nCASE 1\nSELECT CASE B\nCASE 1\n" +
+                                   "PRINT \"INNER ONE\"\nCASE 2\nPRINT \"INNER TWO\"\nEND SELECT\n" +
+                                   "PRINT \"OUTER ONE\"\nEND SELECT";
+
+            Assert.Equal("INNER TWO\nOUTER ONE", Run(program), StringComparer.Ordinal);
+        }
+
         [Theory]
         [InlineData("PRINT 1 / 0", "Division by zero")]
         [InlineData("NEXT I", "NEXT without FOR")]
@@ -305,6 +381,8 @@ namespace WolfCurses.Apps.Tests
         [InlineData("DIM A(2)\nPRINT A(9)", "Subscript out of range")]
         [InlineData("IF 1 THEN\nPRINT 1", "Missing END IF")]
         [InlineData("A$ = 1", "Type mismatch")]
+        [InlineData("CASE 1", "CASE without SELECT CASE")]
+        [InlineData("SELECT CASE 1\nCASE 1\nPRINT 1", "Missing END SELECT")]
         public void MistakesAreReportedRatherThanIgnored(string program, string expected)
         {
             var error = RecordingBasicHost.Fails(program);

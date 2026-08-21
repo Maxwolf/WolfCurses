@@ -110,6 +110,80 @@ namespace WolfCurses.Apps.Tests
             Assert.Contains("welcome.bas", suite.Screen, StringComparison.Ordinal);
         }
 
+        /// <summary>Types a line into whatever is collecting characters, a key at a time.</summary>
+        private static void Type(DrivenAppsApp suite, string text)
+        {
+            foreach (var character in text)
+                suite.PressChar(character, ConsoleKey.NoName);
+        }
+
+        /// <summary>Replaces the listing with a program of the test's own.</summary>
+        private static void ReplaceProgram(DrivenAppsApp suite, params string[] lines)
+        {
+            suite.Press(ConsoleKey.A, ConsoleModifiers.Control);
+
+            for (var i = 0; i < lines.Length; i++)
+            {
+                if (i > 0)
+                    suite.Press(ConsoleKey.Enter);
+
+                Type(suite, lines[i]);
+            }
+        }
+
+        [Fact]
+        public void AProgramThatAsksAQuestionWaitsForTheAnswerAndThenCarriesOn()
+        {
+            // The whole INPUT arrangement end to end: the program stops, the keystrokes arrive through the same
+            // screen it stopped on, and running the statement again completes it.
+            using var suite = OpenBasic();
+
+            ReplaceProgram(suite, "INPUT A$", "PRINT \"HELLO \" + A$");
+            suite.Press(ConsoleKey.F5);
+
+            Assert.True(WaitFor(suite, "Type an answer"), "the program never asked:\n" + suite.Describe());
+
+            Type(suite, "WOLF");
+            suite.Press(ConsoleKey.Enter);
+
+            Assert.True(WaitFor(suite, "HELLO WOLF"), "the answer never reached the program:\n" + suite.Describe());
+        }
+
+        [Fact]
+        public void AWaitingProgramEchoesWhatIsTypedAndBackspaceTakesItBack()
+        {
+            using var suite = OpenBasic();
+
+            ReplaceProgram(suite, "INPUT A$", "PRINT \"[\" + A$ + \"]\"");
+            suite.Press(ConsoleKey.F5);
+
+            Assert.True(WaitFor(suite, "Type an answer"), "the program never asked:\n" + suite.Describe());
+
+            Type(suite, "WOLX");
+            suite.Press(ConsoleKey.Backspace);
+            Type(suite, "F");
+            suite.Press(ConsoleKey.Enter);
+
+            Assert.True(WaitFor(suite, "[WOLF]"), "backspace did not take the character back:\n" + suite.Describe());
+        }
+
+        [Fact]
+        public void EscapeLeavesAProgramThatIsWaitingForAnAnswer()
+        {
+            // A program stopped on INPUT is still a program somebody has to be able to get out of.
+            using var suite = OpenBasic();
+
+            ReplaceProgram(suite, "INPUT A$", "PRINT A$");
+            suite.Press(ConsoleKey.F5);
+
+            Assert.True(WaitFor(suite, "Type an answer"), "the program never asked:\n" + suite.Describe());
+
+            suite.Escape();
+
+            Assert.Contains("Stopped", suite.Screen, StringComparison.Ordinal);
+            Assert.DoesNotContain("Which application?", suite.Screen, StringComparison.Ordinal);
+        }
+
         [Fact]
         public void TypingEditsTheProgramRatherThanTheCommandPromptUnderneath()
         {

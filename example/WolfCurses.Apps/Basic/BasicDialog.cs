@@ -46,8 +46,17 @@ namespace WolfCurses.Apps.Basic
         /// <summary>The window onto the program text.</summary>
         private readonly TextViewport _viewport = new();
 
+        /// <summary>What has been typed toward the line a waiting INPUT wants.</summary>
+        private readonly StringBuilder _typed = new();
+
+        /// <summary>Whether a running program has stopped to ask for a line of input.</summary>
+        private bool _awaitingInput;
+
         /// <summary>Where the running program has got to.</summary>
         private int _index;
+
+        /// <summary>Which statement to run again once a waiting INPUT has its answer.</summary>
+        private int _resumeAt;
 
         /// <summary>What the status line has to say.</summary>
         private string _message;
@@ -108,7 +117,9 @@ namespace WolfCurses.Apps.Basic
             if (!systemTick)
                 ResizeViewport();
 
-            if (_program == null || !_pace.TryConsume())
+            // A program waiting for input is not running: the keystrokes it is waiting for arrive through this
+            // same screen, so stepping it here would spin without ever letting anybody answer.
+            if (_program == null || _awaitingInput || !_pace.TryConsume())
                 return;
 
             RunSlice();
@@ -123,6 +134,17 @@ namespace WolfCurses.Apps.Basic
 
                 if (!_program.IsRunning(_index))
                     Finish("Program finished. ESC returns to the listing.");
+            }
+            catch (BasicInputRequest request)
+            {
+                // Not a failure: the program wants a line. The prompt is written here rather than by the host,
+                // because the host is asked twice for one INPUT and would print the question twice.
+                _awaitingInput = true;
+                _resumeAt = request.ResumeAt;
+                _typed.Clear();
+
+                _screen.Write(request.Prompt);
+                _message = "Type an answer and press ENTER.";
             }
             catch (BasicError error)
             {
@@ -192,6 +214,12 @@ namespace WolfCurses.Apps.Basic
         {
             base.OnKeyPressed(keyInfo);
 
+            if (_awaitingInput)
+            {
+                TypeAnswer(keyInfo);
+                return;
+            }
+
             if (Showing)
             {
                 // Everything typed while a program is up belongs to the program, which is what INKEY$ reads. ESC is
@@ -211,6 +239,9 @@ namespace WolfCurses.Apps.Basic
                 case ConsoleKey.F3:
                     Open();
                     return;
+                case ConsoleKey.A when control:
+                    _buffer.SelectAll();
+                    break;
                 case ConsoleKey.LeftArrow when control:
                     _buffer.MoveWordLeft(shift);
                     break;
@@ -265,6 +296,42 @@ namespace WolfCurses.Apps.Basic
             _viewport.EnsureVisible(CaretOnScreen());
         }
 
+        /// <summary>
+        ///     Collects the line a waiting INPUT asked for, echoing it where the program left its cursor, which is
+        ///     what makes an answer appear after the question rather than somewhere else.
+        /// </summary>
+        /// <param name="keyInfo">The key that was pressed.</param>
+        private void TypeAnswer(ConsoleKeyInfo keyInfo)
+        {
+            switch (keyInfo.Key)
+            {
+                case ConsoleKey.Enter:
+                    _screen.WriteLine();
+                    _screen.SupplyAnswer(_typed.ToString());
+
+                    // Back to the statement that asked. It runs again from the top, and this time the host has an
+                    // answer to give it.
+                    _awaitingInput = false;
+                    _index = _resumeAt;
+                    _message = null;
+                    return;
+                case ConsoleKey.Backspace:
+                    if (_typed.Length == 0)
+                        return;
+
+                    _typed.Length--;
+                    _screen.Backspace();
+                    return;
+                default:
+                    if (keyInfo.KeyChar == '\0' || char.IsControl(keyInfo.KeyChar))
+                        return;
+
+                    _typed.Append(keyInfo.KeyChar);
+                    _screen.Write(keyInfo.KeyChar.ToString());
+                    return;
+            }
+        }
+
         /// <summary>Compiles the program and starts it, or says why it will not compile.</summary>
         private void Start()
         {
@@ -273,6 +340,8 @@ namespace WolfCurses.Apps.Basic
 
             _screen = new BasicScreen(width, Math.Max(1, height - ReservedRows - 1));
             _runtime = new BasicRuntime(_screen);
+            _awaitingInput = false;
+            _typed.Clear();
             _message = null;
 
             try
@@ -294,6 +363,8 @@ namespace WolfCurses.Apps.Basic
         /// <param name="reason">What to say about it.</param>
         private void Stop(string reason)
         {
+            _awaitingInput = false;
+            _typed.Clear();
             _program = null;
             _runtime = null;
             _screen = null;
@@ -304,6 +375,8 @@ namespace WolfCurses.Apps.Basic
         /// <param name="reason">What to say about it.</param>
         private void Finish(string reason)
         {
+            _awaitingInput = false;
+            _typed.Clear();
             _program = null;
             _message = reason;
         }

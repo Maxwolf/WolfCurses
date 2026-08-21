@@ -132,16 +132,41 @@ namespace WolfCurses.Apps.Basic
             _style = new TextStyle(front, back);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        ///     Answers INPUT if somebody has typed something, and otherwise asks to be come back to.
+        ///     <para>
+        ///         <b>It deliberately does not write the prompt.</b> This is called twice for one INPUT, once to
+        ///         signal and once to answer, so writing here would print the question twice.
+        ///     </para>
+        /// </summary>
+        /// <param name="prompt">What the program wants to ask.</param>
+        /// <returns>The answer.</returns>
         public string ReadLine(string prompt)
         {
-            // Not yet: INPUT has to stop the program in the middle of a statement and wait, and the screen runs the
-            // program in bounded slices so that it can stay alive. Answering with nothing is the honest stand-in
-            // until that is built, and it is why the shipped samples do not ask questions.
-            Write(prompt);
-            WriteLine();
+            if (_answer == null)
+                throw new BasicInputRequest(prompt);
 
-            return string.Empty;
+            var answer = _answer;
+            _answer = null;
+
+            return answer;
+        }
+
+        /// <summary>Hands the waiting INPUT its answer, so that re-running the statement completes it.</summary>
+        /// <param name="answer">What was typed.</param>
+        public void SupplyAnswer(string answer)
+        {
+            _answer = answer ?? string.Empty;
+        }
+
+        /// <summary>Rubs out the character before the cursor, which is what echoing a backspace means.</summary>
+        public void Backspace()
+        {
+            if (_column <= 0)
+                return;
+
+            _column--;
+            _grid.Set(_column, _row, ' ', _style);
         }
 
         /// <inheritdoc />
@@ -164,6 +189,9 @@ namespace WolfCurses.Apps.Basic
 
         /// <summary>The key a running program will find next time it asks, which the screen above sets.</summary>
         public string PendingKey { get; set; } = string.Empty;
+
+        /// <summary>What a waiting INPUT will be given, or null while nothing has been typed.</summary>
+        private string _answer;
 
         /// <summary>How many times the program has asked for a noise.</summary>
         public int Beeps { get; private set; }

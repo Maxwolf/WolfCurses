@@ -6,7 +6,7 @@ The other half of what a terminal used to be for. Where [the arcade](../WolfCurs
 dotnet run --project example/WolfCurses.Apps
 ```
 
-**One application so far: a word processor**, laid out and coloured after the MS-DOS Editor. Spreadsheet, database, calculator and diary are planned and unwritten.
+**Two applications so far**: a word processor laid out after the MS-DOS Editor, and a BASIC environment after the one that shipped with MS-DOS. Spreadsheet, database, calculator and diary are planned and unwritten.
 
 That order is deliberate. Adding an application is meant to be a folder, a form carrying `[ParentWindow(typeof(AppsWindow))]`, a value on `AppsCommandsEnum`, and one `AddCommand` line in `AppsWindow`, with no registration step anywhere. It is worth proving that claim before writing anything that depends on it.
 
@@ -29,6 +29,14 @@ Menus across the top, a framed blue field with the file name in its top edge, sc
 **File.** Opens on `documents/rfc1149.txt`; Open browses that folder, and Save and Save As write back.
 
 Five pieces of it are in the library rather than here, which is the point of these examples: `TextBuffer` and `TextViewport` (the document and the window onto it), `TabStops` (a tab is one character and several columns, and keeping those in step is most of what makes a caret land correctly), `MenuBar`, and `ScrollBar`.
+
+## BASIC
+
+A program in an editor, and the screen it draws on when you run it. **F5 runs**, ESC stops a running program and goes back to the listing, ESC again leaves; F3 opens another `.bas` from disk.
+
+The language covers expressions with BASIC's own precedence, variables and arrays, `PRINT` with its layout punctuation, `INPUT`, `IF` in both forms with `ELSEIF`, `FOR`/`NEXT` with `STEP`, `WHILE`/`WEND`, all four shapes of `DO`/`LOOP`, `SELECT CASE` with `IS` and `TO`, `GOTO`/`GOSUB`/`RETURN`, `DIM`, and the usual string and maths functions. Errors name the line they happened on. `SUB` and `FUNCTION`, graphics and sound are not there yet.
+
+Three sample programs ship, all written for this repository: `welcome.bas` walks through the language, `greet.bas` asks questions, `shapes.bas` draws with `LOCATE`. **The QBasic samples everybody remembers are Microsoft's** and carry no redistribution licence, so they are not included; open your own copy with F3.
 
 ## Planned
 
