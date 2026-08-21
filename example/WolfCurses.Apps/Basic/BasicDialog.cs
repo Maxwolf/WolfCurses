@@ -193,7 +193,10 @@ namespace WolfCurses.Apps.Basic
         {
             var screen = new StringBuilder();
 
-            screen.Append(_screen.Render()).Append(Environment.NewLine);
+            // Told the room it has rather than left to guess: a picture is fitted to the space it is given, and
+            // the screen has no way of knowing how much of the terminal this form kept for itself.
+            screen.Append(_screen.Render(width, Math.Max(1, AnsiConsole.SafeWindowHeight() - ReservedRows - 1)))
+                .Append(Environment.NewLine);
             screen.Append(DosTheme.Status.Apply(Fit(" " + (_message ?? "Running..."), width)));
 
             return screen.ToString();

@@ -249,7 +249,8 @@ namespace WolfCurses.Apps.Basic
 
             wasComment = string.Equals(name, "REM", StringComparison.Ordinal);
             if (!wasComment)
-                tokens.Add(new BasicToken(BasicTokenKindEnum.Word, name, 0, line));
+                tokens.Add(new BasicToken(BasicTokenKindEnum.Word, name, 0, line,
+                    source.Substring(start, at - start)));
 
             return at;
         }

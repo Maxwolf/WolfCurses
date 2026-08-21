@@ -22,12 +22,14 @@ namespace WolfCurses.Apps.Basic
         /// <param name="text">Its text, uppercased for a word so comparisons need no culture.</param>
         /// <param name="number">Its value, for a number.</param>
         /// <param name="line">The source line it came from, counting from one.</param>
-        public BasicToken(BasicTokenKindEnum kind, string text, double number, int line)
+        /// <param name="spelling">Exactly how it was written, when that differs from <paramref name="text" />.</param>
+        public BasicToken(BasicTokenKindEnum kind, string text, double number, int line, string spelling = null)
         {
             Kind = kind;
             Text = text ?? string.Empty;
             Number = number;
             Line = line;
+            Spelling = spelling ?? Text;
         }
 
         /// <summary>What it is.</summary>
@@ -39,6 +41,16 @@ namespace WolfCurses.Apps.Basic
         ///     characters it was written with.
         /// </summary>
         public string Text { get; }
+
+        /// <summary>
+        ///     Exactly how it was written, before a word was uppercased.
+        ///     <para>
+        ///         Uppercasing is right for a name, since it makes every later comparison ordinal, and wrong for
+        ///         text: an unquoted DATA item is words somebody wrote and shouting them back is losing something
+        ///         they meant. So both are kept, and the parser takes whichever the situation calls for.
+        ///     </para>
+        /// </summary>
+        public string Spelling { get; }
 
         /// <summary>Its value, for a number.</summary>
         public double Number { get; }

@@ -28,15 +28,27 @@ namespace WolfCurses.Apps.Basic
         /// <summary>Initializes a new instance of the <see cref="BasicProgram" /> class.</summary>
         /// <param name="statements">The compiled statements.</param>
         /// <param name="procedures">The SUBs and FUNCTIONs it declared.</param>
+        /// <param name="data">The constants it wrote in DATA statements.</param>
+        /// <param name="dataMarks">How much data had been written by each label.</param>
         public BasicProgram(IReadOnlyList<BasicStatement> statements,
-            IReadOnlyDictionary<string, BasicProcedure> procedures = null)
+            IReadOnlyDictionary<string, BasicProcedure> procedures = null,
+            IReadOnlyList<BasicValue> data = null,
+            IReadOnlyDictionary<string, int> dataMarks = null)
         {
             _statements = statements;
             Procedures = procedures ?? new Dictionary<string, BasicProcedure>(StringComparer.Ordinal);
+            Data = data ?? new List<BasicValue>();
+            DataMarks = dataMarks ?? new Dictionary<string, int>(StringComparer.Ordinal);
         }
 
         /// <summary>The SUBs and FUNCTIONs it declared, by name.</summary>
         public IReadOnlyDictionary<string, BasicProcedure> Procedures { get; }
+
+        /// <summary>The constants it wrote in DATA statements, in source order.</summary>
+        public IReadOnlyList<BasicValue> Data { get; }
+
+        /// <summary>How much data had been written by the time each label was reached.</summary>
+        public IReadOnlyDictionary<string, int> DataMarks { get; }
 
         /// <summary>How many statements it compiled to, which is not how many lines were written.</summary>
         public int Count => _statements.Count;
@@ -118,6 +130,8 @@ namespace WolfCurses.Apps.Basic
         {
             runtime.Program = this;
             runtime.Procedures = Procedures;
+            runtime.Data = Data;
+            runtime.DataMarks = DataMarks;
         }
     }
 }

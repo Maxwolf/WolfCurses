@@ -2,6 +2,7 @@
 // Timestamp 08/21/2026
 
 using System;
+using System.Collections.Generic;
 using WolfCurses.Graphics;
 using WolfCurses.Window.Control;
 
@@ -31,8 +32,29 @@ namespace WolfCurses.Apps.Basic
             ConsoleColor.Red, ConsoleColor.Magenta, ConsoleColor.Yellow, ConsoleColor.White
         };
 
+        /// <summary>
+        ///     What each colour number looks like as real pixels. These are the EGA values the machines actually
+        ///     produced, not an approximation: a program that draws in colour 6 means brown, and picking a prettier
+        ///     orange would make its pictures wrong.
+        /// </summary>
+        private static readonly Rgba32[] _pixelPalette =
+        {
+            new(0x00, 0x00, 0x00, 0xFF), new(0x00, 0x00, 0xAA, 0xFF), new(0x00, 0xAA, 0x00, 0xFF),
+            new(0x00, 0xAA, 0xAA, 0xFF), new(0xAA, 0x00, 0x00, 0xFF), new(0xAA, 0x00, 0xAA, 0xFF),
+            new(0xAA, 0x55, 0x00, 0xFF), new(0xAA, 0xAA, 0xAA, 0xFF), new(0x55, 0x55, 0x55, 0xFF),
+            new(0x55, 0x55, 0xFF, 0xFF), new(0x55, 0xFF, 0x55, 0xFF), new(0x55, 0xFF, 0xFF, 0xFF),
+            new(0xFF, 0x55, 0x55, 0xFF), new(0xFF, 0x55, 0xFF, 0xFF), new(0xFF, 0xFF, 0x55, 0xFF),
+            new(0xFF, 0xFF, 0xFF, 0xFF)
+        };
+
         /// <summary>The cells.</summary>
         private readonly TextGrid _grid;
+
+        /// <summary>The pixels, once a program has asked for a graphics mode.</summary>
+        private PixelBuffer _pixels;
+
+        /// <summary>Which colour number later drawing uses when a statement does not name one.</summary>
+        private int _drawColor = 15;
 
         /// <summary>Where the next character goes, counting from zero.</summary>
         private int _column;
@@ -60,14 +82,44 @@ namespace WolfCurses.Apps.Basic
         /// <summary>How many rows it has.</summary>
         public int Height => _grid.Height;
 
+        /// <summary>Whether a program has asked for a graphics mode.</summary>
+        public bool IsGraphics => _pixels != null;
+
+        /// <inheritdoc />
+        public int ScreenWidth => _pixels?.Width ?? _grid.Width;
+
+        /// <inheritdoc />
+        public int ScreenHeight => _pixels?.Height ?? _grid.Height;
+
         /// <summary>Whether a program has put anything on it since it was last cleared.</summary>
         public bool HasOutput { get; private set; }
 
-        /// <summary>The screen as text, ready to be drawn.</summary>
-        /// <returns>The rows, newline separated.</returns>
-        public string Render()
+        /// <summary>
+        ///     The screen, ready to be drawn.
+        ///     <para>
+        ///         <b>A graphics mode shows the picture and not the text</b>, which is a real limitation rather than
+        ///         an oversight. On the machines this imitates the two shared one screen; here a picture may go out
+        ///         as a single sixel payload that nothing is allowed to sit beside, so overlaying characters on it
+        ///         is not something the presenter can express. Programs that draw and print at once lose the
+        ///         printing, and the honest fix is a text renderer that draws into the pixels.
+        ///     </para>
+        /// </summary>
+        /// <param name="columns">How many columns the picture may use.</param>
+        /// <param name="rows">How many rows it may use.</param>
+        /// <returns>The screen as text, newline separated.</returns>
+        public string Render(int columns = 0, int rows = 0)
         {
-            return _grid.Render();
+            if (_pixels == null)
+                return _grid.Render();
+
+            var options = new AnsiImageOptions
+            {
+                MaxColumns = columns > 0 ? columns : _grid.Width,
+                MaxRows = rows > 0 ? rows : _grid.Height,
+                RowMargin = 0
+            };
+
+            return ImageRenderers.Default.Render(_pixels, options);
         }
 
         /// <inheritdoc />
@@ -104,6 +156,7 @@ namespace WolfCurses.Apps.Basic
         /// <inheritdoc />
         public void Clear()
         {
+            _pixels?.Fill(_pixelPalette[0]);
             _grid.Fill(' ', _style);
             _row = 0;
             _column = 0;
@@ -130,6 +183,10 @@ namespace WolfCurses.Apps.Basic
                 : (TextColor) _palette[Math.Clamp(background, 0, _palette.Length - 1)];
 
             _style = new TextStyle(front, back);
+
+            // The same number the text is written in is the one drawing uses when a statement does not name one,
+            // which is what COLOR means in a graphics mode.
+            _drawColor = Math.Clamp(foreground, 0, _pixelPalette.Length - 1);
         }
 
         /// <summary>
@@ -185,6 +242,282 @@ namespace WolfCurses.Apps.Basic
         public void Beep()
         {
             Beeps++;
+        }
+
+        /// <inheritdoc />
+        public int PixelAt(int x, int y)
+        {
+            return ColorAt(x, y);
+        }
+
+        /// <summary>
+        ///     What a program asked to hear, and how long for.
+        ///     <para>
+        ///         <b>Nothing is actually played, and that is deliberate rather than unfinished.</b> The only
+        ///         pitched sound available here blocks for the length of the note, and blocking is exactly what this
+        ///         screen exists not to do: a program is run in slices so that it stays interruptible, and a tune
+        ///         would freeze the loop that keeps ESC working. So the notes are counted and gone through, which
+        ///         means a program with music in it runs correctly and silently rather than not running.
+        ///     </para>
+        /// </summary>
+        public List<(double Frequency, double Milliseconds)> Notes { get; } = new();
+
+        /// <inheritdoc />
+        public void Sound(double frequency, double milliseconds)
+        {
+            Notes.Add((frequency, milliseconds));
+        }
+
+        /// <inheritdoc />
+        public void SetScreenMode(int mode)
+        {
+            if (mode == 0)
+            {
+                _pixels = null;
+                Clear();
+                return;
+            }
+
+            var size = SizeOf(mode);
+            if (size.Width == 0)
+                throw new BasicError("Unsupported screen mode " + mode);
+
+            _pixels = new PixelBuffer(size.Width, size.Height);
+            _pixels.Fill(_pixelPalette[0]);
+
+            HasOutput = true;
+            LastX = 0;
+            LastY = 0;
+        }
+
+        /// <inheritdoc />
+        public void Plot(int x, int y, int color)
+        {
+            Remember(x, y);
+
+            // Clipped rather than refused, which is what the machines did: a program that draws off the edge of the
+            // screen loses the part that is off it and carries on.
+            if (_pixels == null || x < 0 || y < 0 || x >= _pixels.Width || y >= _pixels.Height)
+                return;
+
+            _pixels.SetPixel(x, y, Ink(color));
+        }
+
+        /// <inheritdoc />
+        public void DrawLine(int x0, int y0, int x1, int y1, int color, string box)
+        {
+            Remember(x1, y1);
+
+            if (_pixels == null)
+                return;
+
+            var ink = Ink(color);
+
+            if (string.Equals(box, "BF", StringComparison.Ordinal))
+            {
+                var left = Math.Min(x0, x1);
+                var top = Math.Min(y0, y1);
+
+                _pixels.Fill(left, top, Math.Abs(x1 - x0) + 1, Math.Abs(y1 - y0) + 1, ink);
+                return;
+            }
+
+            if (string.Equals(box, "B", StringComparison.Ordinal))
+            {
+                _pixels.DrawLine(x0, y0, x1, y0, ink);
+                _pixels.DrawLine(x1, y0, x1, y1, ink);
+                _pixels.DrawLine(x1, y1, x0, y1, ink);
+                _pixels.DrawLine(x0, y1, x0, y0, ink);
+                return;
+            }
+
+            _pixels.DrawLine(x0, y0, x1, y1, ink);
+        }
+
+        /// <inheritdoc />
+        public void DrawCircle(int x, int y, int radius, int color)
+        {
+            Remember(x, y);
+
+            if (_pixels == null || radius < 0)
+                return;
+
+            var ink = Ink(color);
+
+            if (radius == 0)
+            {
+                Plot(x, y, color);
+                return;
+            }
+
+            // A midpoint circle, with the mirrored points skipped where two octants meet. The library's own
+            // DrawDisc keeps a single-visit rule for the same reason and outline circles were left out of it
+            // precisely because of these seams: without the guards the four axis points and both diagonals are
+            // plotted twice, which is invisible in an opaque colour and wrong the moment one is not.
+            var dx = radius;
+            var dy = 0;
+            var error = 1 - radius;
+
+            while (dx >= dy)
+            {
+                PlotOctants(x, y, dx, dy, ink);
+                dy++;
+
+                if (error < 0)
+                {
+                    error += 2 * dy + 1;
+                    continue;
+                }
+
+                dx--;
+                error += 2 * (dy - dx) + 1;
+            }
+        }
+
+        /// <inheritdoc />
+        public void Paint(int x, int y, int fill, int border)
+        {
+            if (_pixels == null || x < 0 || y < 0 || x >= _pixels.Width || y >= _pixels.Height)
+                return;
+
+            var ink = Ink(fill);
+
+            // A border of its own colour is what BASIC means by leaving it out: flood until the fill colour is met,
+            // which is also what stops this running forever once an area is done.
+            var edge = border < 0 ? ink : Ink(border);
+
+            var pending = new Stack<(int X, int Y)>();
+            pending.Push((x, y));
+
+            while (pending.Count > 0)
+            {
+                var (px, py) = pending.Pop();
+
+                if (px < 0 || py < 0 || px >= _pixels.Width || py >= _pixels.Height)
+                    continue;
+
+                var here = _pixels.GetPixel(px, py);
+                if (Same(here, edge) || Same(here, ink))
+                    continue;
+
+                _pixels.SetPixel(px, py, ink);
+
+                pending.Push((px + 1, py));
+                pending.Push((px - 1, py));
+                pending.Push((px, py + 1));
+                pending.Push((px, py - 1));
+            }
+        }
+
+        /// <summary>Where the last drawing statement finished, which is what LINE with no first point means.</summary>
+        public int LastX { get; private set; }
+
+        /// <summary>Where the last drawing statement finished, down the screen.</summary>
+        public int LastY { get; private set; }
+
+        /// <summary>Plots the eight mirrored points of a circle, skipping the ones two octants share.</summary>
+        private void PlotOctants(int cx, int cy, int dx, int dy, Rgba32 ink)
+        {
+            // Mirrored across the vertical, then across the horizontal, and each mirror skipped when it would
+            // land on the point it was mirroring. Getting this wrong the obvious way skips the top and bottom of
+            // the circle entirely: at dy of zero the second group is not a repeat of the first, it IS the vertical
+            // pair, and only the mirror WITHIN each group collapses.
+            Put(cx + dx, cy + dy, ink);
+
+            if (dx != 0)
+                Put(cx - dx, cy + dy, ink);
+
+            if (dy != 0)
+            {
+                Put(cx + dx, cy - dy, ink);
+
+                if (dx != 0)
+                    Put(cx - dx, cy - dy, ink);
+            }
+
+            // Only when the two are equal is the swapped group genuinely the same eight points.
+            if (dx == dy)
+                return;
+
+            Put(cx + dy, cy + dx, ink);
+
+            if (dy != 0)
+                Put(cx - dy, cy + dx, ink);
+
+            if (dx != 0)
+            {
+                Put(cx + dy, cy - dx, ink);
+
+                if (dy != 0)
+                    Put(cx - dy, cy - dx, ink);
+            }
+        }
+
+        /// <summary>
+        ///     Which colour number a pixel holds, or -1 for one that is off the screen or holds no palette colour.
+        ///     A seam for tests: what a drawing statement actually put on the screen cannot be asked of the
+        ///     rendered text, which is escape sequences and half blocks by then.
+        /// </summary>
+        /// <param name="x">Across.</param>
+        /// <param name="y">Down.</param>
+        /// <returns>The colour number.</returns>
+        public int ColorAt(int x, int y)
+        {
+            if (_pixels == null || x < 0 || y < 0 || x >= _pixels.Width || y >= _pixels.Height)
+                return -1;
+
+            var pixel = _pixels.GetPixel(x, y);
+
+            for (var i = 0; i < _pixelPalette.Length; i++)
+            {
+                if (Same(pixel, _pixelPalette[i]))
+                    return i;
+            }
+
+            return -1;
+        }
+
+        /// <summary>Sets a pixel if it is on the screen at all.</summary>
+        private void Put(int x, int y, Rgba32 ink)
+        {
+            if (x >= 0 && y >= 0 && x < _pixels.Width && y < _pixels.Height)
+                _pixels.SetPixel(x, y, ink);
+        }
+
+        /// <summary>Remembers where drawing finished.</summary>
+        private void Remember(int x, int y)
+        {
+            LastX = x;
+            LastY = y;
+        }
+
+        /// <summary>The pixels a colour number means, falling back to what COLOR last set.</summary>
+        private Rgba32 Ink(int color)
+        {
+            var index = color < 0 ? _drawColor : color;
+            return _pixelPalette[Math.Clamp(index, 0, _pixelPalette.Length - 1)];
+        }
+
+        /// <summary>Whether two colours are the same, which a flood fill asks about constantly.</summary>
+        private static bool Same(Rgba32 left, Rgba32 right)
+        {
+            return left.R == right.R && left.G == right.G && left.B == right.B && left.A == right.A;
+        }
+
+        /// <summary>
+        ///     How big each screen mode is. The numbers are the ones the hardware had, because a program's
+        ///     coordinates only mean anything against them.
+        /// </summary>
+        private static (int Width, int Height) SizeOf(int mode)
+        {
+            return mode switch
+            {
+                1 or 7 or 13 => (320, 200),
+                2 or 8 => (640, 200),
+                9 => (640, 350),
+                11 or 12 => (640, 480),
+                _ => (0, 0)
+            };
         }
 
         /// <summary>The key a running program will find next time it asks, which the screen above sets.</summary>

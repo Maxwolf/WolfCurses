@@ -52,6 +52,12 @@ namespace WolfCurses.Apps.Basic
         /// </summary>
         public Stack<BasicLoopFrame> Loops { get; } = new();
 
+        /// <summary>
+        ///     What PLAY remembers between one string and the next. On the runtime rather than in the parser
+        ///     because programs set the tempo on one line and play the tune on another.
+        /// </summary>
+        public BasicMusicState Music { get; } = new();
+
         /// <summary>The random source, which RANDOMIZE replaces.</summary>
         public Random Random { get; private set; }
 
@@ -66,6 +72,20 @@ namespace WolfCurses.Apps.Basic
 
         /// <summary>The declared procedures, which the program hands over before it runs.</summary>
         public IReadOnlyDictionary<string, BasicProcedure> Procedures { get; set; }
+
+        /// <summary>
+        ///     The constants the program wrote in its DATA statements, in the order they appear in the source. Also
+        ///     handed over by the program: they are gathered when it is parsed, because a READ near the top is
+        ///     entitled to read DATA written at the bottom and every listing that uses DATA does exactly that.
+        /// </summary>
+        public IReadOnlyList<BasicValue> Data { get; set; } = new List<BasicValue>();
+
+        /// <summary>How much of the DATA has been read.</summary>
+        public int DataPointer { get; set; }
+
+        /// <summary>How much DATA had been written by the time each label was reached, which is what RESTORE uses.</summary>
+        public IReadOnlyDictionary<string, int> DataMarks { get; set; } = new Dictionary<string, int>(
+            StringComparer.Ordinal);
 
         /// <summary>
         ///     The program being run, which a FUNCTION call in the middle of an expression needs in order to run

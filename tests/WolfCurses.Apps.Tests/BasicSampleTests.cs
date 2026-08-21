@@ -57,6 +57,30 @@ namespace WolfCurses.Apps.Tests
         }
 
         [Fact]
+        public void TheDrawingSampleReallyPutsPixelsDown()
+        {
+            // A graphics program that compiles and draws nothing at all would pass every other test here.
+            var source = File.ReadAllText(Path.Combine(BasicLibrary.Folder, "drawing.bas"));
+            var screen = new BasicScreen(80, 25);
+
+            BasicProgram.Compile(source).Run(new BasicRuntime(screen, 1));
+
+            Assert.True(screen.IsGraphics, "the sample never asked for a graphics mode");
+
+            var lit = 0;
+            for (var y = 0; y < screen.ScreenHeight; y++)
+            {
+                for (var x = 0; x < screen.ScreenWidth; x++)
+                {
+                    if (screen.ColorAt(x, y) > 0)
+                        lit++;
+                }
+            }
+
+            Assert.True(lit > 1000, "the sample drew only " + lit + " pixels");
+        }
+
+        [Fact]
         public void TheProcedureSampleRunsAndGetsItsSumsRight()
         {
             // It is the demonstration of SUB and FUNCTION, so what it prints is the claim being made.

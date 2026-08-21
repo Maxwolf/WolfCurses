@@ -108,6 +108,90 @@ namespace WolfCurses.Apps.Tests.Support
             Beeps++;
         }
 
+        /// <summary>
+        ///     Every drawing statement, written down as it was asked for. Recorded rather than drawn, because what
+        ///     is worth checking here is that the interpreter passed the right numbers along; whether a line of
+        ///     pixels comes out straight is BasicScreen's business and is tested against a real one.
+        /// </summary>
+        public List<string> Drawing { get; } = new();
+
+        /// <summary>The screen mode a program last asked for.</summary>
+        public int ScreenMode { get; private set; }
+
+        /// <inheritdoc />
+        public int LastX { get; private set; }
+
+        /// <inheritdoc />
+        public int LastY { get; private set; }
+
+        /// <inheritdoc />
+        public int ScreenWidth { get; private set; } = 80;
+
+        /// <inheritdoc />
+        public int ScreenHeight { get; private set; } = 25;
+
+        /// <inheritdoc />
+        public void SetScreenMode(int mode)
+        {
+            ScreenMode = mode;
+            ScreenWidth = mode == 0 ? 80 : 320;
+            ScreenHeight = mode == 0 ? 25 : 200;
+
+            Drawing.Add("SCREEN " + mode);
+        }
+
+        /// <inheritdoc />
+        public void Plot(int x, int y, int color)
+        {
+            LastX = x;
+            LastY = y;
+
+            Drawing.Add("PSET " + x + "," + y + "," + color);
+        }
+
+        /// <inheritdoc />
+        public void DrawLine(int x0, int y0, int x1, int y1, int color, string box)
+        {
+            LastX = x1;
+            LastY = y1;
+
+            Drawing.Add("LINE " + x0 + "," + y0 + "-" + x1 + "," + y1 + "," + color +
+                        (string.IsNullOrEmpty(box) ? string.Empty : "," + box));
+        }
+
+        /// <inheritdoc />
+        public void DrawCircle(int x, int y, int radius, int color)
+        {
+            LastX = x;
+            LastY = y;
+
+            Drawing.Add("CIRCLE " + x + "," + y + "," + radius + "," + color);
+        }
+
+        /// <summary>The notes a program asked for, in order.</summary>
+        public List<(double Frequency, double Milliseconds)> Notes { get; } = new();
+
+        /// <summary>The pixels a test has arranged for GET to find.</summary>
+        public Dictionary<(int X, int Y), int> Pixels { get; } = new();
+
+        /// <inheritdoc />
+        public int PixelAt(int x, int y)
+        {
+            return Pixels.TryGetValue((x, y), out var color) ? color : 0;
+        }
+
+        /// <inheritdoc />
+        public void Sound(double frequency, double milliseconds)
+        {
+            Notes.Add((frequency, milliseconds));
+        }
+
+        /// <inheritdoc />
+        public void Paint(int x, int y, int fill, int border)
+        {
+            Drawing.Add("PAINT " + x + "," + y + "," + fill + "," + border);
+        }
+
         /// <summary>Runs a program against a fresh host and hands both back.</summary>
         /// <param name="source">The program.</param>
         /// <param name="seed">A fixed seed so RND is predictable.</param>

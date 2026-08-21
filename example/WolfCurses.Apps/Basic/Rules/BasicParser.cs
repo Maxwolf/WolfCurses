@@ -30,6 +30,12 @@ namespace WolfCurses.Apps.Basic
         /// <summary>Where each label and line number ended up.</summary>
         private readonly Dictionary<string, int> _labels = new(StringComparer.Ordinal);
 
+        /// <summary>The constants written in DATA statements, in the order they appear.</summary>
+        private readonly List<BasicValue> _data = new();
+
+        /// <summary>How much data had been written by the time each label was reached.</summary>
+        private readonly Dictionary<string, int> _dataMarks = new(StringComparer.Ordinal);
+
         /// <summary>The SUBs and FUNCTIONs the program declared.</summary>
         private readonly Dictionary<string, BasicProcedure> _procedures = new(StringComparer.Ordinal);
 
@@ -82,7 +88,7 @@ namespace WolfCurses.Apps.Basic
                 throw new BasicError("Missing " + _blocks[_blocks.Count - 1].Closer, _blocks[_blocks.Count - 1].Line);
 
             ResolveJumps();
-            return new BasicProgram(_statements, _procedures);
+            return new BasicProgram(_statements, _procedures, _data, _dataMarks);
         }
 
         /// <summary>Reads one physical line: its number or label, then the statements on it.</summary>
@@ -136,6 +142,9 @@ namespace WolfCurses.Apps.Basic
                 throw new BasicError("Duplicate label " + name, line);
 
             _labels[name] = _statements.Count;
+
+            // Noted so that RESTORE can name a line and mean "the DATA written from there onward".
+            _dataMarks[name] = _data.Count;
         }
 
         /// <summary>Reads one statement.</summary>
@@ -207,6 +216,55 @@ namespace WolfCurses.Apps.Basic
                 case "EXIT":
                     _at++;
                     ParseExit(token.Line);
+                    return;
+                case "SCREEN":
+                    _at++;
+                    Emit(new BasicGraphicsStatement("SCREEN", ParseArgumentList(), null, token.Line));
+                    return;
+                case "PSET":
+                case "PRESET":
+                    _at++;
+                    ParsePoint(token.Text, token.Line);
+                    return;
+                case "LINE":
+                    _at++;
+                    ParseGraphicsLine(token.Line);
+                    return;
+                case "CIRCLE":
+                    _at++;
+                    ParseCircle(token.Line);
+                    return;
+                case "PAINT":
+                    _at++;
+                    ParsePaint(token.Line);
+                    return;
+                case "GET":
+                    _at++;
+                    ParseImage(true, token.Line);
+                    return;
+                case "PUT":
+                    _at++;
+                    ParseImage(false, token.Line);
+                    return;
+                case "SOUND":
+                    _at++;
+                    ParseSound(token.Line);
+                    return;
+                case "PLAY":
+                    _at++;
+                    Emit(new BasicPlayStatement(ParseExpression(), token.Line));
+                    return;
+                case "DATA":
+                    _at++;
+                    ParseData(token.Line);
+                    return;
+                case "READ":
+                    _at++;
+                    ParseRead(token.Line);
+                    return;
+                case "RESTORE":
+                    _at++;
+                    ParseRestore(token.Line);
                     return;
                 case "DECLARE":
                     // QBasic writes DECLARE lines at the top of a saved file. Nothing here needs them, because a
@@ -489,11 +547,324 @@ namespace WolfCurses.Apps.Basic
             Emit(new BasicCallStatement(name.Text, arguments, line));
         }
 
-        /// <summary>Reads EXIT SUB and EXIT FUNCTION.</summary>
+        /// <summary>Reads a bracketed coordinate pair into an argument list.</summary>
+        /// <param name="arguments">Where to put the two expressions.</param>
+        /// <param name="line">The source line.</param>
+        private void ParseCoordinate(List<BasicExpression> arguments, int line)
+        {
+            if (!Current.IsSymbol("("))
+                throw new BasicError("Expected a coordinate in brackets", line);
+
+            _at++;
+            arguments.Add(ParseExpression());
+
+            if (!Current.IsSymbol(","))
+                throw new BasicError("Expected a comma between the coordinates", line);
+
+            _at++;
+            arguments.Add(ParseExpression());
+
+            if (!Current.IsSymbol(")"))
+                throw new BasicError("Expected )", line);
+
+            _at++;
+        }
+
+        /// <summary>Reads PSET and PRESET.</summary>
+        private void ParsePoint(string name, int line)
+        {
+            var arguments = new List<BasicExpression>();
+            ParseCoordinate(arguments, line);
+
+            if (Current.IsSymbol(","))
+            {
+                _at++;
+                arguments.Add(ParseExpression());
+            }
+
+            Emit(new BasicGraphicsStatement(name, arguments, null, line));
+        }
+
+        /// <summary>
+        ///     Reads LINE, whose syntax is unlike anything else in the language: an optional first coordinate, a
+        ///     dash, a second coordinate, and then optionally a colour and a B or BF to make it a box.
+        /// </summary>
+        private void ParseGraphicsLine(int line)
+        {
+            var arguments = new List<BasicExpression>();
+
+            if (Current.IsSymbol("("))
+            {
+                ParseCoordinate(arguments, line);
+            }
+            else
+            {
+                // Left out, so it starts wherever the last drawing finished. Nulls here rather than zeros, because
+                // only the screen knows where that was.
+                arguments.Add(null);
+                arguments.Add(null);
+            }
+
+            if (!Current.IsSymbol("-"))
+                throw new BasicError("Expected - between the two ends of a LINE", line);
+
+            _at++;
+            ParseCoordinate(arguments, line);
+
+            var option = string.Empty;
+
+            if (Current.IsSymbol(","))
+            {
+                _at++;
+
+                if (Current.IsSymbol(","))
+                {
+                    arguments.Add(null);
+                }
+                else if (Current.IsWord("B") || Current.IsWord("BF"))
+                {
+                    arguments.Add(null);
+                    option = Current.Text;
+                    _at++;
+
+                    Emit(new BasicGraphicsStatement("LINE", arguments, option, line));
+                    return;
+                }
+                else
+                {
+                    arguments.Add(ParseExpression());
+                }
+
+                if (Current.IsSymbol(","))
+                {
+                    _at++;
+
+                    if (Current.IsWord("B") || Current.IsWord("BF"))
+                    {
+                        option = Current.Text;
+                        _at++;
+                    }
+                }
+            }
+
+            Emit(new BasicGraphicsStatement("LINE", arguments, option, line));
+        }
+
+        /// <summary>Reads CIRCLE.</summary>
+        private void ParseCircle(int line)
+        {
+            var arguments = new List<BasicExpression>();
+            ParseCoordinate(arguments, line);
+
+            if (!Current.IsSymbol(","))
+                throw new BasicError("Expected a radius after the centre of a CIRCLE", line);
+
+            _at++;
+            arguments.Add(ParseExpression());
+
+            if (Current.IsSymbol(","))
+            {
+                _at++;
+                arguments.Add(ParseExpression());
+            }
+
+            Emit(new BasicGraphicsStatement("CIRCLE", arguments, null, line));
+        }
+
+        /// <summary>Reads GET and PUT, which share a shape: coordinates, then the array they use.</summary>
+        /// <param name="capture">TRUE for GET.</param>
+        /// <param name="line">The source line.</param>
+        private void ParseImage(bool capture, int line)
+        {
+            var arguments = new List<BasicExpression>();
+            ParseCoordinate(arguments, line);
+
+            if (capture)
+            {
+                if (!Current.IsSymbol("-"))
+                    throw new BasicError("Expected - between the two corners of a GET", line);
+
+                _at++;
+                ParseCoordinate(arguments, line);
+            }
+
+            if (!Current.IsSymbol(","))
+                throw new BasicError("Expected the array to use", line);
+
+            _at++;
+
+            if (Current.Kind != BasicTokenKindEnum.Word)
+                throw new BasicError("Expected an array name", line);
+
+            var array = Current.Text;
+            _at++;
+
+            // The empty bracket names the array rather than an element of it, which is how BASIC writes it and
+            // which a program is entitled to leave out.
+            if (Current.IsSymbol("("))
+            {
+                _at++;
+
+                if (Current.IsSymbol(")"))
+                    _at++;
+            }
+
+            var action = string.Empty;
+            if (!capture && Current.IsSymbol(","))
+            {
+                _at++;
+
+                if (Current.Kind != BasicTokenKindEnum.Word)
+                    throw new BasicError("Expected PSET, PRESET, AND, OR or XOR", line);
+
+                action = Current.Text;
+                _at++;
+            }
+
+            Emit(new BasicImageStatement(capture, arguments, array, action, line));
+        }
+
+        /// <summary>Reads SOUND.</summary>
+        private void ParseSound(int line)
+        {
+            var frequency = ParseExpression();
+
+            if (!Current.IsSymbol(","))
+                throw new BasicError("Expected a duration after the pitch of a SOUND", line);
+
+            _at++;
+            Emit(new BasicSoundStatement(frequency, ParseExpression(), line));
+        }
+
+        /// <summary>Reads PAINT.</summary>
+        private void ParsePaint(int line)
+        {
+            var arguments = new List<BasicExpression>();
+            ParseCoordinate(arguments, line);
+
+            while (Current.IsSymbol(",") && arguments.Count < 4)
+            {
+                _at++;
+                arguments.Add(Current.IsSymbol(",") ? null : ParseExpression());
+            }
+
+            Emit(new BasicGraphicsStatement("PAINT", arguments, null, line));
+        }
+
+        /// <summary>
+        ///     Reads DATA, which produces no statement at all: the constants are collected here and the program
+        ///     simply has nothing to run where they were written.
+        /// </summary>
+        private void ParseData(int line)
+        {
+            while (!AtStatementEnd())
+            {
+                if (Current.IsSymbol(","))
+                {
+                    _at++;
+                    continue;
+                }
+
+                _data.Add(ReadDataItem(line));
+            }
+        }
+
+        /// <summary>
+        ///     Reads one DATA item. A quoted string is a string and a lone number is a number; anything else is the
+        ///     words as written, because DATA has no types and an unquoted item is simply text until something
+        ///     reads it into a numeric variable.
+        /// </summary>
+        private BasicValue ReadDataItem(int line)
+        {
+            var first = Current;
+
+            if (first.Kind == BasicTokenKindEnum.String)
+            {
+                _at++;
+                return new BasicValue(first.Text);
+            }
+
+            if (first.Kind == BasicTokenKindEnum.Number && (_tokens[_at + 1].IsSymbol(",") || IsEndOfItem()))
+            {
+                _at++;
+                return new BasicValue(first.Number);
+            }
+
+            var words = new List<string>();
+            while (!AtStatementEnd() && !Current.IsSymbol(","))
+            {
+                // As written rather than as matched, because this is text and not a name.
+                words.Add(Current.Kind == BasicTokenKindEnum.Word ? Current.Spelling : Current.ToString());
+                _at++;
+            }
+
+            if (words.Count == 0)
+                throw new BasicError("Expected a value in DATA", line);
+
+            return new BasicValue(string.Join(" ", words));
+        }
+
+        /// <summary>Whether the token after the current one ends the DATA item.</summary>
+        private bool IsEndOfItem()
+        {
+            var next = _tokens[_at + 1];
+
+            return next.Kind is BasicTokenKindEnum.EndOfLine or BasicTokenKindEnum.EndOfFile ||
+                   next.IsSymbol(":") || next.IsWord("ELSE");
+        }
+
+        /// <summary>Reads READ.</summary>
+        private void ParseRead(int line)
+        {
+            var targets = new List<BasicTarget> {ParseTarget()};
+
+            while (Current.IsSymbol(","))
+            {
+                _at++;
+                targets.Add(ParseTarget());
+            }
+
+            Emit(new BasicReadStatement(targets, line));
+        }
+
+        /// <summary>Reads RESTORE, with or without the line it should go back to.</summary>
+        private void ParseRestore(int line)
+        {
+            string label = null;
+
+            if (Current.Kind == BasicTokenKindEnum.Number)
+            {
+                label = Current.Number.ToString(CultureInfo.InvariantCulture);
+                _at++;
+            }
+            else if (Current.Kind == BasicTokenKindEnum.Word && !AtStatementEnd())
+            {
+                label = Current.Text;
+                _at++;
+            }
+
+            Emit(new BasicRestoreStatement(label, line));
+        }
+
+        /// <summary>Reads EXIT, which may leave a loop or a procedure.</summary>
         private void ParseExit(int line)
         {
+            if (Current.IsWord("FOR"))
+            {
+                _at++;
+                ParseExitLoop(BlockKindEnum.For, true, line);
+                return;
+            }
+
+            if (Current.IsWord("DO"))
+            {
+                _at++;
+                ParseExitLoop(BlockKindEnum.Do, false, line);
+                return;
+            }
+
             if (!Current.IsWord("SUB") && !Current.IsWord("FUNCTION"))
-                throw new BasicError("Only EXIT SUB and EXIT FUNCTION are supported", line);
+                throw new BasicError("Expected FOR, DO, SUB or FUNCTION after EXIT", line);
 
             _at++;
 
@@ -512,6 +883,37 @@ namespace WolfCurses.Apps.Basic
             }
 
             throw new BasicError("EXIT SUB is only meaningful inside a SUB or FUNCTION", line);
+        }
+
+        /// <summary>
+        ///     Aims an EXIT FOR or EXIT DO at the innermost loop of that kind. A FOR has a frame on the stack that
+        ///     NEXT would normally take off, so leaving one has to pop it; a DO has nothing to clean up.
+        /// </summary>
+        /// <param name="kind">Which kind of loop is being left.</param>
+        /// <param name="popsLoop">Whether a FOR frame comes off the stack.</param>
+        /// <param name="line">The source line.</param>
+        private void ParseExitLoop(BlockKindEnum kind, bool popsLoop, int line)
+        {
+            for (var i = _blocks.Count - 1; i >= 0; i--)
+            {
+                // A procedure boundary stops the search: EXIT FOR inside a SUB cannot mean a loop the caller left
+                // open, and treating it as one would jump into the middle of somebody else's statements.
+                if (_blocks[i].Kind == BlockKindEnum.Procedure)
+                    break;
+
+                if (_blocks[i].Kind != kind)
+                    continue;
+
+                var jump = new BasicExitLoopStatement(popsLoop, line);
+                Emit(jump);
+                _blocks[i].LoopExits.Add(jump);
+
+                return;
+            }
+
+            throw new BasicError(kind == BlockKindEnum.For
+                ? "EXIT FOR is only meaningful inside a FOR loop"
+                : "EXIT DO is only meaningful inside a DO loop", line);
         }
 
         /// <summary>Reads somewhere a value can be put.</summary>
@@ -773,8 +1175,13 @@ namespace WolfCurses.Apps.Basic
 
             Emit(new BasicNextStatement(variable, line));
 
-            // The FOR jumps here when the loop is over before it starts, which is the statement after the NEXT.
+            // The FOR jumps here when the loop is over before it starts, which is the statement after the NEXT,
+            // and so does every EXIT FOR inside it.
             block.Loop.ExitIndex = _statements.Count;
+
+            foreach (var exit in block.LoopExits)
+                exit.Target = _statements.Count;
+
             _blocks.RemoveAt(_blocks.Count - 1);
         }
 
@@ -843,6 +1250,9 @@ namespace WolfCurses.Apps.Basic
 
             if (block.Pending != null)
                 block.Pending.Target = _statements.Count;
+
+            foreach (var exit in block.LoopExits)
+                exit.Target = _statements.Count;
 
             _blocks.RemoveAt(_blocks.Count - 1);
         }
@@ -1346,6 +1756,9 @@ namespace WolfCurses.Apps.Basic
         {
             /// <summary>The jumps that leave this block, all landing just past its end.</summary>
             public List<BasicJumpStatement> Exits { get; } = new();
+
+            /// <summary>The EXIT FOR and EXIT DO statements inside this loop, which land just past it.</summary>
+            public List<BasicExitLoopStatement> LoopExits { get; } = new();
 
             /// <summary>What kind of block it is.</summary>
             public BlockKindEnum Kind { get; private init; }

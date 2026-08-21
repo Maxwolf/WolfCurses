@@ -62,6 +62,23 @@ namespace WolfCurses.Apps.Basic
         /// </summary>
         public bool IsTrue => !IsString && Math.Abs(Number) > double.Epsilon;
 
+        /// <summary>
+        ///     Reads as much of a number as a string starts with, answering zero when it starts with none. The same
+        ///     lenience VAL has, and for the same reason: it is used on text somebody typed or wrote in a DATA
+        ///     statement, where refusing would be less useful than reading what is there.
+        /// </summary>
+        /// <param name="text">The text to read.</param>
+        /// <returns>The number.</returns>
+        public static double ParseNumber(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return 0d;
+
+            return double.TryParse(text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+                ? value
+                : 0d;
+        }
+
         /// <summary>The BASIC representation of a truth.</summary>
         /// <param name="value">The truth.</param>
         /// <returns>-1 for true, 0 for false.</returns>
