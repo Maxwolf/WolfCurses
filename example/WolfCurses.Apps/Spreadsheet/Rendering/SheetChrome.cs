@@ -49,6 +49,17 @@ namespace WolfCurses.Apps.Spreadsheet
         /// <summary>The screen row the first row of cells is drawn on.</summary>
         public const int GridTopRow = 4;
 
+        /// <summary>
+        ///     What is drawn down the right-hand edge of every cell.
+        ///     <para>
+        ///         It costs nothing, because it goes in the column the cell was already leaving blank to keep its
+        ///         text off its neighbour's. Without it a sheet of short words is a page of text with no telling
+        ///         which column anything is in, and the only cells whose extent is visible are the highlighted
+        ///         ones, which is exactly backwards.
+        ///     </para>
+        /// </summary>
+        private const char GridLine = '\u2502';
+
         /// <summary>Composes the screen.</summary>
         /// <param name="menuBar">The menu bar, already told how wide it is.</param>
         /// <param name="sheet">The grid.</param>
@@ -192,7 +203,8 @@ namespace WolfCurses.Apps.Spreadsheet
             var row = new TextRow().Append('│', 1, DosTheme.Frame);
 
             // The gutter's own heading is blank: it is the corner where the row numbers meet the column letters.
-            row.Append(new string(' ', GutterWidth), DosTheme.Header);
+            row.Append(new string(' ', GutterWidth - 1), DosTheme.Header);
+            row.Append(GridLine, 1, Rule(DosTheme.Header));
 
             var widths = sheet.ColumnWidths;
             var visible = viewport.VisibleColumns(widths);
@@ -203,8 +215,10 @@ namespace WolfCurses.Apps.Spreadsheet
                 var style = column == cursor.Column ? DosTheme.HeaderActive : DosTheme.Header;
 
                 row.Append(
-                    AnsiText.Fit(CellAddress.ColumnName(column), sheet.GetColumnWidth(column),
+                    AnsiText.Fit(CellAddress.ColumnName(column), sheet.GetColumnWidth(column) - 1,
                         AnsiHorizontalAlignmentEnum.Center), style);
+
+                row.Append(GridLine, 1, Rule(style));
             }
 
             row.PadTo(bodyWidth + 1, DosTheme.Header);
@@ -228,10 +242,13 @@ namespace WolfCurses.Apps.Spreadsheet
             var sheetRow = viewport.RowAt(screenRow);
             var row = new TextRow().Append('│', 1, DosTheme.Frame);
 
+            var gutter = sheetRow == cursor.Row ? DosTheme.HeaderActive : DosTheme.Header;
+
             row.Append(
-                AnsiText.Fit((sheetRow + 1).ToString(CultureInfo.InvariantCulture) + " ", GutterWidth,
-                    AnsiHorizontalAlignmentEnum.Right),
-                sheetRow == cursor.Row ? DosTheme.HeaderActive : DosTheme.Header);
+                AnsiText.Fit((sheetRow + 1).ToString(CultureInfo.InvariantCulture) + " ", GutterWidth - 1,
+                    AnsiHorizontalAlignmentEnum.Right), gutter);
+
+            row.Append(GridLine, 1, Rule(gutter));
 
             var widths = sheet.ColumnWidths;
             var visible = viewport.VisibleColumns(widths);
@@ -253,17 +270,22 @@ namespace WolfCurses.Apps.Spreadsheet
                     for (var i = column; i <= last; i++)
                         span += sheet.GetColumnWidth(i);
 
-                    row.Append(Content(sheet, merge.Value.Anchor, span),
-                        Style(merge.Value.Anchor, cursor, selection, pointer));
+                    // One rule at the right-hand end of the whole merge and none inside it, which is what
+                    // makes a merged banner read as one cell rather than as several with the lines rubbed out.
+                    var mergeStyle = Style(merge.Value.Anchor, cursor, selection, pointer);
+
+                    row.Append(Content(sheet, merge.Value.Anchor, span), mergeStyle);
+                    row.Append(GridLine, 1, Rule(mergeStyle));
 
                     drawn += last - column + 1;
                     continue;
                 }
 
                 var address = new CellAddress(sheetRow, column);
+                var style = Style(address, cursor, selection, pointer);
 
-                row.Append(Content(sheet, address, sheet.GetColumnWidth(column)),
-                    Style(address, cursor, selection, pointer));
+                row.Append(Content(sheet, address, sheet.GetColumnWidth(column)), style);
+                row.Append(GridLine, 1, Rule(style));
 
                 drawn++;
             }
@@ -277,8 +299,8 @@ namespace WolfCurses.Apps.Spreadsheet
         ///     What a cell shows, fitted to its column.
         ///     <para>
         ///         Numbers go to the right and text to the left, which is not decoration: it is what makes a column
-        ///         of figures line up at the decimal point and therefore comparable at a glance. The trailing space
-        ///         is what keeps one cell's text from touching the next one's.
+        ///         of figures line up at the decimal point and therefore comparable at a glance. One column short
+        ///         of the cell's width, because the last one carries the rule that separates it from its neighbour.
         ///     </para>
         /// </summary>
         /// <param name="sheet">The grid.</param>
@@ -292,7 +314,22 @@ namespace WolfCurses.Apps.Spreadsheet
                 ? AnsiHorizontalAlignmentEnum.Right
                 : AnsiHorizontalAlignmentEnum.Left;
 
-            return AnsiText.Fit(value.Display(), Math.Max(1, width - 1), alignment) + " ";
+            return AnsiText.Fit(value.Display(), Math.Max(1, width - 1), alignment);
+        }
+
+        /// <summary>
+        ///     How a cell's own rule is drawn: its colours, with the text dimmed down.
+        ///     <para>
+        ///         It keeps the cell's <b>background</b> rather than having one of its own, which is what stops a
+        ///         swept selection from being cut into stripes by the lines between its cells. A rule inside a
+        ///         selected block should be part of the block, exactly as it is in every spreadsheet.
+        ///     </para>
+        /// </summary>
+        /// <param name="cell">The style of the cell the rule belongs to.</param>
+        /// <returns>The rule's style.</returns>
+        private static TextStyle Rule(TextStyle cell)
+        {
+            return cell.WithForeground(ConsoleColor.DarkGray);
         }
 
         /// <summary>

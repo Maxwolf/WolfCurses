@@ -20,7 +20,7 @@ Menus across the top, a framed blue field with the file name in its top edge, sc
 
 **Clipboard.** CTRL+X cuts, CTRL+INS copies and CTRL+V pastes, and the MS-DOS Editor's own SHIFT+DEL and SHIFT+INS do the same two. Copy is CTRL+INS rather than CTRL+C because a console turns CTRL+C into the signal that quits the program before any application can read it as a key. The clipboard belongs to the suite rather than to the editor, so what you copy will still be there for the spreadsheet; it is not the operating system's clipboard, and nothing copied here leaves the program.
 
-**Mouse.** Click to place the caret, drag to sweep a selection, click a menu title or entry, drag the scrollbar thumb or click its arrows, and roll the wheel to scroll. The editor draws its own pointer, because a terminal stops drawing one the moment mouse reporting is switched on.
+**Mouse.** Click to place the caret, drag to sweep a selection, click a menu title or entry, hover an open menu to walk its highlight, drag the scrollbar thumb or click its arrows, and roll the wheel to scroll. The editor draws its own pointer, because a terminal stops drawing one the moment mouse reporting is switched on.
 
 **Search.** CTRL+F asks what to find and selects the first match; F3 and SHIFT+F3 walk to the next and previous, coming round the ends rather than stopping; CTRL+H asks what to change and what to change it to, and changes every one. Match Case and Whole Word are ticked entries on the Search menu rather than checkboxes in a dialog, so the setting is readable without opening anything.
 
@@ -48,7 +48,9 @@ A grid of cells with the same menus and frame round it, lettered columns, number
 
 **Charts.** **F6** draws the selection as labelled bars and **F7** as a line graph, both of them the library's own widgets. Labels come from the cells beside the numbers, so a column of figures with the month names to its left charts itself with no configuration at all. A rectangle is charted by its first column and the caption says so, rather than quietly picking one.
 
-**Mouse.** Click a cell, drag to sweep a rectangle, click a column letter or a row number to select the whole of it, drag the scrollbar thumb, roll the wheel.
+**Mouse.** Click a cell, drag to sweep a rectangle, click a column letter or a row number to select the whole of it, drag the scrollbar thumb, roll the wheel. With a menu open, moving the pointer down the panel highlights each entry and sliding along the bar opens each menu in turn.
+
+The columns are **ruled off from each other**, in the column each cell was already leaving blank to keep its text clear of its neighbour's, so the grid costs no width at all. The rule takes each cell's own background, which keeps a swept selection in one piece rather than striping it; a merged banner has one at its right-hand end and none inside it.
 
 **Merged cells** are how the instructions at the top of the sample are drawn across the sheet. A comma separated file has nowhere to record a merge, so the loader infers one: a row with something in its first cell and nothing in any other is a banner. **Data > Merge Across** and **Unmerge** do it by hand.
 

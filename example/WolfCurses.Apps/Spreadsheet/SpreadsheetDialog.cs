@@ -739,6 +739,13 @@ namespace WolfCurses.Apps.Spreadsheet
                 return;
             }
 
+            // The menus get the pointer before anything else does, exactly as they get keys and presses first.
+            // While one is open, moving over its entries walks the highlight through them, and moving along the bar
+            // opens each menu in turn; a shut bar answers no and nothing here changes.
+            if (mouse.Kind == MouseEventKindEnum.Move && _menuBar != null &&
+                _menuBar.HandleMouseMove(mouse.Row, mouse.Column))
+                return;
+
             TrackPointer(mouse);
 
             if (mouse.Kind == MouseEventKindEnum.Release)

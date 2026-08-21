@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using WolfCurses.Apps.Tests.Support;
 using WolfCurses.Graphics;
@@ -22,6 +23,8 @@ namespace WolfCurses.Apps.Tests
         private const int FirstGridRow = 4;
 
         private const int HeadingRow = 3;
+
+        private const int BarRow = 1;
 
         private const int ColumnAColumn = 6;
 
@@ -389,6 +392,93 @@ namespace WolfCurses.Apps.Tests
             Assert.Equal("H4", CursorCell(suite.Screen));
             Assert.Equal("=SUM(H2:H3)", CellContents(suite.Screen));
             Assert.Contains("5", suite.Screen, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        ///     Which columns of a row carry a grid rule. The frame's own left edge and whatever sits in the last
+        ///     column (the frame again on the headings, the scrollbar on a row of cells) are not rules.
+        /// </summary>
+        private static List<int> RuleColumns(string row)
+        {
+            var trimmed = row.TrimEnd('\r');
+            var found = new List<int>();
+
+            for (var i = 1; i < trimmed.Length - 1; i++)
+            {
+                if (trimmed[i] == '\u2502')
+                    found.Add(i);
+            }
+
+            return found;
+        }
+
+        [Fact]
+        public void TheColumnsAreRuledOffAndTheRulesLineUpDownTheSheet()
+        {
+            using var suite = OpenSpreadsheet();
+
+            // File > New, so every row is an ordinary one. The sample's instructions are merged cells, and a merge
+            // deliberately carries no rules inside it, which would make this assertion about the fixture.
+            suite.Press(ConsoleKey.F10);
+            suite.Press(ConsoleKey.Enter);
+
+            var rows = suite.Screen.Split('\n');
+            var expected = RuleColumns(rows[HeadingRow]);
+
+            Assert.True(expected.Count >= 4,
+                "the column headings are not ruled off at all:\n" + suite.Describe());
+
+            // Ruled in the same places all the way down, which is the whole of what makes it a grid rather than
+            // rows of text that happen to have lines in them.
+            for (var row = FirstGridRow; row < FirstGridRow + 5; row++)
+                Assert.Equal(expected, RuleColumns(rows[row]));
+        }
+
+        [Fact]
+        public void HoveringAMenuEntryIsWhatEnterThenChooses()
+        {
+            using var suite = OpenSpreadsheet();
+
+            suite.Press(ConsoleKey.E, ConsoleModifiers.Alt);
+
+            var rows = suite.Screen.Split('\n');
+            var entry = Array.FindIndex(rows, row => row.Contains("Select All", StringComparison.Ordinal));
+
+            Assert.True(entry > 0, "the Edit menu did not open:\n" + suite.Describe());
+
+            suite.MoveMouse(entry, rows[entry].IndexOf("Select All", StringComparison.Ordinal));
+            suite.Press(ConsoleKey.Enter);
+
+            // Without the hover the highlight would still be on the menu's first entry, which is Cut, and the
+            // status line would say so instead.
+            Assert.Contains("Selected A1", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void SlidingAlongTheBarWithAMenuOpenOpensTheNextOne()
+        {
+            using var suite = OpenSpreadsheet();
+
+            suite.Press(ConsoleKey.F10);
+            Assert.Contains("Save As...", suite.Screen, StringComparison.Ordinal);
+
+            var titles = suite.Screen.Split('\n')[BarRow];
+            suite.MoveMouse(BarRow, titles.IndexOf("Data", StringComparison.Ordinal));
+
+            Assert.Contains("Go To Cell...", suite.Screen, StringComparison.Ordinal);
+            Assert.DoesNotContain("Save As...", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void MovingThePointerOverAShutBarOpensNothing()
+        {
+            using var suite = OpenSpreadsheet();
+
+            var titles = suite.Screen.Split('\n')[BarRow];
+            suite.MoveMouse(BarRow, titles.IndexOf("File", StringComparison.Ordinal));
+
+            // A menu that drops down because the pointer crossed it on the way somewhere else is a menu in the way.
+            Assert.DoesNotContain("Save As...", suite.Screen, StringComparison.Ordinal);
         }
 
         [Fact]

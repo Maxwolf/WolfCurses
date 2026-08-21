@@ -88,6 +88,113 @@ namespace WolfCurses.Tests.Controls
         }
 
         [Fact]
+        public void HoveringAnEntryMovesTheHighlightOntoIt()
+        {
+            var (bar, ran) = NewBar();
+            bar.BarRow = 0;
+            bar.Open(0);
+
+            // Opens on its first entry, so anything the hover does is visible.
+            Assert.Equal(0, bar.HighlightIndex);
+
+            var rows = StripSgr(bar.Render(60)).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var exitRow = Array.FindIndex(rows, row => row.Contains("Exit", StringComparison.Ordinal));
+
+            Assert.True(bar.HandleMouseMove(exitRow, rows[exitRow].IndexOf("Exit", StringComparison.Ordinal)));
+            Assert.Equal(3, bar.HighlightIndex);
+
+            // The highlight moved and nothing ran: hovering is not choosing.
+            Assert.Empty(ran);
+        }
+
+        [Fact]
+        public void HoveringWhatIsAlreadyHighlightedReportsThatNothingMoved()
+        {
+            var (bar, _) = NewBar();
+            bar.BarRow = 0;
+            bar.Open(0);
+
+            var rows = StripSgr(bar.Render(60)).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var newRow = Array.FindIndex(rows, row => row.Contains("New", StringComparison.Ordinal));
+
+            // The false return is what lets a caller skip redrawing for a pointer that crossed a cell it was
+            // already in, which on a screen reporting one event per cell is most of them.
+            Assert.False(bar.HandleMouseMove(newRow, rows[newRow].IndexOf("New", StringComparison.Ordinal)));
+            Assert.Equal(0, bar.HighlightIndex);
+        }
+
+        [Fact]
+        public void HoveringASeparatorLeavesTheHighlightWhereItWas()
+        {
+            var (bar, _) = NewBar();
+            bar.BarRow = 0;
+            bar.Open(0);
+
+            var rows = StripSgr(bar.Render(60)).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+            // The rule sits immediately above Exit in this menu, and there is nothing on it to read, so it is
+            // found by where it is rather than by what it says.
+            var exitRow = Array.FindIndex(rows, row => row.Contains("Exit", StringComparison.Ordinal));
+
+            Assert.False(bar.HandleMouseMove(exitRow - 1, rows[exitRow].IndexOf("Exit", StringComparison.Ordinal)));
+            Assert.Equal(0, bar.HighlightIndex);
+        }
+
+        [Fact]
+        public void HoveringADisabledEntryLeavesTheHighlightWhereItWas()
+        {
+            var bar = new MenuBar(
+                new MenuBarMenu("File",
+                    new MenuBarEntry("New", () => { }),
+                    new MenuBarEntry("Paste", () => { }) {EnabledWhen = () => false}))
+            {
+                BarRow = 0
+            };
+
+            bar.Open(0);
+
+            var rows = StripSgr(bar.Render(60)).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var pasteRow = Array.FindIndex(rows, row => row.Contains("Paste", StringComparison.Ordinal));
+
+            // Same rule the arrow keys follow: a line that cannot be chosen does not take the cursor either.
+            Assert.False(bar.HandleMouseMove(pasteRow, rows[pasteRow].IndexOf("Paste", StringComparison.Ordinal)));
+            Assert.Equal(0, bar.HighlightIndex);
+        }
+
+        [Fact]
+        public void SlidingAlongTheBarWithAMenuOpenOpensEachInTurn()
+        {
+            var (bar, _) = NewBar();
+            bar.BarRow = 0;
+            bar.Open(0);
+
+            var titles = StripSgr(bar.Render(60)).Split('\n')[0];
+
+            Assert.True(bar.HandleMouseMove(0, titles.IndexOf("Edit", StringComparison.Ordinal)));
+            Assert.Equal(1, bar.OpenIndex);
+
+            // And it opens on that menu's own first entry rather than keeping the row number it came from.
+            Assert.Equal(0, bar.HighlightIndex);
+        }
+
+        [Fact]
+        public void HoveringAShutBarOpensNothing()
+        {
+            var (bar, _) = NewBar();
+            bar.BarRow = 0;
+
+            var titles = StripSgr(bar.Render(60)).Split('\n')[0];
+
+            // A menu that drops down because the pointer crossed it on the way somewhere else is a menu that gets
+            // in the way. Opening one costs a single press.
+            Assert.False(bar.HandleMouseMove(0, titles.IndexOf("File", StringComparison.Ordinal)));
+            Assert.False(bar.IsOpen);
+
+            Assert.False(bar.HandleMouseMove(4, 4));
+            Assert.False(bar.IsOpen);
+        }
+
+        [Fact]
         public void ClickingATitleOpensThatMenuAndClickingItAgainShutsIt()
         {
             var (bar, _) = NewBar();

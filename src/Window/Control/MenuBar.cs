@@ -283,6 +283,49 @@ namespace WolfCurses.Window.Control
         }
 
         /// <summary>
+        ///     Offers the pointer's new position to the menu bar, moving the highlight to whatever it is over.
+        ///     <para>
+        ///         <b>Only while a menu is already open.</b> Hovering a shut bar deliberately opens nothing: a menu
+        ///         that drops down because the pointer crossed it on the way somewhere else is a menu that gets in
+        ///         the way, and the press that would have opened it is one keystroke of effort. Once one <i>is</i>
+        ///         open, though, sliding along the bar opens each menu in turn, which is what every menu bar since
+        ///         the first one has done and is how somebody looks through them.
+        ///     </para>
+        ///     <para>
+        ///         Separators and disabled entries do not take the highlight, matching what the arrow keys do:
+        ///         <see cref="EntryAt" /> already answers -1 for both, so the highlight simply stays where it was
+        ///         rather than landing on a line that cannot be chosen.
+        ///     </para>
+        /// </summary>
+        /// <param name="row">The row the pointer is over, in the same coordinates as <see cref="BarRow" />.</param>
+        /// <param name="column">The column the pointer is over.</param>
+        /// <returns>TRUE when the highlight or the open menu changed, so the caller knows the screen moved.</returns>
+        public bool HandleMouseMove(int row, int column)
+        {
+            if (!IsOpen)
+                return false;
+
+            if (row == BarRow)
+            {
+                var title = TitleAt(column);
+
+                if (title < 0 || title == OpenIndex)
+                    return false;
+
+                Open(title);
+                return true;
+            }
+
+            var entry = EntryAt(row, column);
+
+            if (entry < 0 || entry == HighlightIndex)
+                return false;
+
+            HighlightIndex = entry;
+            return true;
+        }
+
+        /// <summary>
         ///     Runs the highlighted entry and shuts the menu.
         ///     <para>
         ///         The menu is shut <b>before</b> the action runs, not after. An action is free to open a dialog, or

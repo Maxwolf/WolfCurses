@@ -34,6 +34,26 @@ namespace WolfCurses.Apps.Tests
         }
 
         [Fact]
+        public void HoveringAMenuEntryIsWhatEnterThenChooses()
+        {
+            using var suite = OpenEditor();
+
+            suite.Press(ConsoleKey.E, ConsoleModifiers.Alt);
+
+            var rows = suite.Screen.Split('\n');
+            var entry = Array.FindIndex(rows, row => row.Contains("Select All", StringComparison.Ordinal));
+
+            Assert.True(entry > 0, "the Edit menu did not open:" + "\n" + suite.Describe());
+
+            suite.MoveMouse(entry, rows[entry].IndexOf("Select All", StringComparison.Ordinal));
+            suite.Press(ConsoleKey.Enter);
+
+            // Without the hover the highlight would still be on the menu first entry, which is Cut, and with
+            // nothing selected yet that does nothing at all and says nothing.
+            Assert.Contains(" selected", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
         public void ItOpensOnTheDefaultDocumentWithTheCaretAtTheStart()
         {
             using var suite = OpenEditor();
