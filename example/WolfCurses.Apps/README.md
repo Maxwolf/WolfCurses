@@ -60,9 +60,11 @@ A grid of cells with the same menus and frame round it, lettered columns, number
 
 **Formulas.** A cell beginning with `=` is worked out: arithmetic with the usual precedence, brackets, powers, cell references, ranges, and `SUM`, `AVERAGE`, `MIN`, `MAX`, `COUNT`, `COUNTA`, `ROUND`, `ABS`, `INT` and `SQRT`. **A cell holds what you typed and is worth something else** - the entry line under the grid shows the formula while the cell shows the answer, which is the whole distinction a spreadsheet is built on and is why saving gives back the formula rather than the number. Mistakes are values rather than exceptions: `#DIV/0!`, `#NAME?`, `#VALUE!`, `#REF!` and `#CIRC!` for a cell that needs its own value to work out its own value. **Data > Total Selection** writes a `=SUM(...)` underneath whatever is selected.
 
-![A bar chart of B9 to B20 filling the sheet's frame, each bar labelled with its month and its value](../../docs/app-spreadsheet-chart.png)
-
 **Charts.** **F6** draws the selection as labelled bars and **F7** as a line graph, both of them the library's own widgets. Labels come from the cells beside the numbers, so a column of figures with the month names to its left charts itself with no configuration at all. A rectangle is charted by its first column and the caption says so, rather than quietly picking one.
+
+![A line graph of B9 to B20 filling the sheet's frame, area filled, each column coloured by how large its value is and the scale labelled at both ends](../../docs/app-spreadsheet-chart.png)
+
+*A year of income, which is what the sheet's own instruction line points you at: twelve figures in order are a line rather than a row of bars.*
 
 **Mouse.** Click a cell, drag to sweep a rectangle, click a column letter or a row number to select the whole of it, drag the scrollbar thumb, roll the wheel. With a menu open, moving the pointer down the panel highlights each entry and sliding along the bar opens each menu in turn.
 
