@@ -6,7 +6,7 @@ The other half of what a terminal used to be for. Where [the arcade](../WolfCurs
 dotnet run --project example/WolfCurses.Apps
 ```
 
-**Four applications so far**: a word processor laid out after the MS-DOS Editor, a BASIC environment after the one that shipped with MS-DOS, a spreadsheet, and a desk calculator. Database and diary are planned and unwritten.
+**Five applications so far**: a word processor laid out after the MS-DOS Editor, a BASIC environment after the one that shipped with MS-DOS, a spreadsheet, a desk calculator, and a calendar and planner. A card file is planned and unwritten.
 
 That order is deliberate. Adding an application is meant to be a folder, a form carrying `[ParentWindow(typeof(OfficeWindow))]`, a value on `OfficeCommandsEnum`, and one `AddCommand` line in `OfficeWindow`, with no registration step anywhere. It is worth proving that claim before writing anything that depends on it.
 
@@ -76,12 +76,40 @@ A desk calculator with a paper tape: keys you can click, keys you can type, and 
 
 The keys themselves are the library's `Keypad`, which is what this application exists to demonstrate: its keys are not all one width, so the layout has to be remembered rather than recomputed, and the drawing and the hit test read the same copy of it.
 
+## The planner
+
+A month you can walk around, the day's entries beside it, and a clock that moves while you look at it.
+
+**Four ways of looking at it**, on TAB or on F5 to F8, and they are a zoom rather than four skins on the same thing: each answers a question the others cannot.
+
+| View | What only it answers |
+| --- | --- |
+| **Month** | Which day of the week something falls on. |
+| **Week** | What a week actually contains, written out, which a grid with room for a number and a dot cannot show. |
+| **Year** | Which parts of the year are busy. Twelve strips of days, marked where something happens, with a count on the end. |
+| **Coming up** | What is next, with the empty days simply not there. |
+
+**The arrow keys mean something different in each, deliberately.** Stepping a day at a time through a year is useless and stepping a month at a time through a week is meaningless, so UP and DOWN are a week in the month view, a month in the year view, and the previous or next *entry* in the list. What never changes is that there is one chosen day and every view shows where it is, so choosing a date in the year view and pressing F5 lands on it in the month.
+
+**The year is strips, not twelve little calendars**, because twelve of those need thirty-two rows and a terminal has twenty-four. A strip gives up which weekday a date falls on, which is exactly what the month view is for, and buys the whole year at once, which is exactly what it is not. Easter turning up on a different day of April each year is visible at a glance.
+
+**Getting about.** Arrows move a day at a time, PAGE UP and PAGE DOWN turn the month, HOME comes back to today, and clicking a date chooses it in any view. The month follows the cursor, so walking off the end of one simply arrives in the next.
+
+**Entries.** **F2** asks what happens and then at what time; leaving the time blank makes it an all-day entry, and so does cancelling that second question, because throwing away something already typed would be the worse answer. **DEL** offers whatever is on the day and removes the one you pick. F3 opens another planner, F4 saves.
+
+**The holidays are worked out, not looked up.** Page to 2099 and Easter is still in the right place. Four shapes of rule are behind that: a fixed date, the n-th weekday of a month (Thanksgiving), the last weekday of a month (Memorial Day), and Easter, which is none of those and drags Good Friday and Easter Monday along with it. A holiday cannot be deleted, and that is not a restriction so much as an honest one: there is nothing stored to delete, and next year's would be computed again anyway.
+
+**Annual entries.** A date written `05-04` happens every year and one written `2026-05-04` happens once. That is the whole of the file format, and it is what keeps the shipped sample meaning something in any year rather than going stale the moment 2026 ends. A leap-day annual entry happens only in leap years, since there is no other day it could honestly be moved to.
+
+**The clock.** It shows the real date and time and ticks once a second. Two things about it are the reason this application exists: the time is read on the *simulation* tick and not while drawing, because a render runs about a thousand times a second and would ask the operating system as often; and **today is re-asked every second too**, so a planner left open overnight moves its own highlight instead of going on marking yesterday.
+
+The sample is Maxwolf's own calendar, which is mostly moulting, tail maintenance and apologising to a coast guard, with the occasional city.
+
 ## Planned
 
 | Application | What only it will demonstrate |
 | --- | --- |
 | **Database** | Reading back what it wrote, so the only screen that has to distrust a file it created. Also where the four modal controls appear as a workflow rather than one at a time. |
-| **Diary** | Dates and wall-clock time: a month grid, today, and a clock that moves while you look at it. |
 
 ## ESC
 

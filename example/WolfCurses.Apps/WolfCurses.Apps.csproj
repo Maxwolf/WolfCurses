@@ -48,6 +48,11 @@
     <None Include="Assets\sheets\*.csv" Link="sheets\%(Filename)%(Extension)"
           CopyToOutputDirectory="PreserveNewest" />
 
+    <!-- The sample planner, in its own folder so the planner's Open dialog starts on it. Written for this
+         repository; the joke entries are annual so they go on meaning something in any year. -->
+    <None Include="Assets\planner\*.csv" Link="planner\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+
     <!-- The sample BASIC programs, in their own folder so the environment's Open dialog starts among them. All of
          them were written for this repository: the QBasic samples everybody remembers are Microsoft's and are not
          redistributable, so a program like GORILLA.BAS is opened from your own disk rather than shipped here. -->

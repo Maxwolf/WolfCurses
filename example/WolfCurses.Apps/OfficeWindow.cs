@@ -41,6 +41,7 @@ namespace WolfCurses.Apps
             AddCommand(OpenBasic, OfficeCommandsEnum.Basic);
             AddCommand(OpenSpreadsheet, OfficeCommandsEnum.Spreadsheet);
             AddCommand(OpenCalculator, OfficeCommandsEnum.Calculator);
+            AddCommand(OpenPlanner, OfficeCommandsEnum.Planner);
             AddCommand(Quit, OfficeCommandsEnum.Quit);
 
             RestoreMenuChrome();
@@ -131,6 +132,12 @@ namespace WolfCurses.Apps
         private void OpenCalculator()
         {
             SetForm(typeof (Calculator.CalculatorDialog));
+        }
+
+        /// <summary>Shows the calendar and planner.</summary>
+        private void OpenPlanner()
+        {
+            SetForm(typeof (Planner.PlannerDialog));
         }
 
         /// <summary>Closes the suite and hands the terminal back.</summary>

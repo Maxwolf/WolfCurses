@@ -43,7 +43,13 @@ namespace WolfCurses.Apps
         /// </summary>
         [Description("Calculator - a desk calculator with a tape.")] Calculator = 4,
 
+        /// <summary>
+        ///     A calendar and planner. The screen in the suite that is about time passing: the holidays are worked
+        ///     out for whichever year you page into rather than looked up, and the clock moves while you watch it.
+        /// </summary>
+        [Description("Planner - a calendar with a clock in it.")] Planner = 5,
+
         /// <summary>Closes the suite and returns to the operating system.</summary>
-        [Description("Quit.")] Quit = 5
+        [Description("Quit.")] Quit = 6
     }
 }
