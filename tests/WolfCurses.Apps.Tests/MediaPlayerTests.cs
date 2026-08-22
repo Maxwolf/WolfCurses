@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text.RegularExpressions;
 using WolfCurses.Apps.MediaPlayer;
 using WolfCurses.Apps.Tests.Support;
@@ -317,6 +317,8 @@ namespace WolfCurses.Apps.Tests
         [Fact]
         public void ThePlayMenuIsGreyedUntilSomethingIsOpen()
         {
+            RequiresColor();
+
             using var suite = OpenPlayer();
 
             suite.Press(ConsoleKey.F10);
@@ -446,10 +448,37 @@ namespace WolfCurses.Apps.Tests
             return string.Empty;
         }
 
-        /// <summary>Whether a menu row is painted in the greyed style.</summary>
+        /// <summary>
+        ///     Whether a menu row is painted in the greyed style.
+        ///     <para>
+        ///         <b>The emptiness guard is load-bearing, because <c>string.Contains("")</c> is true.</b> With
+        ///         colour off the disabled style resolves to no sequence at all, so the unguarded version answered
+        ///         "greyed" for every row ever handed to it - which let the test that only checks the positive pass
+        ///         for the wrong reason rather than fail honestly.
+        ///     </para>
+        /// </summary>
+        /// <param name="row">The raw row, escapes intact.</param>
+        /// <returns>Whether it is drawn disabled.</returns>
         private static bool IsGreyed(string row)
         {
-            return row.Contains(DosTheme.MenuDisabled.OpenSequence(), StringComparison.Ordinal);
+            var greyed = DosTheme.MenuDisabled.OpenSequence();
+            return !string.IsNullOrEmpty(greyed) && row.Contains(greyed, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        ///     Skips a test that can only be answered in colour.
+        ///     <para>
+        ///         A disabled entry differs from a live one in nothing but its colour, so where the environment has
+        ///         asked for none there is nothing on screen to read and the question is not a fair one. Skipped
+        ///         rather than pinned to a mode: the style is chosen deep inside the running suite rather than on a
+        ///         widget a test can reach, and <c>AnsiConsole.ForcedColorMode</c> is process-wide, so setting it
+        ///         here would race every other collection in this assembly.
+        ///     </para>
+        /// </summary>
+        private static void RequiresColor()
+        {
+            Assert.SkipUnless(AnsiConsole.DetectColorMode() != AnsiColorModeEnum.None,
+                "NO_COLOR is set, so a disabled menu entry is drawn exactly like a live one.");
         }
     }
 }

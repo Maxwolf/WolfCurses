@@ -100,8 +100,6 @@ namespace WolfCurses.Games.Snake
         {
             base.OnFormPostCreate();
 
-            ParentWindow.PromptText = "Arrow keys or WASD to steer, ENTER or ESC to quit";
-
             _board = new SnakeBoard(BoardWidth, BoardHeight, SimUnit.Random);
             _rendered = Compose();
 
@@ -204,7 +202,7 @@ namespace WolfCurses.Games.Snake
             MessageBox.Show(SimUnit, message, () => ClearForm());
         }
 
-        /// <summary>Draws the whole screen: a status line, then the playfield inside its box.</summary>
+        /// <summary>Draws the whole screen: a status line, the playfield inside its box, then the controls.</summary>
         private string Compose()
         {
             var body = new StringBuilder();
@@ -213,6 +211,10 @@ namespace WolfCurses.Games.Snake
                             $"Heading {_board.Direction}    Best {UserData.SnakeHighScore}");
             body.AppendLine();
             body.Append(_frame.Render(ComposePlayfield()));
+
+            // Drawn here rather than set as the window's prompt, which is the row this screen suppressed. See
+            // GameControls for why that row never reaches the screen and why this one is free.
+            GameControls.Append(body, "Arrow keys or WASD to steer, ENTER or ESC to quit");
             return body.ToString();
         }
 

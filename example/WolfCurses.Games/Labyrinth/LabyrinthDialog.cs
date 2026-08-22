@@ -73,12 +73,18 @@ namespace WolfCurses.Games.Labyrinth
         private const int MazeHeight = 13;
 
         /// <summary>
-        ///     Rows the rest of the screen needs: the scene graph's own status line, this form's heading and hint, the
-        ///     blank lines between them, the box border, and the input prompt the presenter reserves at the bottom.
-        ///     Guess this low and the prompt falls off the bottom of the terminal, which is the bug that put
-        ///     <c>MenuLayout</c> in the library.
+        ///     Rows the rest of the screen needs: the scene graph's own status line, this form's heading and message,
+        ///     the blank lines between them, the box border, and the control legend along the bottom. Guess this low
+        ///     and the last row falls off the bottom of the terminal, which is the bug that put <c>MenuLayout</c> in
+        ///     the library.
+        ///     <para>
+        ///         <b>It counts eleven, not ten, and the eleventh is the legend.</b> This used to reserve a row for
+        ///         "the input prompt", which a steered screen never gets: the presenter clips the frame to one row
+        ///         short of the console whether a prompt is drawn into it or not, so suppressing the prompt buys
+        ///         nothing back and the controls had to come out of the view. See <see cref="GameControls" />.
+        ///     </para>
         /// </summary>
-        private const int ReservedRows = 10;
+        private const int ReservedRows = 11;
 
         /// <summary>Columns the box border and a little slack need.</summary>
         private const int ReservedColumns = 4;
@@ -265,11 +271,10 @@ namespace WolfCurses.Games.Labyrinth
             _grid = MazeView.CreateGrid(_maze);
             _solved = false;
 
-            // The controls live on the window's prompt rather than in this message, and the message is kept short
-            // enough to sit on one line of an eighty-column terminal. Both matter: the prompt is a row the scene
-            // graph draws anyway, so putting the controls there costs nothing, while a message that wrapped would
-            // cost a row this screen has already spent - it fits 80x24 with none to spare.
-            ParentWindow.PromptText = "Arrows or WASD to move, wheel to look, R for a new maze, ENTER or ESC quits";
+            // The controls are a row of their own at the foot of the frame, so this message is kept short enough to
+            // sit on one line of an eighty-column terminal: a message that wrapped would cost a row this screen has
+            // already spent, and it fits 80x24 with none to spare. Compose draws the legend; see GameControls for
+            // why it cannot be the window's prompt, which is where this whole control list used to be kept unseen.
             _message = "Find the way out. The compass gives the direction, not the route.";
             Recenter();
             _rendered = Compose();
@@ -321,7 +326,6 @@ namespace WolfCurses.Games.Labyrinth
 
             _message = $"Out in {_maze.Steps} steps - the shortest way was {_maze.ShortestSteps} " +
                        $"({efficiency.ToString("F0", CultureInfo.InvariantCulture)}% efficient).";
-            ParentWindow.PromptText = "Arrows or wheel look around the maze, R for another, ENTER or ESC quits";
         }
 
         /// <summary>Moves the camera by one maze cell, which is two grid cells.</summary>
@@ -377,6 +381,12 @@ namespace WolfCurses.Games.Labyrinth
             body.AppendLine(_frame.Render(view));
             body.AppendLine();
             body.Append(_message);
+
+            // Read off _solved rather than kept in a field of its own, so the legend cannot go on offering a move
+            // after the maze has been walked out of. See GameControls for why this is not the window's prompt.
+            GameControls.Append(body, _solved
+                ? "Arrows or wheel look around the maze, R for another, ENTER or ESC quits"
+                : "Arrows or WASD to move, wheel to look, R for a new maze, ENTER or ESC quits");
             return body.ToString();
         }
 

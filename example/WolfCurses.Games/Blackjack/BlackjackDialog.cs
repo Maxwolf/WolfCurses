@@ -69,8 +69,6 @@ namespace WolfCurses.Games.Blackjack
         {
             base.OnFormPostCreate();
 
-            ParentWindow.PromptText = "H hit, S stand, ENTER deal again, TAB pictures, ESC to leave";
-
             _game = new BlackjackGame(SimUnit.Random);
             _art = new CardTableArt(_images);
             _useText = !_art.IsAvailable || !CardView.PictureIsLegible(TableRows());
@@ -207,6 +205,10 @@ namespace WolfCurses.Games.Blackjack
 
             body.AppendLine();
             body.Append(_game.Message);
+
+            // Drawn here rather than set as the window's prompt, which is the row this screen suppressed. See
+            // GameControls for why that row never reaches the screen and why this one is free.
+            GameControls.Append(body, "H hit, S stand, ENTER deal again, TAB pictures, ESC to leave");
             return body.ToString();
         }
     }

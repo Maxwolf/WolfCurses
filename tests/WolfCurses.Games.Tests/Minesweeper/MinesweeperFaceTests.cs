@@ -16,7 +16,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
         {
             // The TextGrid guarantee the click map is built on. A panel that changed width with its contents would
             // put every square somewhere else the moment a number appeared.
-            var face = new MinesweeperFace(9, 9, true);
+            var face = Face(9, 9, true);
             var field = Played();
 
             foreach (var render in new[] {face.Render(field, 0), face.Render(field, 999)})
@@ -39,7 +39,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
             // move together, which they do by both taking the origin from the same two properties. Asserted for
             // every square in both modes: plant a flag, find it on the panel, and ask the map which square that cell
             // belongs to.
-            var face = new MinesweeperFace(9, 9, labelled);
+            var face = Face(9, 9, labelled);
             var map = new MinesweeperBoardMap(face.BoardOriginRow, face.BoardOriginColumn, face.BoardWidth,
                 face.BoardHeight, MinesweeperFace.TileWidth, MinesweeperFace.TileHeight);
 
@@ -70,7 +70,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
             // Every attempt to fit that into a single row per tile left an edge or a corner missing - rails, then
             // bands, then invisible white-on-silver, then an open corner. Two rows and a shared-edge lattice is the
             // floor, and this asserts the result square by square rather than trusting the drawing code.
-            var face = new MinesweeperFace(9, 9, labelled);
+            var face = Face(9, 9, labelled);
             var rows = Rows(AnsiText.StripEscapes(face.Render(new Minefield(9, 9, 10, new Randomizer(4)), 0)));
 
             for (var y = 0; y < face.BoardHeight; y++)
@@ -101,7 +101,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
             // rule apart from an accident: while every edge square is closed the frame is drawn because the squares
             // themselves ask for it, and dropping the off-the-board rule entirely changes nothing. That mutation
             // survived until this line was added.
-            var face = new MinesweeperFace(9, 9, false);
+            var face = Face(9, 9, false);
             var field = new Minefield(9, 9, 10, new Randomizer(4));
             field.Reveal(4, 4);
 
@@ -134,7 +134,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
             // The other half of the lattice rule: a line is drawn only where a square beside it is still closed, so
             // an opened region reads as one flat area rather than as more squares - which is what the original did,
             // and what makes "boxed" and "closed" mean the same thing on screen.
-            var face = new MinesweeperFace(9, 9, false);
+            var face = Face(9, 9, false);
             var field = new Minefield(9, 9, 10, new Randomizer(4));
             field.Reveal(4, 4);
 
@@ -192,7 +192,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
             // Read with the escapes stripped, so this is about the GLYPHS. Raised, flat, flagged and mined have to
             // be four different shapes before they are four different colours, or the game stops working the moment
             // somebody sets NO_COLOR.
-            var face = new MinesweeperFace(9, 9, true);
+            var face = Face(9, 9, true);
             var field = new Minefield(9, 9, 10, new Randomizer(4));
             field.Reveal(4, 4);
 
@@ -219,7 +219,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
             // An UNTOUCHED board, so the square being read is certainly still raised. Reading a played one is how
             // this test first failed to catch anything: the opening cascade had opened that corner, so the style at
             // that column was the flat face rather than a grid hairline and the comparison was about nothing.
-            var face = new MinesweeperFace(9, 9, false);
+            var face = Face(9, 9, false);
             var rows = Rows(face.Render(new Minefield(9, 9, 10, new Randomizer(4)), 0));
 
             var panelTop = StyleAt(rows[face.SmileyRow - 1], face.BoardOriginColumn);
@@ -235,7 +235,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
             // Flagging an OPENED square is correctly a no-op, and the opening cascade reaches a different set of
             // squares on every seed - so a test that flags a fixed corner passes or fails on the shuffle. This one
             // did, on its first run, which is the third time this arcade has learned it.
-            var face = new MinesweeperFace(9, 9, true);
+            var face = Face(9, 9, true);
             var field = new Minefield(9, 9, 10, new Randomizer(4));
             field.Reveal(4, 4);
 
@@ -251,7 +251,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
         [Fact]
         public void TheLeftCounterCountsDownAsFlagsArePlanted()
         {
-            var face = new MinesweeperFace(9, 9, true);
+            var face = Face(9, 9, true);
             var field = new Minefield(9, 9, 10, new Randomizer(4));
 
             Assert.Equal("010", Counter(face, field, 0));
@@ -267,7 +267,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
         {
             // It always did, and it is genuinely useful: a negative counter is the game telling a player they have
             // planted more flags than there are mines, which means one of them is wrong.
-            var face = new MinesweeperFace(9, 9, true);
+            var face = Face(9, 9, true);
             var field = new Minefield(9, 9, 10, new Randomizer(4));
 
             for (var i = 0; i < 12; i++)
@@ -281,7 +281,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
         {
             // Three digits is what the panel has room for, so a long game has to clamp rather than push the face
             // sideways - which would move the board with it.
-            var face = new MinesweeperFace(9, 9, true);
+            var face = Face(9, 9, true);
             var field = new Minefield(9, 9, 10, new Randomizer(4));
 
             foreach (var seconds in new[] {0, 7, 999, 4000})
@@ -297,7 +297,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
         [Fact]
         public void TheFaceKnowsHowTheGameIsGoing()
         {
-            var face = new MinesweeperFace(9, 9, true);
+            var face = Face(9, 9, true);
 
             var playing = new Minefield(9, 9, 10, new Randomizer(4));
             Assert.Contains(":)", AnsiText.StripEscapes(face.Render(playing, 0)), StringComparison.Ordinal);
@@ -329,7 +329,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
         [Fact]
         public void EveryMineIsShownOnceTheBoardIsLost()
         {
-            var face = new MinesweeperFace(9, 9, true);
+            var face = Face(9, 9, true);
             var field = new Minefield(9, 9, 10, new Randomizer(4));
             field.Reveal(4, 4);
 
@@ -359,7 +359,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
             // Counted rather than "does it contain an escape at all", which is nearly free and stays true after any
             // one of the styles has been flattened - it survived exactly that mutation. The panel is a highlight, a
             // shadow, a face, two readouts and a row of numbers, so half a dozen distinct sequences is the floor.
-            var face = new MinesweeperFace(9, 9, true);
+            var face = Face(9, 9, true);
             var field = Played();
             field.Reveal(4, 4);
 
@@ -374,7 +374,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
             // DIFFERENT colours or the panel is a flat grey rectangle with a border. Counting sequences is not
             // enough on its own - flattening one of the two leaves plenty of others behind, and it survived exactly
             // that.
-            var face = new MinesweeperFace(9, 9, true);
+            var face = Face(9, 9, true);
             var rows = Rows(face.Render(Played(), 0));
 
             // The panel's own top edge against its bottom edge - not row zero, which with the coordinates on is the
@@ -390,7 +390,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
         {
             // Losing opens every mine at once, so without the board remembering which one went off they would all
             // be drawn identically - and the one square that matters is the one you actually stood on.
-            var face = new MinesweeperFace(9, 9, true);
+            var face = Face(9, 9, true);
             var field = new Minefield(9, 9, 10, new Randomizer(4));
             field.Reveal(4, 4);
 
@@ -412,7 +412,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
         [Fact]
         public void AFlagThatTurnedOutToBeRightKeepsItsFlag()
         {
-            var face = new MinesweeperFace(9, 9, true);
+            var face = Face(9, 9, true);
             var field = new Minefield(9, 9, 10, new Randomizer(4));
             field.Reveal(4, 4);
 
@@ -435,7 +435,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
             // The invariant that keeps every other test in this file meaning what it meant. Hovering was added
             // afterwards, so at its resting value it has to be as if it were never there - not "nearly", since the
             // bevel and palette tests below read exact cells and exact escape sequences.
-            var face = new MinesweeperFace(9, 9, true);
+            var face = Face(9, 9, true);
             var field = Played();
 
             var before = face.Render(field, 0);
@@ -456,7 +456,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
             // The rule the whole feature has to obey: a hover moves a STYLE and never a GLYPH. The closed-square
             // hairline is what both a reader and MinesweeperScreen use to tell a raised square from an opened one,
             // so a hover that dropped or replaced it would be changing what the board says rather than lighting it.
-            var face = new MinesweeperFace(9, 9, true);
+            var face = Face(9, 9, true);
             var field = Played();
 
             var plain = face.Render(field, 0);
@@ -474,7 +474,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
         {
             // "Something changed" would pass for a version that repainted the whole panel. The change has to be one
             // square's own interior row, so every other row of the panel comes back untouched.
-            var face = new MinesweeperFace(9, 9, true);
+            var face = Face(9, 9, true);
             var field = Played();
 
             var plain = Rows(face.Render(field, 0));
@@ -507,7 +507,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
             //
             // Asserted on the STYLE rather than on the glyph, because the defect was entirely a colour: a version
             // that lights every cell leaves every character exactly where it was and is still wrong.
-            var face = new MinesweeperFace(9, 9, true);
+            var face = Face(9, 9, true);
             var field = Played();
 
             var plain = Rows(face.Render(field, 0));
@@ -554,7 +554,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
         {
             // The screen answers -1 for a pointer that is over the panel but not over a square - the counters, the
             // face, the border - and that has to be as quiet as never having pointed at all.
-            var face = new MinesweeperFace(9, 9, true);
+            var face = Face(9, 9, true);
             var field = Played();
 
             var plain = face.Render(field, 0);
@@ -569,7 +569,7 @@ namespace WolfCurses.Games.Tests.Minesweeper
         public void AFinishedBoardIsNotLitAtAll()
         {
             // A lit square says something is about to happen, and on a board that is over nothing is.
-            var face = new MinesweeperFace(9, 9, true);
+            var face = Face(9, 9, true);
             var field = new Minefield(9, 9, 10, new Randomizer(4));
             field.Reveal(4, 4);
 
@@ -665,6 +665,31 @@ namespace WolfCurses.Games.Tests.Minesweeper
             }
 
             return (-1, -1);
+        }
+
+        /// <summary>
+        ///     A panel that emits colour whatever the machine running the tests thinks about colour.
+        ///     <para>
+        ///         <b>Six tests here read escape sequences back out of the render</b> - the bevel being lit from one
+        ///         side, the panel having more than one colour in it, only the hovered square changing - and the
+        ///         panel correctly emits nothing at all when the resolved mode is <c>None</c>. So all six failed
+        ///         wherever <c>NO_COLOR</c> was set, which is a real CI configuration, for a panel that was drawing
+        ///         perfectly. Pinning the mode is the repository's documented fix; setting the environment variable
+        ///         instead is specifically ruled out, because <c>DetectColorMode</c> is process-cached and this file
+        ///         runs in the parallel default collection, so it would race the whole assembly.
+        ///     </para>
+        ///     <para>
+        ///         Every construction goes through here rather than only the six, so a test added later cannot
+        ///         reintroduce the problem by using the constructor directly.
+        ///     </para>
+        /// </summary>
+        /// <param name="width">Board width in squares.</param>
+        /// <param name="height">Board height in squares.</param>
+        /// <param name="labelled">Whether the coordinate gutter is drawn.</param>
+        /// <returns>The panel.</returns>
+        private static MinesweeperFace Face(int width, int height, bool labelled)
+        {
+            return new MinesweeperFace(width, height, labelled) {ColorMode = AnsiColorModeEnum.Palette256};
         }
 
         /// <summary>Whatever escape sequence is in force at a visible column of a styled row.</summary>

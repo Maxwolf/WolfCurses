@@ -1,4 +1,4 @@
-// Created by Maxwolf (bigmaxwolf.com)
+﻿// Created by Maxwolf (bigmaxwolf.com)
 // Timestamp 08/22/2026
 
 using System;
@@ -332,7 +332,7 @@ namespace WolfCurses.Demo.Screens
 
             // Counted out of the builder immediately before the pad is drawn into it, so the row the marks are
             // placed at and the row they are drawn on are the same number by construction.
-            _padTop = RowsAboveForm() + CountLineBreaks(sb);
+            _padTop = RowsAboveForm() + FrameLayout.CountLineBreaks(sb);
             sb.Append(_pad.Render(PadContent()));
 
             _rendered = sb.ToString();
@@ -357,40 +357,7 @@ namespace WolfCurses.Demo.Screens
         /// <returns>The number of rows between the top of the window and this form's first line.</returns>
         private int RowsAboveForm()
         {
-            return CountLineBreaks(SimUnit?.OnPreRender());
-        }
-
-        /// <summary>How many line breaks are already in the builder, which is the row the next line will occupy.</summary>
-        /// <param name="builder">The frame being composed.</param>
-        /// <returns>The count.</returns>
-        private static int CountLineBreaks(StringBuilder builder)
-        {
-            var breaks = 0;
-            for (var i = 0; i < builder.Length; i++)
-            {
-                if (builder[i] == '\n')
-                    breaks++;
-            }
-
-            return breaks;
-        }
-
-        /// <summary>How many line breaks a piece of text contains. Null counts as none.</summary>
-        /// <param name="text">The text.</param>
-        /// <returns>The count.</returns>
-        private static int CountLineBreaks(string text)
-        {
-            if (string.IsNullOrEmpty(text))
-                return 0;
-
-            var breaks = 0;
-            foreach (var glyph in text)
-            {
-                if (glyph == '\n')
-                    breaks++;
-            }
-
-            return breaks;
+            return FrameLayout.RowsAboveForm(SimUnit);
         }
 
         /// <summary>

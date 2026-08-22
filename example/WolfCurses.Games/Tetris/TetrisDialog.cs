@@ -125,9 +125,6 @@ namespace WolfCurses.Games.Tetris
         {
             base.OnFormPostCreate();
 
-            ParentWindow.PromptText =
-                "Arrows/WASD to move, UP or W to turn, SPACE to drop, R for a new well, ENTER or ESC to quit";
-
             // Also starts the timer, and replaces the OnFormActivate override this form used to hand-write so that
             // time spent under a dialog was not owed back as a free row of gravity.
             RestartOnActivate(_fall);
@@ -240,6 +237,11 @@ namespace WolfCurses.Games.Tetris
             body.AppendLine(TextColumns.Join(_frame.Render(ComposeWell()), panels.ToString()));
             body.AppendLine();
             body.Append(_message);
+
+            // Drawn here rather than set as the window's prompt, which is the row this screen suppressed. See
+            // GameControls for why that row never reaches the screen, and why this legend is shorter than the
+            // prompt it replaces: an unseen row could be any width it liked.
+            GameControls.Append(body, "Arrows/WASD move, UP turns, SPACE drops, R new well, ENTER or ESC quits");
             return body.ToString();
         }
 

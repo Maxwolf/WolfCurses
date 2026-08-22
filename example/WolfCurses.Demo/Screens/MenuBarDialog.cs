@@ -45,20 +45,21 @@ namespace WolfCurses.Demo.Screens
     public sealed class MenuBarDialog : Form<DemoWindowInfo>
     {
         /// <summary>
-        ///     How many screen rows the scene graph draws above this form's own first line.
+        ///     Which screen row the bar is drawn on: this form's second line.
         ///     <para>
         ///         <b>This is the whole of the coordinate problem, and it is why <see cref="MenuBar.BarRow" /> is told
         ///         rather than inferred.</b> A pointer reports the row of the window, but a form composes rows of its
-        ///         own text, and the two only agree once whatever the host drew above is counted. Here that is one
-        ///         row: the scene graph's spinner line, which this app's <c>OnPreRender</c> ends itself. Get it wrong
-        ///         by one and every press lands on the entry above the pointer, which reads as a menu that chooses the
-        ///         wrong thing rather than as arithmetic that is off.
+        ///         own text, and the two only agree once whatever the host drew above is counted. Get it wrong by one
+        ///         and every press lands on the entry above the pointer, which reads as a menu that chooses the wrong
+        ///         thing rather than as arithmetic that is off.
+        ///     </para>
+        ///     <para>
+        ///         The offset was a <c>const 1</c> here and five other things in five other screens before
+        ///         <see cref="FrameLayout" /> existed; it is asked for now rather than written down, which is also
+        ///         what lets it be right for a host whose <c>OnPreRender</c> does not end its line.
         ///     </para>
         /// </summary>
-        private const int SceneRows = 1;
-
-        /// <summary>Which screen row the bar is drawn on: this form's second line.</summary>
-        private const int BarRow = SceneRows + 1;
+        private int BarRow => FrameLayout.RowsAboveForm(SimUnit) + 1;
 
         /// <summary>
         ///     Which screen row the body starts on, and therefore where an open panel's own top border goes.
@@ -70,7 +71,7 @@ namespace WolfCurses.Demo.Screens
         ///         place and hit-tests it in another, off by exactly the chrome it forgot.
         ///     </para>
         /// </summary>
-        private const int BodyRow = BarRow + 2;
+        private int BodyRow => BarRow + 2;
 
         /// <summary>
         ///     How many rows the body occupies, whatever is in it. Fixed rather than measured for the reason
@@ -445,7 +446,7 @@ namespace WolfCurses.Demo.Screens
                     new MenuBarEntry("About the menu bar", ShowAbout),
                     new MenuBarEntry("Keys and the pointer", ShowKeys)));
 
-            // Told, not inferred. See SceneRows and BodyRow for what each of these two is counting.
+            // Told, not inferred. See BarRow and BodyRow for what each of these two is counting.
             _bar.BarRow = BarRow;
             _bar.PanelRow = BodyRow;
             _bar.Width = _width;

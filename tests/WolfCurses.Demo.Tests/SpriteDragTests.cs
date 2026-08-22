@@ -27,10 +27,12 @@ namespace WolfCurses.Demo.Tests
     {
         /// <summary>
         ///     Where the picture starts, derived here independently of the screen's own counting so the two have to
-        ///     agree: the library contributes one un-terminated line above the form body, and the form opens with a
-        ///     blank line, a title, a readout and a reaction line.
+        ///     agree: the scene graph contributes one row above the form body (its spinner and the window's name,
+        ///     which this app's <c>OnPreRender</c> ends), and the form itself opens with a blank line, a title, a
+        ///     readout and a reaction line. Five, and the screen has to add the scene graph's one to its own four or
+        ///     every grab samples a cell-row further down the canvas than the pointer was on.
         /// </summary>
-        private const int PictureTopRow = 4;
+        private const int PictureTopRow = 5;
 
         [Fact]
         public void DraggingMovesThePenguinAndAHoverDoesNot()
@@ -91,6 +93,43 @@ namespace WolfCurses.Demo.Tests
         }
 
         [Fact]
+        public void TheGrabRectangleStartsOnThePicturesOwnFirstRow()
+        {
+            using var game = Opened();
+
+            // Walked to the top of the canvas first, because that is the only place a one row error in the hit
+            // rectangle can be seen at all: anywhere else the row above and the row below are both penguin, and a
+            // drag is measured from its own press, so the error cancels for every frame after the first one.
+            for (var press = 0; press < 60; press++)
+                game.Press(ConsoleKey.UpArrow);
+
+            Settle(game);
+
+            var top = TopRowOnScreen(game);
+
+            // The two derivations of the same fact, made to agree out loud. Without this the test below would still
+            // pass while measuring from a row nobody draws on.
+            Assert.Equal(PictureTopRow, top);
+
+            var start = Picture(game);
+
+            // The reaction line, one row above the picture. Nothing of the canvas is drawn there, so a press on it
+            // must take hold of nothing - and while the screen counted only its own rows it answered that row with
+            // canvas row zero and dragged the penguin sitting there.
+            Sweep(game, top - 1);
+            Settle(game);
+
+            Assert.Equal(start, Picture(game));
+
+            // The other side of the same edge, so a rectangle pushed one row the other way fails here rather than
+            // passing quietly.
+            Sweep(game, top);
+            Settle(game);
+
+            Assert.True(start != Picture(game), "a press on the picture's own first row took hold of nothing");
+        }
+
+        [Fact]
         public void TheScreenAsksForPointerReportingAndHandsItBackWhenItCloses()
         {
             // Motion is one event for every cell the pointer crosses, so it is asked for by the screen that wants
@@ -139,6 +178,43 @@ namespace WolfCurses.Demo.Tests
             game.App.PumpInput();
         }
 
+        /// <summary>
+        ///     Which row the picture is really drawn on, read off the frame rather than counted a second time here.
+        ///     The reaction line is the last thing composed above it, so the row after it is the picture's own first.
+        /// </summary>
+        /// <param name="game">The running demo.</param>
+        /// <returns>The screen row.</returns>
+        private static int TopRowOnScreen(DrivenDemoApp game)
+        {
+            var rows = game.Screen.Split('\n');
+
+            for (var row = 0; row < rows.Length; row++)
+            {
+                if (rows[row].Contains("ARROW KEYS", StringComparison.Ordinal))
+                    return row + 1;
+            }
+
+            Assert.Fail("the screen never drew its reaction line:" + Environment.NewLine + game.Describe());
+            return -1;
+        }
+
+        /// <summary>
+        ///     Presses over the left penguin on one row and sweeps right with the button held, which is a whole drag.
+        ///     The column is where that penguin is by construction rather than by measurement: it is built at canvas
+        ///     x zero and nothing in this test moves it sideways before the sweep.
+        /// </summary>
+        /// <param name="game">The running demo.</param>
+        /// <param name="row">The screen row to press and sweep along.</param>
+        private static void Sweep(DrivenDemoApp game, int row)
+        {
+            Send(game, 1, row, MouseButtonEnum.Left, MouseEventKindEnum.Press);
+
+            for (var column = 3; column <= 17; column += 2)
+                Send(game, column, row, MouseButtonEnum.Left, MouseEventKindEnum.Move);
+
+            Send(game, 17, row, MouseButtonEnum.Left, MouseEventKindEnum.Release);
+        }
+
         /// <summary>How many rows the picture covers, measured off the screen rather than assumed.</summary>
         /// <param name="game">The running demo.</param>
         /// <returns>The row count.</returns>
@@ -156,14 +232,20 @@ namespace WolfCurses.Demo.Tests
         }
 
         /// <summary>
-        ///     The picture, stripped, which is what changes when a penguin moves. Read off the screen rather than
-        ///     out of the form, so what is asserted is what a viewer would see.
+        ///     The picture, escapes and all, which is what changes when a penguin moves. Read off the screen rather
+        ///     than out of the form, so what is asserted is what a viewer would see.
+        ///     <para>
+        ///         <b>The raw frame, deliberately.</b> A half-block row is one glyph repeated for its whole width
+        ///         and the entire picture is carried in the colours, so stripped of its escapes it reads the same
+        ///         wherever the penguins are standing - an assertion made on the stripped rows compares nothing at
+        ///         all and passes whatever the drag did.
+        ///     </para>
         /// </summary>
         /// <param name="game">The running demo.</param>
         /// <returns>The picture's rows, joined.</returns>
         private static string Picture(DrivenDemoApp game)
         {
-            var rows = game.Screen.Split('\n');
+            var rows = game.RawScreen.Split('\n');
             var wanted = new StringBuilder();
 
             for (var row = PictureTopRow; row < rows.Length; row++)

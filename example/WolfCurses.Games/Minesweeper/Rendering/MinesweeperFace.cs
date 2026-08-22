@@ -429,6 +429,30 @@ namespace WolfCurses.Games.Minesweeper
         /// <summary>Which row the pointer is over; see <see cref="HoveredX" />.</summary>
         public int HoveredY { get; set; } = -1;
 
+        /// <summary>
+        ///     Which colours the panel emits, for tests only. <see cref="AnsiColorModeEnum.Auto" /> is the shipped
+        ///     behaviour and asks the environment, which is what lets the arcade follow <c>NO_COLOR</c> and the
+        ///     demo's render-type override.
+        ///     <para>
+        ///         <b>It exists so that the colour tests do not have to set <c>NO_COLOR</c> themselves.</b> Six tests
+        ///         in <c>MinesweeperFaceTests</c> are about the bevel and the palette, so they read escape sequences
+        ///         back out of the rendered panel - and this class emits none at all when the resolved mode is
+        ///         <see cref="AnsiColorModeEnum.None" />, which is the library's own byte-identity invariant working
+        ///         exactly as intended. That made all six fail on any machine or CI job with <c>NO_COLOR</c> set,
+        ///         for a panel that was drawing perfectly.
+        ///     </para>
+        ///     <para>
+        ///         Pinning the mode on the object is the repository's documented answer, and the alternative is
+        ///         specifically ruled out: <c>DetectColorMode</c> is process-cached, so a test setting the variable
+        ///         and resetting the cache would race every other test in the assembly rather than only itself.
+        ///     </para>
+        /// </summary>
+        internal AnsiColorModeEnum ColorMode
+        {
+            get => _grid.ColorMode;
+            set => _grid.ColorMode = value;
+        }
+
         /// <summary>Which column a tile's content sits in.</summary>
         /// <param name="x">Which column of tiles.</param>
         /// <returns>The column.</returns>

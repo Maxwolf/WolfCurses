@@ -1,4 +1,4 @@
-// Created by Maxwolf (bigmaxwolf.com)
+﻿// Created by Maxwolf (bigmaxwolf.com)
 // Timestamp 08/22/2026
 
 using System;
@@ -566,7 +566,7 @@ namespace WolfCurses.Demo.Screens
             // Less one, because the last of those rows is the one the form's own text continues on rather than a
             // row of its own: a pre-render ending in a newline hands the form a fresh line, one that does not
             // shares its last.
-            return Math.Max(0, CountRows(SimUnit?.OnPreRender()) - 1);
+            return FrameLayout.RowsAboveForm(SimUnit);
         }
 
         /// <summary>The pad with its notes beside it, or under it when there is no room for both.</summary>

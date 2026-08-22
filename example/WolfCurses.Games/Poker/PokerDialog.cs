@@ -132,8 +132,6 @@ namespace WolfCurses.Games.Poker
         {
             base.OnFormPostCreate();
 
-            ParentWindow.PromptText = "1-5 hold, SPACE draw, ENTER deal again, TAB pictures, ESC to leave";
-
             _game = new PokerGame(SimUnit.Random);
             _art = new CardTableArt(_images);
 
@@ -366,6 +364,10 @@ namespace WolfCurses.Games.Poker
             AppendPaytable(body, tableRows);
             body.AppendLine();
             body.Append(_game.Message);
+
+            // Drawn here rather than set as the window's prompt, which is the row this screen suppressed. See
+            // GameControls for why that row never reaches the screen and why this one is free.
+            GameControls.Append(body, "1-5 hold, SPACE draw, ENTER deal again, TAB pictures, ESC to leave");
             return body.ToString();
         }
 

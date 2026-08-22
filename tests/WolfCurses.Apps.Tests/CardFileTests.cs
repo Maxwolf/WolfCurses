@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text.RegularExpressions;
 using WolfCurses.Apps.CardFile;
 using WolfCurses.Apps.Tests.Support;
@@ -93,6 +93,11 @@ namespace WolfCurses.Apps.Tests
         [Fact]
         public void ATabWithNothingBehindItIsDrawnGreyedRatherThanLeftOut()
         {
+            // Same trap as the two greyed-menu tests, reached a different way: with colour off Apply hands its
+            // input straight back, so "live" and "dead" become the bare letters A and T, both of which are in a row
+            // of alphabet tabs whatever it is painted in. Without this the test passes and proves nothing.
+            RequiresColor();
+
             using var suite = OpenCardFile();
 
             var row = suite.RawScreen.Split('\n')[CardChrome.TabRow + 1];
@@ -448,6 +453,8 @@ namespace WolfCurses.Apps.Tests
         [Fact]
         public void ClearFieldIsGreyedOnTheNameSinceTheIndexIsByName()
         {
+            RequiresColor();
+
             using var suite = OpenCardFile();
 
             // The card opens with the highlight on Name, which is the one field that cannot be emptied: the deck
@@ -537,6 +544,8 @@ namespace WolfCurses.Apps.Tests
         [Fact]
         public void SaveIsGreyedUntilThereIsSomethingToSave()
         {
+            RequiresColor();
+
             using var suite = OpenCardFile();
 
             suite.Press(ConsoleKey.F10);
@@ -605,7 +614,27 @@ namespace WolfCurses.Apps.Tests
         /// <returns>TRUE when it is greyed.</returns>
         private static bool IsGreyed(string row)
         {
-            return row.Contains(DosTheme.MenuDisabled.OpenSequence(), StringComparison.Ordinal);
+            // The emptiness guard is load-bearing, because string.Contains("") is TRUE. With colour off the
+            // disabled style resolves to no sequence at all, so the unguarded version answered "greyed" for every
+            // row it was handed, and the test that only checks the positive passed for the wrong reason.
+            var greyed = DosTheme.MenuDisabled.OpenSequence();
+            return !string.IsNullOrEmpty(greyed) && row.Contains(greyed, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        ///     Skips a test that can only be answered in colour.
+        ///     <para>
+        ///         A disabled entry differs from a live one in nothing but its colour, so where the environment has
+        ///         asked for none there is nothing on screen to read. Skipped rather than pinned to a mode: the
+        ///         style is chosen deep inside the running suite rather than on a widget a test can reach, and
+        ///         <c>AnsiConsole.ForcedColorMode</c> is process-wide, so setting it here would race every other
+        ///         collection in this assembly.
+        ///     </para>
+        /// </summary>
+        private static void RequiresColor()
+        {
+            Assert.SkipUnless(AnsiConsole.DetectColorMode() != AnsiColorModeEnum.None,
+                "NO_COLOR is set, so a disabled menu entry is drawn exactly like a live one.");
         }
 
         /// <summary>

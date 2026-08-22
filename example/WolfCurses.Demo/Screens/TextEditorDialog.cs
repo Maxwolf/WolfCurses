@@ -1,4 +1,4 @@
-// Created by Maxwolf (bigmaxwolf.com)
+﻿// Created by Maxwolf (bigmaxwolf.com)
 // Timestamp 08/22/2026
 
 using System;
@@ -459,7 +459,7 @@ namespace WolfCurses.Demo.Screens
 
             // Counted from the builder rather than written down, because the click arithmetic reads it and a
             // constant would go wrong the day a line is added above.
-            _fieldTopRow = rows.Count + 1;
+            _fieldTopRow = rows.Count + FrameLayout.RowsAboveForm(SimUnit);
             rows.Add(_frame.Render(string.Join(Environment.NewLine,
                 DocumentView.Render(_buffer, _viewport, TextStyle.None, _caretStyle))));
 

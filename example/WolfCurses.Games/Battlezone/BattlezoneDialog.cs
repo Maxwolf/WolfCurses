@@ -97,13 +97,6 @@ namespace WolfCurses.Games.Battlezone
         {
             base.OnFormPostCreate();
 
-            // Kept under eighty columns on purpose: the prompt is a real row of the frame, and one long enough to
-            // wrap costs a row of the view on the smallest terminal this has to fit. That budget is what pushed
-            // ENTER off this line when the mouse went on it: ENTER does nothing at all until the game is over, and
-            // the message that appears at that moment names it, which is the card tables' rule - the player who
-            // does not know what to do next is reading the screen rather than the prompt.
-            ParentWindow.PromptText = "W/S or wheel gear, A/D steer, SPACE or click fires, TAB view, ESC leaves";
-
             RestartOnActivate(_frame);
             NewGame();
         }
@@ -287,6 +280,12 @@ namespace WolfCurses.Games.Battlezone
             sb.AppendLine();
             sb.AppendLine(PictureIsWorthIt(rows) ? PaintPicture(columns, rows) : PaintText(columns, rows));
             sb.Append(_field.Message);
+
+            // Drawn here rather than set as the window's prompt, which is the row this screen suppressed. See
+            // GameControls for why that row never reaches the screen. ENTER is off the line deliberately: it does
+            // nothing until the game is over, and the message that appears at that moment names it, which is the
+            // card tables' rule. X was on no line at all until now.
+            GameControls.Append(sb, "W/S or wheel gear, A/D steer, X brake, SPACE/click fire, TAB view, ESC leave");
 
             _rendered = sb.ToString();
         }

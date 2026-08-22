@@ -91,7 +91,7 @@ Menus are steerable with the arrow keys as well as by typing a number, and typed
 
 Three example apps live in this repo, each with its own README:
 
-- **[The library tour](example/WolfCurses.Demo/README.md)**: images, sprites, widgets, colour, and every dialog.
+- **[The library tour](example/WolfCurses.Demo/README.md)**: images, sprites, widgets, colour, every dialog, the menu bar, keypad, calendar, tables, text editing and mouse events.
 - **[The office suite](example/WolfCurses.Apps/README.md)**: small productivity applications. A word processor after the MS-DOS Editor, a BASIC environment after the one that shipped with DOS, a spreadsheet with formulas and charts, a desk calculator with a paper tape, and a calendar with a clock in it.
 - **[The arcade](example/WolfCurses.Games/README.md)**: ten games, each built on a different part of the library. Snake, Minesweeper, Tetris, WolfChess 5000, Missile Command, Labyrinth, Pac-Man, Blackjack, Poker and Battlezone.
 
@@ -288,7 +288,7 @@ Two more pieces sit alongside them, for the screens that are a table rather than
 ## Input
 
 - **Keys arrive as you'd expect.** ENTER submits the typed command, BACKSPACE edits it, everything else both fills the prompt and reaches the focused form.
-- **Mouse is opt-in.** `AnsiConsole.EnableMouse()` and presses start arriving as `OnMousePressed(MouseEvent)` with the cell that was clicked. Releases, moves and wheel notches arrive as `OnMouseEvent(MouseEvent)`, which is what click-and-drag, a pointer you draw yourself and scrolling are built from; motion is a further opt-in (`InputManager.ReportsMouseMotion`) because it is one event per cell the pointer crosses. The wheel is its own event kind rather than a button, so nothing that acts on a click can be triggered by a scroll. **Windows only for now**; elsewhere it returns false having written nothing, so nothing changes.
+- **Mouse is opt-in.** `AnsiConsole.EnableMouse()` and presses start arriving as `OnMousePressed(MouseEvent)` with the cell that was clicked. Releases, moves and wheel notches arrive as `OnMouseEvent(MouseEvent)` - never a press - which is what click-and-drag, a pointer you draw yourself and scrolling are built from; motion is a further opt-in (`InputManager.ReportsMouseMotion`) because it is one event per cell the pointer crosses. The wheel is its own event kind rather than a button, so nothing that acts on a click can be triggered by a scroll. **Windows only for now**; elsewhere it returns false having written nothing, so nothing changes.
 - **`PlaybackClock`** is where you are in something that has a length - a video, an animation, a recording being replayed. It survives being paused and can be put somewhere else without being restarted, and **it is deliberately the opposite of `IntervalTimer`**: that one drops a late period on purpose, because repaying the debt is a sprite teleporting; this one never drops anything, because a frame's time is a fact about the media rather than about how often you asked. Falling behind means skipping frames to catch up, not slowing the film down. `FrameAt(fps)` is the frame that belongs on screen now, which is what makes catching up a `while` loop rather than a decision.
 
 - **`HeldAxis`** solves a problem every real-time terminal app hits: a terminal never reports a key being *let go*, so a held key arrives as a burst of presses. Feed it `Press(-1)` and read `Direction`; it infers the key-up from silence.

@@ -98,8 +98,6 @@ namespace WolfCurses.Games.PacMan
         {
             base.OnFormPostCreate();
 
-            ParentWindow.PromptText = "Arrows or WASD to steer, ENTER or ESC to quit";
-
             _game = new PacManGame(SimUnit.Random);
             _board = PacManView.CreateGrid(_game);
             _rendered = Compose();
@@ -219,6 +217,10 @@ namespace WolfCurses.Games.PacMan
             // TextColumns rather than PadRight, because the board's rows are a few hundred bytes of colour each and
             // padding them by character count would shred the panel diagonally down the screen.
             body.Append(TextColumns.Join(_board.Render(), ComposePanel(), 3));
+
+            // Drawn here rather than set as the window's prompt, which is the row this screen suppressed. See
+            // GameControls for why that row never reaches the screen and why this one is free.
+            GameControls.Append(body, "Arrows or WASD to steer, ENTER or ESC to quit");
             return body.ToString();
         }
 

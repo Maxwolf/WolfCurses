@@ -1,4 +1,4 @@
-// Created by Maxwolf (bigmaxwolf.com)
+﻿// Created by Maxwolf (bigmaxwolf.com)
 // Timestamp 08/22/2026
 
 using System;
@@ -121,12 +121,6 @@ namespace WolfCurses.Demo.Screens
             BorderStyle = ConsoleColor.DarkGray,
             TitleStyle = new TextStyle(bold: true)
         };
-
-        /// <summary>
-        ///     How many rows the scene graph draws above this form, measured rather than assumed. See
-        ///     <see cref="MeasureFormOrigin" /> for why writing it down is how a hit test ends up a row out.
-        /// </summary>
-        private int _aboveForm = 1;
 
         /// <summary>What the last click did, in the control's own terms.</summary>
         private string _clicked = string.Empty;
@@ -381,8 +375,6 @@ namespace WolfCurses.Demo.Screens
         /// </summary>
         private void Compose()
         {
-            MeasureFormOrigin();
-
             var width = Math.Max(40, AnsiConsole.SafeWindowWidth() - 1);
             var sb = new StringBuilder();
 
@@ -393,7 +385,7 @@ namespace WolfCurses.Demo.Screens
             // The day-name row sits one row below the box's top edge, and the dates start one column past its left
             // border because the box carries no padding. Both halves have to be told to the grid before anything
             // asks it where a date is drawn or which date a cell holds.
-            _grid.Row = CountLineBreaks(sb) + 1 + _aboveForm;
+            _grid.Row = FrameLayout.CountLineBreaks(sb) + 1 + FrameLayout.RowsAboveForm(SimUnit);
             _grid.Column = 1;
 
             _frame.Title = _grid.Title;
@@ -415,7 +407,7 @@ namespace WolfCurses.Demo.Screens
             // same bug menu column reflow exists to fix. So the rules go in while whole ones fit, and the key hints
             // always do: a screen whose keys are undocumented is worse off than one whose reasons are.
             var hints = Wrap(_dimStyle, Hints, width);
-            var spare = AnsiConsole.SafeWindowHeight() - 3 - _aboveForm - CountLineBreaks(sb) - RowsIn(hints);
+            var spare = AnsiConsole.SafeWindowHeight() - 3 - FrameLayout.RowsAboveForm(SimUnit) - FrameLayout.CountLineBreaks(sb) - RowsIn(hints);
 
             foreach (var rule in _rules)
             {
@@ -536,22 +528,6 @@ namespace WolfCurses.Demo.Screens
             return sb.ToString();
         }
 
-        /// <summary>How many line breaks are already in the builder, which is the row the next line will occupy.</summary>
-        /// <param name="builder">The frame being composed.</param>
-        /// <returns>The count.</returns>
-        private static int CountLineBreaks(StringBuilder builder)
-        {
-            var breaks = 0;
-
-            for (var i = 0; i < builder.Length; i++)
-            {
-                if (builder[i] == '\n')
-                    breaks++;
-            }
-
-            return breaks;
-        }
-
         /// <summary>How many screen rows a finished block of text occupies.</summary>
         /// <param name="text">The block.</param>
         /// <returns>The count, which is one more than the breaks inside it.</returns>
@@ -566,47 +542,6 @@ namespace WolfCurses.Demo.Screens
             }
 
             return rows;
-        }
-
-        /// <summary>
-        ///     Works out how many rows the scene graph draws above this form, which is what turns the form's own
-        ///     row numbering into the screen rows a mouse press reports.
-        ///     <para>
-        ///         <b>A form does not own the whole screen and its first line is not row zero.</b> Above it sit the
-        ///         spinner, the focused window's name and whatever <c>SimulationApp.OnPreRender</c> adds, and this
-        ///         app's ends a line where the office suite's does not. Written down as a constant, that difference
-        ///         is invisible until every click lands a row out, which reads as a broken hit test rather than as
-        ///         arithmetic belonging to something else entirely.
-        ///     </para>
-        ///     <para>
-        ///         So it is measured, from the frame the presenter last put on screen:
-        ///         <see cref="WolfCurses.Core.SceneGraph.ScreenBuffer" /> is published for exactly this sort of
-        ///         reading. What is found there is the previous frame, which is fine, because the number being read
-        ///         off it is the one thing about this layout that does not change. Until there is a frame to read,
-        ///         the last answer stands.
-        ///     </para>
-        /// </summary>
-        private void MeasureFormOrigin()
-        {
-            var frame = SimUnit?.SceneGraph?.ScreenBuffer;
-
-            if (string.IsNullOrEmpty(frame) || string.IsNullOrEmpty(_rendered))
-                return;
-
-            var at = frame.IndexOf(_rendered, StringComparison.Ordinal);
-
-            if (at < 0)
-                return;
-
-            var rows = 0;
-
-            for (var i = 0; i < at; i++)
-            {
-                if (frame[i] == '\n')
-                    rows++;
-            }
-
-            _aboveForm = rows;
         }
     }
 }

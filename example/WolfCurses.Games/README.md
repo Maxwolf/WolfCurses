@@ -14,14 +14,14 @@ These are terminal UIs, so run them from a real terminal window rather than by d
 | --- | --- | --- |
 | **Snake** | Arrows or WASD, ENTER or ESC to quit | Steering, paced off the system tick |
 | **Minesweeper** | Type `B4`, `F B4` to flag, `R` new board. With a mouse: the square under the pointer lights up, left opens, right flags, and clicking the face deals a new board | Typed input and the pointer, on a panel drawn the way Windows 95 drew it |
-| **Tetris** | Arrows or WASD, UP to turn, SPACE to drop, `R` for a new well | Layout: the only screen putting two things side by side |
+| **Tetris** | Arrows or WASD, UP to turn, SPACE to drop, `R` for a new well | Layout: two panels in a column beside the well, pinned so nothing shifts as you play |
 | **WolfChess 5000** | Type a move (`e4`, `Nf3`, `e2e4`) or arrows plus ENTER, `help` for commands | Real piece artwork composited into one image, and a bot that thinks in slices so the screen keeps moving |
 | **Missile Command** | Arrows or WASD aim, SPACE fires, `Z`/`X`/`C` picks a battery, TAB switches view. With a mouse: move to aim, click to fire, hold the button and sweep for a barrage | 30 fps ballistics on a picture the program *draws* rather than decodes |
-| **Labyrinth** | Arrows or WASD, `R` for a new maze | A world bigger than the terminal, so it needs a camera |
+| **Labyrinth** | Arrows or WASD, `R` for a new maze. With a mouse: the wheel looks up and down the maze, and your next move re-centres it | A world bigger than the terminal, so it needs a camera |
 | **Pac-Man** | Arrows or WASD | Walls as a connected network of lines, and four ghosts with one line of targeting logic each |
 | **Blackjack** | `H` hit, `S` stand, ENTER deals again, TAB toggles pictures, ESC leaves | Card artwork, fanned so only each card's corner shows |
-| **Poker** | `1`-`5` hold, SPACE draws, ENTER deals again, TAB toggles pictures, ESC leaves | Five-card draw, jacks or better, sharing every line of card code with blackjack |
-| **Battlezone** | `W`/`S` gear, `A`/`D` steer, SPACE fires, TAB switches view, ENTER replays, ESC leaves | A first-person wireframe view rather than a map: a camera, a horizon and a radar |
+| **Poker** | `1`-`5` hold, SPACE draws, ENTER deals again, TAB toggles pictures, ESC leaves | Five-card draw, jacks or better, with a paytable that lights the hand you were paid for |
+| **Battlezone** | `W`/`S` gear, `A`/`D` steer, `X` brakes, SPACE fires, TAB switches view, ENTER replays, ESC leaves. With a mouse: the wheel changes gear, left click fires | A first-person wireframe view rather than a map: a camera, a horizon and a radar |
 
 ## A few things worth knowing
 
@@ -31,7 +31,7 @@ These are terminal UIs, so run them from a real terminal window rather than by d
 
 **Battlezone is the only screen here that is a view rather than a map.** Everything else is shown whole from outside, so your information is complete and the difficulty is in what to do with it. Here the screen shows what is in front of the tank and the radar shows only bearings, so combining them while something you cannot see manoeuvres behind you *is* the game. Its character view wants about 30 rows before it will switch to pictures, since a wireframe is the one subject a character grid is genuinely good at.
 
-**The throttle is a gear that stays where you put it.** Holding a direction and steering at the same time does not work in a terminal: the operating system repeats only the *last* key pressed, so a tank driven by two held keys stops dead every time you turn. The original cabinet used levers, and so does this.
+**The throttle is a gear that stays where you put it.** Holding a direction and steering at the same time does not work in a terminal: the operating system repeats only the *last* key pressed, so a tank driven by two held keys stops dead every time you turn. The original cabinet used levers, and so does this. The mouse wheel works the same lever: one notch, one gear.
 
 ## Chess
 

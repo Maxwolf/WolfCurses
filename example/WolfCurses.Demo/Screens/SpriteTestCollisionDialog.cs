@@ -1,4 +1,4 @@
-// Created by Maxwolf (bigmaxwolf.com)
+﻿// Created by Maxwolf (bigmaxwolf.com)
 // Timestamp 07/17/2026
 
 using System;
@@ -225,9 +225,11 @@ namespace WolfCurses.Demo.Screens
         /// <summary>
         ///     Builds the whole frame, and notes which row the picture starts on while it is building it.
         ///     <para>
-        ///         <b>The row is counted from the builder, never written down as a constant.</b> A constant is
-        ///         right until somebody adds a line to the header, at which point every grab lands one row out and
-        ///         nothing anywhere reports a problem. Counting the breaks already in the builder cannot drift.
+        ///         <b>The row is counted, never written down as a constant.</b> A constant is right until somebody
+        ///         adds a line to the header, at which point every grab lands one row out and nothing anywhere
+        ///         reports a problem. There are two counts and both are needed: the breaks already in the builder,
+        ///         which are form rows, and <see cref="RowsAboveForm" />, which is what turns them into the window
+        ///         rows a pointer reports.
         ///     </para>
         ///     <para>
         ///         Composing here rather than in <c>OnRenderForm</c> is the other half: the scene graph calls that
@@ -255,25 +257,28 @@ namespace WolfCurses.Demo.Screens
                           $"{(_wasTouching ? "TOUCHING" : "apart")} | {_touches} touches");
             sb.AppendLine(_reaction);
 
-            Measure(CountLineBreaks(sb));
+            Measure(RowsAboveForm() + FrameLayout.CountLineBreaks(sb));
 
             sb.Append(_current);
             _frameText = sb.ToString();
         }
 
-        /// <summary>How many line breaks are already in the builder, which is the row the next line will occupy.</summary>
-        /// <param name="builder">The frame being composed.</param>
-        /// <returns>The count.</returns>
-        private static int CountLineBreaks(StringBuilder builder)
+        /// <summary>
+        ///     How many screen rows the scene graph writes above this form's own first line, which is what turns the
+        ///     builder's own row numbering into the rows a pointer reports.
+        ///     <para>
+        ///         <b>A form's line zero is not the window's row zero.</b> Every frame opens with the spinner and
+        ///         the focused window's name, neither of which can carry a line break, so the offset is however many
+        ///         lines <c>SimulationApp.OnPreRender</c> wrote: one here, because this app's ends its line, and none
+        ///         for a host whose version does not. Leaving it out is what made every grab sample a cell-row
+        ///         further down the canvas than the pointer was on, and it hid because a drag is measured from its
+        ///         own press, so the error cancels for every frame after the first and only the pick is wrong.
+        ///     </para>
+        /// </summary>
+        /// <returns>The number of complete rows drawn before this form's first line.</returns>
+        private int RowsAboveForm()
         {
-            var breaks = 0;
-            for (var i = 0; i < builder.Length; i++)
-            {
-                if (builder[i] == '\n')
-                    breaks++;
-            }
-
-            return breaks;
+            return FrameLayout.RowsAboveForm(SimUnit);
         }
 
         /// <summary>
@@ -285,6 +290,7 @@ namespace WolfCurses.Demo.Screens
         ///         the pointer is, which reads as the drag being broken rather than as the arithmetic being wrong.
         ///     </para>
         /// </summary>
+        /// <param name="topRow">The screen row the picture's first line is drawn on, not the form's own row.</param>
         private void Measure(int topRow)
         {
             _pictureTopRow = topRow;

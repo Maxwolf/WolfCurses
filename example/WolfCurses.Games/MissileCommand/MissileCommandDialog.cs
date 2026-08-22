@@ -132,12 +132,6 @@ namespace WolfCurses.Games.MissileCommand
         {
             base.OnFormPostCreate();
 
-            // The mouse is only advertised when the host actually got one - a prompt promising a click that the
-            // terminal will never report is worse than saying nothing.
-            ParentWindow.PromptText = AnsiConsole.MouseEnabled
-                ? "Move the mouse to aim and click to fire, or arrows/WASD and SPACE; Z/X/C picks a battery, TAB switches board, ENTER quits"
-                : "Arrows or WASD aim, SPACE fires, Z/X/C picks a battery, TAB switches board, ENTER or ESC quits";
-
             // Asked for by the screen that wants it rather than by the host, and handed back in OnFormClosing.
             // Motion is one event for every cell the pointer crosses, so an arcade whose other games only want
             // clicks should not be paying for it while they are the ones on screen - and the arcade's own menu
@@ -513,6 +507,14 @@ namespace WolfCurses.Games.MissileCommand
 
             sb.AppendLine(board);
             sb.Append(_field.Message);
+
+            // Drawn here rather than set as the window's prompt, which is the row this screen suppressed. See
+            // GameControls for why that row never reaches the screen. The mouse is still only advertised when the
+            // host actually got one, since promising a click the terminal will never report is worse than saying
+            // nothing, and it is asked live because this is now a row somebody reads.
+            GameControls.Append(sb, AnsiConsole.MouseEnabled
+                ? "Mouse aims and fires, or WASD/SPACE; Z/X/C battery, TAB board, ENTER quits"
+                : "Arrows/WASD aim, SPACE fires, Z/X/C battery, TAB board, ENTER or ESC quits");
 
             _rendered = sb.ToString();
         }

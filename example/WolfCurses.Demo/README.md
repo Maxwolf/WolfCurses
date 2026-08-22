@@ -2,7 +2,7 @@
 
 A guided walk through the parts of [WolfCurses](../../README.md) a program is built out of: menus, forms and dialogs, a custom module, the whole graphics stack, the progress and graph widgets, and colour.
 
-It is deliberately **not** a catalogue of every control. The office suite next door is where the editor-shaped half of the library lives - the menu bar, the keypad, the calendar grid, the table viewport, the scroll bar, the document types - because those are worth seeing inside a program that needs them rather than in a screen that exists to show them off.
+The editor-shaped half of the library is here too - the menu bar, the keypad, the calendar grid, the table viewport and its scroll bar, the document types - each on a screen of its own. The office suite next door shows the same controls doing a job.
 
 ```cmd
 dotnet run --project example/WolfCurses.Demo
@@ -24,6 +24,7 @@ It is also the smallest demonstration of how colour degrades. The styles are lef
 | --- | --- |
 | **Slideshow** | The `media/` photographs, one per tick |
 | **Compositing** | A transparent penguin alpha-composited over those same photographs |
+| **Open an image file** | The file browser, then the picture, or why this console cannot carry one |
 | **Show animated GIF** | An animated GIF playing on loop, with a scrub bar; SPACE pauses, LEFT/RIGHT step a frame |
 | **Image error handling** | Broken paths and truncated files becoming the magenta-and-black checkerboard |
 | **Force render type** | Overrides the whole graphics stack, then snaps back to the menu |
@@ -59,6 +60,19 @@ All three read fps and ms/frame, which measure different things on purpose. ms/f
 **Progress bars & graphs** animates `ProgressBar`, `MarqueeBar`, `Sparkline`, `BarChart` and `LineGraph` together off the simulation tick. Every one of them is just a string returned from the form's render.
 
 **Pride flags** is the proof that widget colour is general rather than a special case. LEFT and RIGHT walk seventeen flags, and each one is an ordinary `BarChart` with empty labels, no separator, values hidden and all values equal, which leaves nothing on a row but a full-width bar. Give it the flag's stepped ramp in `Spread` mode and you have stripes. Nothing flag-specific was added to the library.
+
+## Controls
+
+| Menu item | What it shows |
+| --- | --- |
+| **Menu bar** | Six pull-down menus over a document they change; F10 opens, ALT+letter often does not |
+| **Keypad** | A stamp pad of clickable keys: spans, hover, keys that go dead, the wheel to resize them |
+| **Calendar** | One month as a six-week grid; arrows and PGUP/PGDN move, a click picks a day |
+| **Record table** | A CSV read through named columns into a table viewport, a scroll bar and a record card |
+| **Text editor** | The document types: caret, tab stops, control characters drawn as pictures, find |
+| **Mouse events** | Press, move, release and wheel as they arrive, with the buttons held and the modifiers |
+
+**Text editor** is the only screen that sets `IForm.EditsText`, which is what lets ENTER and BACKSPACE reach a form at all. ENTER splits a line there, so ESC is the way out.
 
 ## Dialogs and prompts
 

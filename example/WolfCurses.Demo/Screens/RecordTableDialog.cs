@@ -1,4 +1,4 @@
-// Created by Maxwolf (bigmaxwolf.com)
+﻿// Created by Maxwolf (bigmaxwolf.com)
 // Timestamp 08/22/2026
 
 using System;
@@ -670,7 +670,7 @@ namespace WolfCurses.Demo.Screens
             // rectangle has to stay square either way.
             sb.AppendLine(heading.Append(' ', _viewport.Width - used + 1, _headingStyle).Render());
 
-            _bodyTopRow = FormTopRow + CountLineBreaks(sb);
+            _bodyTopRow = FrameLayout.RowsAboveForm(SimUnit) + FrameLayout.CountLineBreaks(sb);
             _barColumn = BodyColumn + _viewport.Width;
 
             var cells = _bar.Cells();
@@ -810,22 +810,6 @@ namespace WolfCurses.Demo.Screens
             // rather than reflowed onto the next one - which would push everything below it down a row. Cutting the
             // text before it is styled keeps this a plain substring instead of a walk through escape sequences.
             return width > 0 && text.Length > width ? text.Substring(0, width) : text;
-        }
-
-        /// <summary>How many line breaks are already in the builder, which is the row the next line will occupy.</summary>
-        /// <param name="builder">The frame being composed.</param>
-        /// <returns>The count.</returns>
-        private static int CountLineBreaks(StringBuilder builder)
-        {
-            var breaks = 0;
-
-            for (var i = 0; i < builder.Length; i++)
-            {
-                if (builder[i] == '\n')
-                    breaks++;
-            }
-
-            return breaks;
         }
     }
 }
