@@ -92,7 +92,7 @@ Menus are steerable with the arrow keys as well as by typing a number, and typed
 Three example apps live in this repo, each with its own README:
 
 - **[The library tour](example/WolfCurses.Demo/README.md)**: images, sprites, widgets, colour, and every dialog.
-- **[The office suite](example/WolfCurses.Apps/README.md)**: small productivity applications. A word processor after the MS-DOS Editor, a BASIC environment after the one that shipped with DOS, and a spreadsheet with formulas and charts.
+- **[The office suite](example/WolfCurses.Apps/README.md)**: small productivity applications. A word processor after the MS-DOS Editor, a BASIC environment after the one that shipped with DOS, a spreadsheet with formulas and charts, and a desk calculator with a paper tape.
 - **[The arcade](example/WolfCurses.Games/README.md)**: ten games, each built on a different part of the library. Snake, Minesweeper, Tetris, WolfChess 5000, Missile Command, Labyrinth, Pac-Man, Blackjack, Poker and Battlezone.
 
 ```cmd
@@ -272,7 +272,9 @@ Two more pieces sit alongside them, for the screens that are a table rather than
 - **`TableViewport`** is `TextViewport` for a grid whose columns are not all one wide. Every sum in it would be a multiplication if they were, and each one is the sum somebody writes inline, gets right for the fixed-width case, and finds is wrong the first time a column is widened. It answers which columns fit, where one is drawn, which one a click landed in, and how far right you may scroll before the last column stops moving.
 - **`TextRow`** builds a row out of styled runs and can then draw *a range of its columns*. That is what anything drawing a panel, a tooltip or a pointer over the screen behind it needs, and it cannot be done to a finished styled string: twenty columns of coloured text is several hundred characters long, so cutting by column lands inside an escape sequence and spills the rest into the terminal as text. Keep the row as plain runs, resolve the colour at the moment of drawing, and slicing is ordinary arithmetic. Adjacent runs coalesce on the escape they resolve to, and a row nobody coloured comes out byte-for-byte plain.
 
-`AnsiText.Fit` is the smallest version of the same problem: pad or trim text to an exact number of *visible* columns. `PadRight` pads a coloured cell to nothing and `Substring` cuts an escape in half; this measures with the same walk `VisibleLength` uses and carries every escape through a trim, including the reset that fell past the cut.
+- **`Keypad`** is a grid of labelled, clickable cells: a calculator's keys, a dialog's buttons, a game's on-screen controls. Same principle again, because its keys are not all one width: the layout is worked out once and read by both the drawing and the hit test. Spanning keys get their box-drawing junctions right on their own, since each is chosen from the lines that actually meet it.
+
+`AnsiText.Fit` is the smallest version of the same problem: pad or trim text to an exact number of *visible* columns. `PadRight` pads a coloured cell to nothing and `Substring` cuts an escape in half; this measures with the same walk `VisibleLength` uses and carries every escape through a trim, including the reset that fell past the cut. `AnsiText.Slice` generalizes it to any range, which is how you draw something over a row a widget has already styled.
 
 ## Input
 

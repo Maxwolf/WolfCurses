@@ -88,6 +88,70 @@ namespace WolfCurses.Tests.Graphics
         }
 
         [Fact]
+        public void SlicingKeepsARangeOfTheVisibleColumns()
+        {
+            Assert.Equal("cde", AnsiText.Slice("abcdefgh", 2, 3));
+            Assert.Equal("abc", AnsiText.Slice("abcdefgh", 0, 3));
+            Assert.Equal("gh", AnsiText.Slice("abcdefgh", 6, 99));
+        }
+
+        [Fact]
+        public void SlicingAskingForNothingOrForPastTheEndGivesNothing()
+        {
+            Assert.Equal(string.Empty, AnsiText.Slice("abc", 0, 0));
+            Assert.Equal(string.Empty, AnsiText.Slice("abc", 0, -1));
+            Assert.Equal(string.Empty, AnsiText.Slice("abc", 9, 4));
+            Assert.Equal(string.Empty, AnsiText.Slice(null, 0, 4));
+        }
+
+        [Fact]
+        public void ASliceIsMeasuredInColumnsRatherThanCharacters()
+        {
+            // Six visible columns in fifteen characters. Substring(2, 3) would land inside the opening sequence.
+            Assert.Equal(3, AnsiText.VisibleLength(AnsiText.Slice(Styled, 2, 3)));
+            Assert.Equal("cde", AnsiText.StripEscapes(AnsiText.Slice(Styled, 2, 3)));
+        }
+
+        [Fact]
+        public void ASliceCarriesEveryEscapeThroughFromBothSides()
+        {
+            var middle = AnsiText.Slice(Styled, 2, 3);
+
+            // Both halves matter and for opposite reasons: without the opening sequence the run arrives unstyled,
+            // and without the reset the colour runs on across everything drawn after it.
+            Assert.Equal("\u001B[31mcde\u001B[0m", middle);
+        }
+
+        [Fact]
+        public void SlicingBetweenTwoRunsKeepsBothOfTheirColours()
+        {
+            const string two = "\u001B[31mred\u001B[0m\u001B[32mgreen\u001B[0m";
+
+            var across = AnsiText.Slice(two, 2, 3);
+
+            Assert.Equal("dgr", AnsiText.StripEscapes(across));
+
+            // The green opens where it did, so the two halves of the cut are still drawn differently.
+            Assert.Contains("\u001B[32m", across, System.StringComparison.Ordinal);
+            Assert.Contains("\u001B[31m", across, System.StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void EveryColumnOfARowCanBeReachedByOneSliceOrAnother()
+        {
+            // The property a caller compositing something over a row depends on: cutting a row into two pieces and
+            // putting them back together loses nothing visible.
+            for (var at = 0; at <= 6; at++)
+            {
+                var left = AnsiText.Slice(Styled, 0, at);
+                var right = AnsiText.Slice(Styled, at, 6 - at);
+
+                Assert.Equal("abcdef", AnsiText.StripEscapes(left) + AnsiText.StripEscapes(right));
+                Assert.Equal(6, AnsiText.VisibleLength(left) + AnsiText.VisibleLength(right));
+            }
+        }
+
+        [Fact]
         public void EveryFittedRowIsExactlyTheWidthAsked()
         {
             // The invariant the callers rely on, over a spread of inputs rather than one. A table whose cells are

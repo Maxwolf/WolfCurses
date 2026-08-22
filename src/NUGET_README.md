@@ -115,6 +115,8 @@ Every widget takes colours and ramps, and colour is entirely opt-in: with styles
 
 **[Editable text](https://github.com/Maxwolf/WolfCurses#editable-documents).** `TextBuffer`, `TextViewport`, `TabStops`, `ControlPictures`, `TextSearch` and `TextWords` in `WolfCurses.Documents` are a document, the window onto it, the two halves of the translation between where a character is stored and where it is drawn, and finding and counting things in it, so an editor-shaped screen does not start by writing all six. The last of those is the one nobody expects: a terminal obeys a control character rather than drawing it, and a form feed used as a page break moves the cursor mid-row. `DelimitedText` reads and writes CSV properly, including the quoted field with a line break in it that no line-by-line splitter can handle at all. `MenuBar` and `ScrollBar` are the pull-down bar and the bar down the side; the menu bar takes presses and pointer movement, so an open menu highlights whatever you hover, and an entry that says it cannot be used just now is drawn greyed rather than merely being inert.
 
+**Clickable layouts.** `Keypad` is a grid of labelled, clickable cells with spanning keys, whose layout is read by both the drawing and the hit test so the two cannot disagree.
+
 **Tables.** `TableViewport` is the scrolling window onto a grid whose columns are *not* all one wide: which columns fit, where one is drawn, which one a click landed in, and how far right there is to scroll. `TextRow` builds a row out of styled runs and can draw a range of its columns, which is how a menu panel or a tooltip is drawn over the screen behind it: a finished styled row cannot be cut by column, because the cut lands inside an escape sequence.
 
 **Real-time screens.** `IntervalTimer` paces anything that moves on its own, off the system tick rather than the once-a-second simulation tick. A late period is dropped rather than banked, so a slow frame is never repaid as a burst of instant ones.
@@ -127,7 +129,7 @@ Three example apps ship in the repository, each with its own guide:
 
 - **[The library tour](https://github.com/Maxwolf/WolfCurses/blob/master/example/WolfCurses.Demo/README.md)**: images, sprites, widgets, colour, and every dialog.
 - **[The arcade](https://github.com/Maxwolf/WolfCurses/blob/master/example/WolfCurses.Games/README.md)**: ten games, each built on a different part of the library.
-- **[The office suite](https://github.com/Maxwolf/WolfCurses/blob/master/example/WolfCurses.Apps/README.md)**: a word processor after the MS-DOS Editor, a BASIC environment after the one that shipped with DOS, and a spreadsheet.
+- **[The office suite](https://github.com/Maxwolf/WolfCurses/blob/master/example/WolfCurses.Apps/README.md)**: a word processor after the MS-DOS Editor, a BASIC environment after the one that shipped with DOS, a spreadsheet, and a desk calculator.
 
 Prebuilt, self-contained downloads for Windows, macOS and Linux are on the [releases page](https://github.com/Maxwolf/WolfCurses/releases), all of them in a single archive with no .NET install needed.
 

@@ -1,6 +1,7 @@
 // Created by Maxwolf (bigmaxwolf.com)
 // Timestamp 08/16/2026
 
+using System;
 using System.Text;
 
 namespace WolfCurses.Graphics
@@ -152,7 +153,7 @@ namespace WolfCurses.Graphics
                 return text;
 
             if (visible > width)
-                return Truncate(text, width);
+                return Slice(text, 0, width);
 
             var missing = width - visible;
 
@@ -171,22 +172,40 @@ namespace WolfCurses.Graphics
         }
 
         /// <summary>
-        ///     Keeps the first <paramref name="width" /> visible columns and every escape sequence in the string,
-        ///     including those after the cut.
+        ///     Keeps a range of a styled string's visible columns, carrying every escape sequence through.
         ///     <para>
-        ///         Carrying the trailing escapes through is what makes this safe rather than merely shorter. A
-        ///         styled run is an opening sequence, some text, and a reset; drop the reset because it fell past
-        ///         the cut and the colour runs on into everything drawn after it, which on a full screen means one
-        ///         over-long cell repaints the rest of the row.
+        ///         <b>This is the one safe way to cut a row somebody else has already styled.</b> A finished row is
+        ///         several hundred characters long for twenty columns of width, so <c>Substring</c> by column lands
+        ///         inside an escape and spills the remainder into the terminal as text. Walking the grammar instead
+        ///         keeps the columns and the escapes separate, which is what makes the cut mean what it says.
+        ///     </para>
+        ///     <para>
+        ///         <b>Every escape is kept, including those before the range and after it.</b> Both halves matter
+        ///         and for opposite reasons: drop the ones before and a run that was opened earlier arrives
+        ///         unstyled, drop the ones after and a run that was opened is never closed and its colour runs on
+        ///         across everything drawn later. Some of the kept sequences paint nothing, which costs a few bytes
+        ///         and is the price of not having to understand what any of them mean.
+        ///     </para>
+        ///     <para>
+        ///         Prefer <see cref="WolfCurses.Window.Control.TextRow" /> when you are <i>building</i> the row:
+        ///         keeping it as plain runs until it is drawn is cheaper and needs no parsing at all. This is for
+        ///         when a row arrives already finished, which is what every widget's own render gives you.
         ///     </para>
         /// </summary>
-        /// <param name="text">The text to trim.</param>
-        /// <param name="width">How many visible columns to keep.</param>
-        /// <returns>The trimmed text.</returns>
-        private static string Truncate(string text, int width)
+        /// <param name="text">The text to cut. Null and empty give an empty string.</param>
+        /// <param name="fromColumn">The first visible column to keep. Below zero counts as zero.</param>
+        /// <param name="count">How many visible columns to keep. Zero or fewer gives an empty string.</param>
+        /// <returns>That range of the text, styling intact.</returns>
+        public static string Slice(string text, int fromColumn, int count)
         {
+            if (string.IsNullOrEmpty(text) || count <= 0)
+                return string.Empty;
+
+            var from = Math.Max(0, fromColumn);
+            var end = from + count;
+
             var sb = new StringBuilder(text.Length);
-            var kept = 0;
+            var seen = 0;
             var i = 0;
 
             while (i < text.Length)
@@ -199,12 +218,10 @@ namespace WolfCurses.Graphics
                     continue;
                 }
 
-                if (kept < width)
-                {
+                if (seen >= from && seen < end)
                     sb.Append(text[i]);
-                    kept++;
-                }
 
+                seen++;
                 i++;
             }
 

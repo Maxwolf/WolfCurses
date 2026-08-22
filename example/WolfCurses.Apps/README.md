@@ -6,7 +6,7 @@ The other half of what a terminal used to be for. Where [the arcade](../WolfCurs
 dotnet run --project example/WolfCurses.Apps
 ```
 
-**Three applications so far**: a word processor laid out after the MS-DOS Editor, a BASIC environment after the one that shipped with MS-DOS, and a spreadsheet. Database, calculator and diary are planned and unwritten.
+**Four applications so far**: a word processor laid out after the MS-DOS Editor, a BASIC environment after the one that shipped with MS-DOS, a spreadsheet, and a desk calculator. Database and diary are planned and unwritten.
 
 That order is deliberate. Adding an application is meant to be a folder, a form carrying `[ParentWindow(typeof(OfficeWindow))]`, a value on `OfficeCommandsEnum`, and one `AddCommand` line in `OfficeWindow`, with no registration step anywhere. It is worth proving that claim before writing anything that depends on it.
 
@@ -58,12 +58,29 @@ The columns are **ruled off from each other**, in the column each cell was alrea
 
 Four pieces of this are in the library rather than here: `TableViewport` (which columns are on screen and which one a click landed in, when the columns are not all the same width), `TextRow` (a row built of styled runs, so the menu panel can be drawn over it), `DelimitedText` (reading and writing the file), and `TextBuffer` again, this time holding one line of text as the cell editor.
 
+## The calculator
+
+A desk calculator with a paper tape: keys you can click, keys you can type, and a record of what you did.
+
+**The keys.** Digits, the four operations, percent, square root, reciprocal, square, sign, rub out, clear entry, clear, and five memory keys. Click any of them, or type: **the number pad works**, and so does the top row of digits. ENTER totals, BACKSPACE rubs out, DEL clears the entry, C resets, and `%` `R` `N` are percent, root and sign. The memory keys are F5 to F8. Shortcuts here are function keys rather than control combinations for the same reason as in the spreadsheet: a combination the console keeps for itself never arrives, and a key that does nothing is worse than no key.
+
+**It works left to right with no precedence**, so `2 + 3 x 4` is **20**, not 14. That is what every desk calculator and adding machine has always done, and it is not a shortcut: pressing an operator finishes whatever was pending before starting the next. The tape is there so the working is visible rather than surprising. Pressing `=` again repeats the last operation, so `2 + 3 = = =` counts up in threes.
+
+**The arithmetic is decimal**, so `0.1 + 0.2` is `0.3` exactly. A calculator that says 0.30000000000000004 is a broken calculator however defensible the floating point; the spreadsheet next door uses double on purpose and for the opposite reason.
+
+**Percent takes its meaning from the operator waiting for it**, which surprises people every time and is exactly why the key is worth having: `200 + 10 %` is 220, a discount off a total without typing the total twice. With a times or a divide there is nothing for a percentage to be *of*, so it is simply a hundredth.
+
+**Dividing by nothing is an error you have to clear**, shown on the display, with every other key refused until it is. An error that quietly became part of a later sum would be worse than one that stops you.
+
+**Edit > Copy** puts the display on the suite clipboard as a plain number, so a total worked out here pastes into a spreadsheet cell next door; **Paste** types a number back in a digit at a time, so every rule about what may be typed still holds.
+
+The keys themselves are the library's `Keypad`, which is what this application exists to demonstrate: its keys are not all one width, so the layout has to be remembered rather than recomputed, and the drawing and the hit test read the same copy of it.
+
 ## Planned
 
 | Application | What only it will demonstrate |
 | --- | --- |
 | **Database** | Reading back what it wrote, so the only screen that has to distrust a file it created. Also where the four modal controls appear as a workflow rather than one at a time. |
-| **Calculator** | The mouse as labelled buttons. Minesweeper divides to find a cell and Missile Command aims at a continuum; a keypad needs a retained layout to hit-test against. |
 | **Diary** | Dates and wall-clock time: a month grid, today, and a clock that moves while you look at it. |
 
 ## ESC

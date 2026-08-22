@@ -36,7 +36,14 @@ namespace WolfCurses.Apps
         /// </summary>
         [Description("Spreadsheet - a grid, some sums and a chart.")] Spreadsheet = 3,
 
+        /// <summary>
+        ///     A desk calculator with a paper tape. The screen in the suite that is about the mouse as labelled
+        ///     buttons: its keys are not all the same width, so the layout has to be remembered rather than
+        ///     recomputed, which is what the library's keypad control is for.
+        /// </summary>
+        [Description("Calculator - a desk calculator with a tape.")] Calculator = 4,
+
         /// <summary>Closes the suite and returns to the operating system.</summary>
-        [Description("Quit.")] Quit = 4
+        [Description("Quit.")] Quit = 5
     }
 }

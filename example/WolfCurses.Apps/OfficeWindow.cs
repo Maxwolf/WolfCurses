@@ -40,6 +40,7 @@ namespace WolfCurses.Apps
             AddCommand(OpenWordProcessor, OfficeCommandsEnum.WordProcessor);
             AddCommand(OpenBasic, OfficeCommandsEnum.Basic);
             AddCommand(OpenSpreadsheet, OfficeCommandsEnum.Spreadsheet);
+            AddCommand(OpenCalculator, OfficeCommandsEnum.Calculator);
             AddCommand(Quit, OfficeCommandsEnum.Quit);
 
             RestoreMenuChrome();
@@ -124,6 +125,12 @@ namespace WolfCurses.Apps
         private void OpenSpreadsheet()
         {
             SetForm(typeof (Spreadsheet.SpreadsheetDialog));
+        }
+
+        /// <summary>Shows the desk calculator.</summary>
+        private void OpenCalculator()
+        {
+            SetForm(typeof (Calculator.CalculatorDialog));
         }
 
         /// <summary>Closes the suite and hands the terminal back.</summary>
