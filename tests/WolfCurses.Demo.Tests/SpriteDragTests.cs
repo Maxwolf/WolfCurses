@@ -149,6 +149,35 @@ namespace WolfCurses.Demo.Tests
             Assert.False(game.App.InputManager.ReportsMouseMotion);
         }
 
+        [Fact]
+        public void ThePictureIsMeasuredWithoutTheBlankRowAndThePromptUnderIt()
+        {
+            // A test about this file's own measuring rather than about the screen, which is worth having because the
+            // fault it pins was invisible rather than wrong-looking. PictureRows counted everything from the
+            // picture's first row to the end of the frame, which swept in the blank line and the input prompt the
+            // scene graph adds under the form, so it came out two rows over and PictureMiddleRow landed a row below
+            // the real middle. At the headless twenty-four-row fallback both still sat on the picture, so every
+            // assertion in this file went on passing and would have gone on passing on a taller console until the
+            // press missed.
+            using var game = Opened();
+
+            var rows = game.Screen.Split('\n');
+            var covered = PictureRows(game);
+
+            // The regression guard: measuring to the end of the frame makes this an equality rather than a less-than.
+            Assert.True(PictureTopRow + covered < rows.Length,
+                "the picture was measured to the very end of the frame, so the prompt was counted as part of it");
+
+            // Every row it claims is a drawn row, and the one after it is where the picture stops.
+            for (var row = PictureTopRow; row < PictureTopRow + covered; row++)
+                Assert.NotEqual(0, rows[row].TrimEnd('\r').Length);
+
+            Assert.Equal(0, rows[PictureTopRow + covered].TrimEnd('\r').Length);
+
+            // And the row the drag tests press on really is inside the picture.
+            Assert.InRange(PictureMiddleRow(game), PictureTopRow, PictureTopRow + covered - 1);
+        }
+
         /// <summary>Opens the collision screen and lets it draw its first picture.</summary>
         /// <returns>The running demo, on that screen.</returns>
         private static DrivenDemoApp Opened()
@@ -215,12 +244,39 @@ namespace WolfCurses.Demo.Tests
             Send(game, 17, row, MouseButtonEnum.Left, MouseEventKindEnum.Release);
         }
 
-        /// <summary>How many rows the picture covers, measured off the screen rather than assumed.</summary>
+        /// <summary>
+        ///     How many rows the picture covers, counted off the screen rather than assumed.
+        ///     <para>
+        ///         <b>It stops at the first blank row, because the picture is not the last thing in the frame.</b>
+        ///         The form's text ends with the picture, and <c>SceneGraph</c> then adds a line break of its own and
+        ///         the input prompt, so the frame runs picture, blank, prompt. Measuring this as "everything from the
+        ///         picture's first row to the end of the frame" counted those last two as picture and came out two
+        ///         rows over, which put <see cref="PictureMiddleRow" /> a row below the real middle. Both numbers
+        ///         still landed on the picture at the headless twenty-four-row fallback, which is exactly why no test
+        ///         failed and why this was worth fixing before a taller console made it matter.
+        ///     </para>
+        ///     <para>
+        ///         A picture row can never be blank: a half-block row is one glyph repeated across the full width of
+        ///         the picture whatever is drawn on it, which is the same property <see cref="Picture" /> relies on
+        ///         from the other side.
+        ///     </para>
+        /// </summary>
         /// <param name="game">The running demo.</param>
         /// <returns>The row count.</returns>
         private static int PictureRows(DrivenDemoApp game)
         {
-            return Math.Max(0, game.Screen.Split('\n').Length - PictureTopRow);
+            var rows = game.Screen.Split('\n');
+            var covered = 0;
+
+            for (var row = PictureTopRow; row < rows.Length; row++)
+            {
+                if (rows[row].TrimEnd('\r').Length == 0)
+                    break;
+
+                covered++;
+            }
+
+            return covered;
         }
 
         /// <summary>The screen row halfway down the picture, where both penguins sit.</summary>
@@ -240,15 +296,24 @@ namespace WolfCurses.Demo.Tests
         ///         wherever the penguins are standing - an assertion made on the stripped rows compares nothing at
         ///         all and passes whatever the drag did.
         ///     </para>
+        ///     <para>
+        ///         <b>It stops where the picture stops</b>, rather than running to the end of the frame as it used
+        ///         to. The blank row and the input prompt underneath are not the picture, and folding them in meant
+        ///         this method answered "the picture changed" for anything that rewrote the prompt. Nothing does
+        ///         today, which is the only reason it never lied.
+        ///     </para>
         /// </summary>
         /// <param name="game">The running demo.</param>
         /// <returns>The picture's rows, joined.</returns>
         private static string Picture(DrivenDemoApp game)
         {
+            // Counted off the stripped screen and applied to the raw one, which is sound because removing escape
+            // sequences cannot remove a line break: the two split into the same number of rows.
             var rows = game.RawScreen.Split('\n');
+            var last = Math.Min(rows.Length, PictureTopRow + PictureRows(game));
             var wanted = new StringBuilder();
 
-            for (var row = PictureTopRow; row < rows.Length; row++)
+            for (var row = PictureTopRow; row < last; row++)
                 wanted.Append(rows[row].TrimEnd('\r')).Append('|');
 
             return wanted.ToString();
