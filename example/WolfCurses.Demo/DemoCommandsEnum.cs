@@ -117,8 +117,45 @@ namespace WolfCurses.Demo
         [Description("Pride flags (bar chart + color ramps).")] PrideFlags = 20,
 
         /// <summary>
+        ///     Six pull-down menus over a small styled document they actually change, which is the demonstration of
+        ///     the control keeping its layout: every press is described by asking the same two hit tests the panel
+        ///     was drawn from.
+        /// </summary>
+        [Description("Menu bar (pull-down menus, F10).")] MenuBarDemo = 21,
+
+        /// <summary>
+        ///     A grid of labelled, clickable keys - spans, hover, and a disabled key - showing that the key a click
+        ///     lands on cannot be a different key from the one drawn there.
+        /// </summary>
+        [Description("Keypad (clickable key grid, spans + hover).")] KeypadDemo = 22,
+
+        /// <summary>
+        ///     One month at a time with the six-week grid, a told-not-read "today", marked days and a click that can
+        ///     only ever land inside the month being looked at.
+        /// </summary>
+        [Description("Calendar (MonthGrid) - page, mark, click a day.")] CalendarDemo = 23,
+
+        /// <summary>
+        ///     A delimited file read through named columns and shown in a table viewport with a scroll bar, where a
+        ///     column the file has not got and a row that stops short both answer empty rather than throwing.
+        /// </summary>
+        [Description("Record table (CSV, named columns, table viewport + scroll bar).")] RecordTable = 24,
+
+        /// <summary>
+        ///     The documents stack driven from the keyboard: a caret that remembers the column it started in, tab
+        ///     stops that are stops rather than N spaces, and control characters drawn as pictures.
+        /// </summary>
+        [Description("Text editor (documents: caret, tabs, control pictures).")] TextEditor = 25,
+
+        /// <summary>
+        ///     Every mouse event as it arrives - press, move, release and the wheel - with the buttons still held,
+        ///     the modifiers, and the window-relative row the library already corrected for.
+        /// </summary>
+        [Description("Mouse events (live: kinds, wheel, modifiers, drag).")] MouseEvents = 26,
+
+        /// <summary>
         ///     Closes the console application.
         /// </summary>
-        [Description("End")] CloseSimulation = 21
+        [Description("End")] CloseSimulation = 27
     }
 }

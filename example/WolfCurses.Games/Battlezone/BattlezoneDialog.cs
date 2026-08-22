@@ -34,6 +34,23 @@ namespace WolfCurses.Games.Battlezone
     ///         player steers, which is the first thing anybody notices. <see cref="TankControls" /> is the answer:
     ///         a gear that stays where it is put, and steering bought a nudge at a time.
     ///     </para>
+    ///     <para>
+    ///         <b>Which is exactly what makes the wheel the right mouse binding here, and the only one.</b> A notch
+    ///         is absolute and self-limiting: one notch is one gear, the lever stops at each end of its travel, and
+    ///         nothing about it needs to know where the pointer is. Every other pointer binding in this arcade turns
+    ///         a cell into a place - a square to open, a point in the sky to aim at - and this screen has no such
+    ///         place to offer, because the gun is bolted to the hull and the hull is the camera. So the wheel works
+    ///         the gear, the left button is the trigger, and neither asks for
+    ///         <c>InputManager.ReportsMouseMotion</c>, which is the firehose Missile Command turns on for its
+    ///         crosshair and hands back afterwards. This screen turns nothing on and so has nothing to hand back.
+    ///     </para>
+    ///     <para>
+    ///         <b>Steering stays off the pointer deliberately.</b> Turning the tank by pointing needs a cell map to
+    ///         hit-test against, and on the picture path there is none - the whole view is one payload row of
+    ///         escapes - so it would work on a character terminal and quietly do nothing on a good one. It would
+    ///         also reopen the finding this file records as settled: one key is held at a time, so the throttle is a
+    ///         lever and the steering is quantised.
+    ///     </para>
     /// </summary>
     [ParentWindow(typeof (GamesWindow))]
     public sealed class BattlezoneDialog : Form<GamesWindowInfo>
@@ -81,8 +98,11 @@ namespace WolfCurses.Games.Battlezone
             base.OnFormPostCreate();
 
             // Kept under eighty columns on purpose: the prompt is a real row of the frame, and one long enough to
-            // wrap costs a row of the view on the smallest terminal this has to fit.
-            ParentWindow.PromptText = "W/S gear, A/D steer, SPACE fires, TAB view, ENTER replays, ESC leaves";
+            // wrap costs a row of the view on the smallest terminal this has to fit. That budget is what pushed
+            // ENTER off this line when the mouse went on it: ENTER does nothing at all until the game is over, and
+            // the message that appears at that moment names it, which is the card tables' rule - the player who
+            // does not know what to do next is reading the screen rather than the prompt.
+            ParentWindow.PromptText = "W/S or wheel gear, A/D steer, SPACE or click fires, TAB view, ESC leaves";
 
             RestartOnActivate(_frame);
             NewGame();
@@ -123,6 +143,71 @@ namespace WolfCurses.Games.Battlezone
                     _forceText = !_forceText;
                     break;
             }
+        }
+
+        /// <summary>
+        ///     The wheel is the gear lever, which is the one thing a mouse can give this screen that the keyboard
+        ///     cannot do better.
+        ///     <para>
+        ///         <b>A notch is a lever position rather than a rate</b>, which is the whole reason it fits: the
+        ///         throttle here already is a lever that stays where it is put, so a control that arrives one
+        ///         discrete step at a time and stops at each end of its travel needs no timing, no release timeout
+        ///         and no held key. Away from the user is ahead, the way every platform reports it and the way the
+        ///         cabinet's own lever worked.
+        ///     </para>
+        ///     <para>
+        ///         <b>Nothing here reads <see cref="MouseEvent.Column" /> or <see cref="MouseEvent.Row" />,</b> and
+        ///         that is deliberate rather than an omission - it is what lets this screen take the mouse without
+        ///         asking for motion reporting, and it is why a wheel binding was reachable where a pointer one is
+        ///         not.
+        ///     </para>
+        /// </summary>
+        /// <param name="mouse">What the mouse did, and where.</param>
+        public override void OnMouseEvent(MouseEvent mouse)
+        {
+            // Presses go the old road: the base hands them to OnMousePressed, which stays the single place a shot
+            // is decided. A wheel notch can never arrive there, which is the entire point of the wheel being its
+            // own kind rather than a button - a fire-on-click game emptying its magazine on a scroll is the exact
+            // hazard MouseEventKindEnum was shaped to remove.
+            base.OnMouseEvent(mouse);
+
+            if (mouse.Kind != MouseEventKindEnum.Wheel)
+                return;
+
+            // Two notches is the whole travel of the lever, astern to ahead, so no flick can be worth more than
+            // pushing it as far as it goes. The clamp is not tidiness: WheelDelta is however many notches the
+            // platform decided to batch into one event, and looping over a number this screen does not own is how a
+            // fast scroll on somebody else's mouse turns into work.
+            var notches = Math.Clamp(mouse.WheelDelta, -2, 2);
+            for (var i = 0; i < Math.Abs(notches); i++)
+                _controls.Shift(Math.Sign(notches));
+
+            // Deliberately no Compose() here. The next paced frame is at most 33 ms away and draws the new gear on
+            // the status line, where recomposing per input event is the ChessDialog bug.
+        }
+
+        /// <summary>
+        ///     The left button is the trigger, and it is only the trigger.
+        ///     <para>
+        ///         <b>Where the pointer was says nothing about where the shell goes.</b> The gun fires straight down
+        ///         the hull's bearing, so unlike Missile Command - where a click both aims and fires - there is no
+        ///         cell here to turn into a place, and a hit test on the view is not available anyway on the picture
+        ///         path. A press therefore fires wherever it lands, and <see cref="BattleField.Fire" /> refuses
+        ///         while a shell is still in the air, which is the same rate limit SPACE has always fired under.
+        ///     </para>
+        ///     <para>
+        ///         Left only. Right-click is paste in a console host's own quick-edit mode and in several terminals'
+        ///         passthrough, so binding a shot to it is asking for accidental ones - Missile Command's rule, for
+        ///         Missile Command's reason.
+        ///     </para>
+        /// </summary>
+        /// <param name="mouse">Where the press landed and which button it was.</param>
+        public override void OnMousePressed(MouseEvent mouse)
+        {
+            base.OnMousePressed(mouse);
+
+            if (mouse.Button == MouseButtonEnum.Left)
+                _field.Fire();
         }
 
         /// <inheritdoc />

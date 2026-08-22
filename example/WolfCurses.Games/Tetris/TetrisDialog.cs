@@ -295,23 +295,66 @@ namespace WolfCurses.Games.Tetris
         /// </summary>
         private string ComposeNext()
         {
-            var piece = Tetromino.Create(_well.NextKind);
+            return DrawPreview(_preview, _well.NextKind);
+        }
+
+        /// <summary>
+        ///     Draws one piece into a preview box.
+        ///     <para>
+        ///         Static and taking the grid, which is the whole reason the placement can be tested at
+        ///         all: where the ink lands is arithmetic about a piece and a box, and nothing about it
+        ///         needs a running game, a window or a console. The alternative is a test that plays
+        ///         Tetris until each of the seven happens to come up.
+        ///     </para>
+        /// </summary>
+        /// <param name="preview">The box to draw into; cleared first.</param>
+        /// <param name="kind">Which piece.</param>
+        /// <returns>The drawn box.</returns>
+        private static string DrawPreview(TextGrid preview, TetrominoEnum kind)
+        {
+            var piece = Tetromino.Create(kind);
             var style = StyleOf(piece.Kind);
 
-            // Centred in the fixed box with the odd cell on the right, which is the convention AnsiText.Fit
-            // follows and the only one that is stable between calls.
-            var offset = (PreviewCells - piece.Size)/2;
-
-            _preview.Clear();
+            // Centred on the piece's INK rather than on its box, which is the difference between a preview
+            // that looks centred and one that only is centred arithmetically. A tetromino's box carries its
+            // own padding - five of the seven fill rows 0 and 1 of a three-row box - so centring the box
+            // leaves those five sitting against the top of the panel with two empty rows underneath, while
+            // the O sits in the middle. Measuring the filled cells puts every piece in the same place.
+            var left = piece.Size;
+            var top = piece.Size;
+            var right = -1;
+            var bottom = -1;
 
             for (var y = 0; y < piece.Size; y++)
             for (var x = 0; x < piece.Size; x++)
             {
-                if (piece.IsFilled(x, y))
-                    _preview.Set(offset + x, offset + y, '█', style);
+                if (!piece.IsFilled(x, y))
+                    continue;
+
+                left = Math.Min(left, x);
+                top = Math.Min(top, y);
+                right = Math.Max(right, x);
+                bottom = Math.Max(bottom, y);
             }
 
-            return _preview.Render();
+            preview.Clear();
+
+            if (right < 0)
+                return preview.Render();
+
+            // The odd cell goes right and down, the convention AnsiText.Fit follows and the only one that is
+            // stable between calls.
+            var offsetX = (PreviewCells - (right - left + 1))/2 - left;
+            var offsetY = (PreviewCells - (bottom - top + 1))/2 - top;
+
+            for (var y = top; y <= bottom; y++)
+            for (var x = left; x <= right; x++)
+            {
+                if (piece.IsFilled(x, y))
+                    preview.Set(offsetX + x, offsetY + y, '█', style);
+            }
+
+            return preview.Render();
         }
 
         /// <summary>Draws the score panel.</summary>

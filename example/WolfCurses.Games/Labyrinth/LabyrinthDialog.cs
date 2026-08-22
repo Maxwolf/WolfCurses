@@ -33,6 +33,26 @@ namespace WolfCurses.Games.Labyrinth
     ///         house style.
     ///     </para>
     ///     <para>
+    ///         <b>The wheel looks around, and the question worth writing down is why that does not wreck the
+    ///         game.</b> This is the one screen here built on not being able to see, so a camera the player can move
+    ///         at will is exactly the sort of convenience that quietly deletes the difficulty. It does not, and the
+    ///         reason is that the wheel moves the <i>window</i> while the torch decides what is <i>drawn</i>:
+    ///         <see cref="MazeView" /> skips any cell <see cref="Maze.HasSeen" /> is false for, so scrolling over
+    ///         unwalked ground shows blank. The camera cannot reveal a corridor because there is nothing painted
+    ///         there to reveal. What it can reach is the ground the torch has <i>already lit</i> and the window is
+    ///         too short to hold - the torch runs six cells down a corridor and an eighty-by-twenty-four terminal
+    ///         shows about seven maze rows, so standing in a long north-south passage the player is being denied
+    ///         sight of their own torchlight. That is a window problem, and the wheel is the fix for it.
+    ///     </para>
+    ///     <para>
+    ///         <b>The peek is self-limiting: it ends at the next step, whether or not the step was possible.</b>
+    ///         Nothing has to be pressed to get back, and there is no mode to be stuck in - which matters more here
+    ///         than anywhere, since a player who has scrolled the view off themselves cannot see which way they are
+    ///         about to walk. The wheel's one axis is the vertical, because that is the axis the terminal clips
+    ///         hardest (seven maze rows of thirteen against nineteen columns of twenty-five) and because the library
+    ///         refuses the sideways wheel outright rather than let a horizontal flick scroll something vertically.
+    ///     </para>
+    ///     <para>
     ///         <b>The frame does not breathe.</b> Every redraw asks the grid for exactly the same number of cells, and
     ///         <see cref="TextGrid" /> promises a full rectangle back however far off the edge that window hangs — so
     ///         the <see cref="Box" /> around it is the same size on every frame, even standing in a corner with three
@@ -104,6 +124,17 @@ namespace WolfCurses.Games.Labyrinth
 
         private int _focusY;
 
+        /// <summary>
+        ///     Whether the wheel has taken the camera off the player and it has to be put back on the next step.
+        ///     <para>
+        ///         Stored rather than derived from comparing the focus against the player's position, because those
+        ///         two are legitimately unequal without anybody having peeked: the last move of a winning game steps
+        ///         out of the grid, and the focus is clamped back on to the doorway. A flag says what happened; the
+        ///         comparison would only say what the numbers are.
+        ///     </para>
+        /// </summary>
+        private bool _peeking;
+
         /// <summary>Initializes a new instance of the <see cref="LabyrinthDialog" /> class.</summary>
         /// <param name="window">The parent window.</param>
         // ReSharper disable once UnusedMember.Global
@@ -166,19 +197,58 @@ namespace WolfCurses.Games.Labyrinth
                 return;
             }
 
-            if (!_maze.TryMove(pushed))
+            var walked = _maze.TryMove(pushed);
+
+            // A refused move costs nothing, exactly as it always did - unless the wheel has taken the view off the
+            // player, in which case even a bump into a wall puts the camera back. Trying to walk is what ends a
+            // peek, not succeeding at it: a player steering a screen they cannot see themselves on is the one state
+            // this must not be able to sit in, and the way out of it should be whichever key they were going to
+            // press anyway.
+            if (!walked && !_peeking)
                 return;
 
-            // Clamped rather than assumed to be on the grid: the last move of a winning game steps OUT, so the
-            // player's position is off the maze by one cell and the doubled coordinate lands one past either end.
-            // Clamping puts the camera on the doorway, which is exactly where the player now is - the arithmetic
-            // works out because the wall ring is the one square between the last cell and the outside.
-            _focusX = Math.Clamp(2*_maze.PlayerX + 1, 0, _grid.Width - 1);
-            _focusY = Math.Clamp(2*_maze.PlayerY + 1, 0, _grid.Height - 1);
+            Recenter();
 
             if (_maze.IsSolved)
                 Escaped();
 
+            _rendered = Compose();
+        }
+
+        /// <summary>
+        ///     The wheel looks up and down the maze without walking it.
+        ///     <para>
+        ///         <b>It moves the window, never the torch.</b> Only cells the player has seen are painted at all,
+        ///         so scrolling over ground they have not walked shows blank - the camera has nothing to give away
+        ///         because nothing is drawn there. What it reaches is the lit ground the window is too small to
+        ///         hold, which on an eighty-by-twenty-four terminal is most of a torch's own reach down a long
+        ///         corridor.
+        ///     </para>
+        ///     <para>
+        ///         <b>The clamp is the whole of the bound</b>, so a flick reporting several notches at once simply
+        ///         parks at the end of the maze rather than counting off into space - which is where "as far as it
+        ///         goes" should land, and means nothing here has to guess how many notches a platform batches into
+        ///         one event.
+        ///     </para>
+        /// </summary>
+        /// <param name="mouse">What the mouse did, and where.</param>
+        public override void OnMouseEvent(MouseEvent mouse)
+        {
+            base.OnMouseEvent(mouse);
+
+            if (mouse.Kind != MouseEventKindEnum.Wheel || mouse.WheelDelta == 0)
+                return;
+
+            // Positive is away from the user, which every platform treats as scrolling up, and up here is north. Two
+            // grid rows to the notch because a maze cell is two rows of characters, the same step the arrows pan by.
+            _focusY -= 2*mouse.WheelDelta;
+            ClampFocus();
+
+            // Once the maze is solved the arrows are already the camera and there is no player left to follow, so
+            // there is nothing for the next key press to put back. Steered by this form's own flag rather than by
+            // the maze's, the same one the arrow branch above reads, so the two ways in cannot come to disagree
+            // about which mode the screen is in.
+            _peeking = !_solved;
             _rendered = Compose();
         }
 
@@ -199,11 +269,42 @@ namespace WolfCurses.Games.Labyrinth
             // enough to sit on one line of an eighty-column terminal. Both matter: the prompt is a row the scene
             // graph draws anyway, so putting the controls there costs nothing, while a message that wrapped would
             // cost a row this screen has already spent - it fits 80x24 with none to spare.
-            ParentWindow.PromptText = "Arrows or WASD to move, R for a new maze, ENTER or ESC to quit";
+            ParentWindow.PromptText = "Arrows or WASD to move, wheel to look, R for a new maze, ENTER or ESC quits";
             _message = "Find the way out. The compass gives the direction, not the route.";
+            Recenter();
+            _rendered = Compose();
+        }
+
+        /// <summary>
+        ///     Puts the camera back on the player and ends any peek.
+        ///     <para>
+        ///         Clamped rather than assumed to be on the grid: the last move of a winning game steps OUT, so the
+        ///         player's position is off the maze by one cell and the doubled coordinate lands one past either
+        ///         end. Clamping puts the camera on the doorway, which is exactly where the player now is - the
+        ///         arithmetic works out because the wall ring is the one square between the last cell and the
+        ///         outside.
+        ///     </para>
+        /// </summary>
+        private void Recenter()
+        {
             _focusX = 2*_maze.PlayerX + 1;
             _focusY = 2*_maze.PlayerY + 1;
-            _rendered = Compose();
+            _peeking = false;
+            ClampFocus();
+        }
+
+        /// <summary>
+        ///     Holds the camera inside the grid, whichever moved it.
+        ///     <para>
+        ///         <c>CenterOrigin</c> clamps the drawn window either way, so this is not about what appears on
+        ///         screen: an unclamped focus would keep counting off into the distance and the view would then sit
+        ///         still for however many presses or notches it took to walk back.
+        ///     </para>
+        /// </summary>
+        private void ClampFocus()
+        {
+            _focusX = Math.Clamp(_focusX, 0, _grid.Width - 1);
+            _focusY = Math.Clamp(_focusY, 0, _grid.Height - 1);
         }
 
         /// <summary>Records the escape, lights the whole maze, and says how well it went.</summary>
@@ -220,7 +321,7 @@ namespace WolfCurses.Games.Labyrinth
 
             _message = $"Out in {_maze.Steps} steps - the shortest way was {_maze.ShortestSteps} " +
                        $"({efficiency.ToString("F0", CultureInfo.InvariantCulture)}% efficient).";
-            ParentWindow.PromptText = "Arrows look around the maze, R for another, ENTER or ESC to quit";
+            ParentWindow.PromptText = "Arrows or wheel look around the maze, R for another, ENTER or ESC quits";
         }
 
         /// <summary>Moves the camera by one maze cell, which is two grid cells.</summary>
@@ -243,11 +344,10 @@ namespace WolfCurses.Games.Labyrinth
                     break;
             }
 
-            // Held inside the grid so that panning to an edge and back lands where it started. CenterOrigin clamps
-            // the window for drawing either way, but an unclamped focus would keep counting off into the distance and
-            // the view would sit still for however many presses it took to walk back.
-            _focusX = Math.Clamp(_focusX, 0, _grid.Width - 1);
-            _focusY = Math.Clamp(_focusY, 0, _grid.Height - 1);
+            // Held inside the grid so that panning to an edge and back lands where it started - see ClampFocus,
+            // which the wheel goes through as well so the two ways of moving the camera cannot come to disagree
+            // about where the ends of the maze are.
+            ClampFocus();
         }
 
         /// <summary>Draws the heading, the view inside its frame, and whatever the maze has to say underneath.</summary>

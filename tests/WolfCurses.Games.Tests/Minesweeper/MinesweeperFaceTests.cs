@@ -497,6 +497,59 @@ namespace WolfCurses.Games.Tests.Minesweeper
         }
 
         [Fact]
+        public void TheLightNeverFallsOnAnythingThatWasDrawn()
+        {
+            // The rule the first version of this got wrong, and it was invisible in the common case. A hover that
+            // painted the whole tile interior looked right on a blank square and made an EIGHT disappear, because
+            // the number palette this game has used since 1990 draws an eight in the same dark grey the hover was
+            // using; a four and a seven went nearly as dim. No single background is safe when the foregrounds run
+            // from white to black, so the light falls only on cells that are blank.
+            //
+            // Asserted on the STYLE rather than on the glyph, because the defect was entirely a colour: a version
+            // that lights every cell leaves every character exactly where it was and is still wrong.
+            var face = new MinesweeperFace(9, 9, true);
+            var field = Played();
+
+            var plain = Rows(face.Render(field, 0));
+
+            for (var y = 0; y < 9; y++)
+            for (var x = 0; x < 9; x++)
+            {
+                var row = face.InteriorRow(y);
+                var left = face.InteriorColumn(x) - MinesweeperFace.InteriorWidth/2;
+
+                face.HoveredX = -1;
+                face.HoveredY = -1;
+                face.Render(field, 0);
+
+                var before = new TextStyle[MinesweeperFace.InteriorWidth];
+                for (var i = 0; i < MinesweeperFace.InteriorWidth; i++)
+                    before[i] = face.StyleAt(left + i, row);
+
+                face.HoveredX = x;
+                face.HoveredY = y;
+                face.Render(field, 0);
+
+                var lit = 0;
+                for (var i = 0; i < MinesweeperFace.InteriorWidth; i++)
+                {
+                    var column = left + i;
+                    var drawn = CellAt(plain[row], column) != ' ';
+                    var after = face.StyleAt(column, row);
+
+                    if (drawn)
+                        Assert.True(before[i].Equals(after),
+                            $"the light fell on something drawn at square {x},{y}, cell {i}");
+                    else if (!before[i].Equals(after))
+                        lit++;
+                }
+
+                // And every tile has at least one blank cell, so pointing at one always shows.
+                Assert.True(lit > 0, $"square {x},{y} has no blank cell for the light to fall on");
+            }
+        }
+
+        [Fact]
         public void PointingOffTheBoardLightsNothing()
         {
             // The screen answers -1 for a pointer that is over the panel but not over a square - the counters, the
@@ -532,6 +585,13 @@ namespace WolfCurses.Games.Tests.Minesweeper
             face.HoveredY = 2;
 
             Assert.Equal(plain, face.Render(field, 0));
+        }
+
+        /// <summary>The visible character at a column of a rendered row, escapes stripped.</summary>
+        private static char CellAt(string row, int column)
+        {
+            var plain = AnsiText.StripEscapes(row);
+            return column >= 0 && column < plain.Length ? plain[column] : ' ';
         }
 
         private static Minefield Played()

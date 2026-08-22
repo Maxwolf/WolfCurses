@@ -59,6 +59,12 @@ namespace WolfCurses.Demo
             AddCommand(ShowCollisionSpriteTest, DemoCommandsEnum.SpriteTestCollision);
             AddCommand(ShowImageErrors, DemoCommandsEnum.ImageErrorDemo);
             AddCommand(ShowPrideFlags, DemoCommandsEnum.PrideFlags);
+            AddCommand(ShowMenuBar, DemoCommandsEnum.MenuBarDemo);
+            AddCommand(ShowKeypad, DemoCommandsEnum.KeypadDemo);
+            AddCommand(ShowCalendar, DemoCommandsEnum.CalendarDemo);
+            AddCommand(ShowRecordTable, DemoCommandsEnum.RecordTable);
+            AddCommand(ShowTextEditor, DemoCommandsEnum.TextEditor);
+            AddCommand(ShowMouseEvents, DemoCommandsEnum.MouseEvents);
             AddCommand(CloseSimulation, DemoCommandsEnum.CloseSimulation);
 
             // Open on the WolfCurses wordmark in ASCII art with a rainbow sliding through it; ENTER reveals the menu.
@@ -150,6 +156,36 @@ namespace WolfCurses.Demo
         private void ShowPrideFlags()
         {
             SetForm(typeof (PrideFlagDialog));
+        }
+
+        private void ShowMenuBar()
+        {
+            SetForm(typeof (MenuBarDialog));
+        }
+
+        private void ShowKeypad()
+        {
+            SetForm(typeof (KeypadDialog));
+        }
+
+        private void ShowCalendar()
+        {
+            SetForm(typeof (CalendarDialog));
+        }
+
+        private void ShowRecordTable()
+        {
+            SetForm(typeof (RecordTableDialog));
+        }
+
+        private void ShowTextEditor()
+        {
+            SetForm(typeof (TextEditorDialog));
+        }
+
+        private void ShowMouseEvents()
+        {
+            SetForm(typeof (MouseEventDialog));
         }
 
         /// <summary>

@@ -46,13 +46,26 @@ namespace WolfCurses.Window.Form
         bool EditsText => false;
 
         /// <summary>
-        ///     Fired for every mouse event the host reports: a press, a release, or a move. The default forwards a
-        ///     press to <see cref="OnMousePressed" /> and ignores the rest, so a form written before motion existed
-        ///     behaves exactly as it did.
+        ///     Fired for a move, a release or a wheel notch. The default ignores all three, so a form written before
+        ///     those kinds existed behaves exactly as it did.
         ///     <para>
-        ///         Override this rather than <see cref="OnMousePressed" /> for anything with a duration: dragging a
-        ///         scrollbar, sweeping a selection, or drawing a pointer that follows the mouse. Moves arrive only
-        ///         when the application asked for them; see <see cref="WolfCurses.Core.InputManager.ReportsMouseMotion" />.
+        ///         <b>A PRESS DOES NOT ARRIVE HERE, and assuming it does is the mistake this paragraph exists to
+        ///         stop.</b> <see cref="Window.OnMouseEvent" /> hands a press to <see cref="OnMousePressed" /> and
+        ///         returns, so that stays the single routing point for presses and every form written before the
+        ///         other kinds existed keeps working untouched. What it means for a new form is that a click handler
+        ///         written in here <i>compiles, is never called, and silently does nothing</i> - which for anything
+        ///         built out of a press followed by moves, a drag most of all, looks like the whole feature being
+        ///         broken rather than like a handler in the wrong place. Take the press in
+        ///         <see cref="OnMousePressed" /> and the rest here. (The body below still forwards a press, because
+        ///         this is a default interface member and something calling it directly should get the documented
+        ///         behaviour; nothing in the library does.)
+        ///     </para>
+        ///     <para>
+        ///         Override this for anything with a duration: dragging a scrollbar thumb, sweeping a selection, or
+        ///         drawing a pointer that follows the mouse. Moves arrive only when the application asked for them;
+        ///         see <see cref="WolfCurses.Core.InputManager.ReportsMouseMotion" />. A move carries whichever
+        ///         buttons are still held, so a drag is a move with a button on it and a bare hover is a move with
+        ///         <see cref="MouseButtonEnum.None" />.
         ///     </para>
         /// </summary>
         /// <param name="mouse">What happened, and where.</param>

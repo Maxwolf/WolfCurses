@@ -131,10 +131,14 @@ namespace WolfCurses.Games.Snake
 
             _board.Steer(steer);
 
-            // Redraw at once rather than waiting for the step: the direction is not visible on the board, but the
-            // heading in the status line is, and an input that takes up to a tenth of a second to acknowledge feels
-            // broken however correct it is.
-            _rendered = Compose();
+            // Deliberately nothing else. A steer changes nothing that is on screen: the board only moves when the
+            // snake STEPS, and SnakeBoard.Direction is the direction last actually TRAVELLED, so the heading in the
+            // status line does not move either until Advance runs. Composing here would therefore build a
+            // byte-identical frame, and build one per key rather than one per press the player felt: InputManager
+            // drains the console buffer with a while loop and spends every queued key inside a single tick, so a
+            // held arrow is a burst of eight or ten with no time between them. That is the ChessDialog fault in
+            // miniature. If a future readout ever does show the pending direction, the answer is that screen's
+            // answer as well: a dirty flag consumed in OnTick, never a compose in an input handler.
         }
 
         /// <inheritdoc />

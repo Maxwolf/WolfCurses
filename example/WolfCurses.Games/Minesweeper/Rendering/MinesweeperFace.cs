@@ -203,7 +203,8 @@ namespace WolfCurses.Games.Minesweeper
         }
 
         /// <summary>
-        ///     Darkens the tile the pointer is over, and draws nothing at all when it is over none of them.
+        ///     Lights the face of the tile the pointer is over, and draws nothing at all when it is over none of
+        ///     them.
         ///     <para>
         ///         <b>It exists because of a fact about this medium rather than about the original game.</b> Every
         ///         line of the lattice is shared by the two squares either side of it, so
@@ -214,12 +215,22 @@ namespace WolfCurses.Games.Minesweeper
         ///         about this board a player cannot work out by looking.
         ///     </para>
         ///     <para>
+        ///         <b>It lights only the cells that are BLANK, and that is the whole design.</b> The first version
+        ///         painted a background across the tile's whole interior, which is the obvious thing and is wrong on
+        ///         a board whose contents are already coloured: the numbers use the palette this game has had since
+        ///         1990, and an eight is drawn in <see cref="ConsoleColor.DarkGray" /> - so a hover that darkened the
+        ///         cell behind it made the eight <i>vanish</i>, with a four and a seven going nearly as dim. No
+        ///         single background is safe, because the foregrounds run from white through to black. Lighting only
+        ///         the blank cells sidesteps the question entirely: nothing that was drawn is ever touched, so
+        ///         nothing can be obscured, and a tile always has at least one blank cell to light.
+        ///     </para>
+        ///     <para>
         ///         <b>It changes a background and never a glyph</b>, deliberately: the closed-tile hairline is what
         ///         both the tests and a reader use to tell a raised square from an opened one, so a hover that
-        ///         dropped it would be changing what the board says rather than lighting it. Darker rather than
-        ///         lighter for the same reason the lattice is drawn in shadow rather than in highlight - against the
-        ///         silver face, white is almost nothing and grey is unmistakable - and it is the panel's own third
-        ///         colour, so nothing new is introduced to a screen whose whole look is three of them.
+        ///         dropped it would be changing what the board says rather than lighting it. That hairline is also
+        ///         why the light is <see cref="ConsoleColor.White" /> and can be: it is drawn <i>on</i> a cell, so it
+        ///         is one of the things the light now leaves alone, and the panel's own highlight colour is what a
+        ///         raised silver face catching the light should look like.
         ///     </para>
         ///     <para>
         ///         Not drawn once the board is finished. A lit square says something is about to happen, and on a
@@ -235,13 +246,18 @@ namespace WolfCurses.Games.Minesweeper
             var row = InteriorRow(HoveredY);
             var left = InteriorColumn(HoveredX) - InteriorWidth/2;
 
-            // Each cell keeps whatever glyph and foreground it was already given, so this composes over a number, a
-            // flag or an empty square without having to know which of them it is.
             for (var i = 0; i < InteriorWidth; i++)
             {
                 var column = left + i;
-                _grid.Set(column, row, _grid.GlyphAt(column, row),
-                    _grid.StyleAt(column, row).WithBackground(ConsoleColor.DarkGray));
+
+                // Asked of the grid rather than worked out from what the tile is, so this needs to know nothing
+                // about numbers, flags, mines or hairlines - only that something was drawn here and must be left
+                // as it was.
+                if (_grid.GlyphAt(column, row) != _grid.Blank)
+                    continue;
+
+                _grid.Set(column, row, _grid.Blank,
+                    _grid.StyleAt(column, row).WithBackground(ConsoleColor.White));
             }
         }
 
@@ -419,6 +435,23 @@ namespace WolfCurses.Games.Minesweeper
         public int InteriorColumn(int x)
         {
             return BoardOriginColumn + x*TileWidth + InteriorWidth/2 + 1;
+        }
+
+        /// <summary>
+        ///     How one cell of the drawn panel is styled, for tests only.
+        ///     <para>
+        ///         A seam rather than public surface, because the thing worth asserting about the hover is a
+        ///         <i>colour</i> and the rendered string is the wrong place to ask: runs coalesce, so which escape
+        ///         belongs to which cell is not recoverable from the outside without reimplementing the walk. The
+        ///         repository's own convention is to open a seam rather than to test something adjacent and hope.
+        ///     </para>
+        /// </summary>
+        /// <param name="column">Panel column.</param>
+        /// <param name="row">Panel row.</param>
+        /// <returns>The style that cell was drawn with.</returns>
+        internal TextStyle StyleAt(int column, int row)
+        {
+            return _grid.StyleAt(column, row);
         }
 
         /// <summary>Which row a tile's content sits in.</summary>
