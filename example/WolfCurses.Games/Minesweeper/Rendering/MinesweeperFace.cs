@@ -197,8 +197,52 @@ namespace WolfCurses.Games.Minesweeper
             DrawLabels();
             DrawLattice(field);
             DrawTiles(field);
+            DrawHover(field);
 
             return _grid.Render();
+        }
+
+        /// <summary>
+        ///     Darkens the tile the pointer is over, and draws nothing at all when it is over none of them.
+        ///     <para>
+        ///         <b>It exists because of a fact about this medium rather than about the original game.</b> Every
+        ///         line of the lattice is shared by the two squares either side of it, so
+        ///         <see cref="MinesweeperBoardMap" /> has to give each one to a square on purpose. On a sixteen-pixel
+        ///         Windows tile with a two-pixel bevel that boundary is obvious; on a tile four columns wide and two
+        ///         rows tall the player has no way to know which side of a hairline they are on until they have
+        ///         already clicked. This says which square owns the cell under the pointer, which is the one thing
+        ///         about this board a player cannot work out by looking.
+        ///     </para>
+        ///     <para>
+        ///         <b>It changes a background and never a glyph</b>, deliberately: the closed-tile hairline is what
+        ///         both the tests and a reader use to tell a raised square from an opened one, so a hover that
+        ///         dropped it would be changing what the board says rather than lighting it. Darker rather than
+        ///         lighter for the same reason the lattice is drawn in shadow rather than in highlight - against the
+        ///         silver face, white is almost nothing and grey is unmistakable - and it is the panel's own third
+        ///         colour, so nothing new is introduced to a screen whose whole look is three of them.
+        ///     </para>
+        ///     <para>
+        ///         Not drawn once the board is finished. A lit square says something is about to happen, and on a
+        ///         board that is over nothing is.
+        ///     </para>
+        /// </summary>
+        /// <param name="field">The board, asked only whether it is still in play.</param>
+        private void DrawHover(Minefield field)
+        {
+            if (field.IsOver || HoveredX < 0 || HoveredY < 0 || HoveredX >= BoardWidth || HoveredY >= BoardHeight)
+                return;
+
+            var row = InteriorRow(HoveredY);
+            var left = InteriorColumn(HoveredX) - InteriorWidth/2;
+
+            // Each cell keeps whatever glyph and foreground it was already given, so this composes over a number, a
+            // flag or an empty square without having to know which of them it is.
+            for (var i = 0; i < InteriorWidth; i++)
+            {
+                var column = left + i;
+                _grid.Set(column, row, _grid.GlyphAt(column, row),
+                    _grid.StyleAt(column, row).WithBackground(ConsoleColor.DarkGray));
+            }
         }
 
         /// <summary>The raised outer edge: light along the top and left, dark along the bottom and right.</summary>
@@ -350,6 +394,24 @@ namespace WolfCurses.Games.Minesweeper
 
             return !field.IsRevealed(x, y);
         }
+
+        /// <summary>
+        ///     Which square the pointer is over, or -1 for neither when it is over none.
+        ///     <para>
+        ///         <b>Told, never worked out here.</b> The panel has no idea a mouse exists and could not ask; the
+        ///         screen that receives the events owns the answer and sets it. That is the same seam
+        ///         <c>MonthGrid.Today</c> and <c>MenuBar.BarRow</c> take in the library, and it is what keeps this
+        ///         class drawable and testable with no console anywhere near it.
+        ///     </para>
+        ///     <para>
+        ///         At -1 the panel renders byte-for-byte what it rendered before hovering existed, which is what
+        ///         keeps every pinned test about the bevel and the palette passing unchanged.
+        ///     </para>
+        /// </summary>
+        public int HoveredX { get; set; } = -1;
+
+        /// <summary>Which row the pointer is over; see <see cref="HoveredX" />.</summary>
+        public int HoveredY { get; set; } = -1;
 
         /// <summary>Which column a tile's content sits in.</summary>
         /// <param name="x">Which column of tiles.</param>

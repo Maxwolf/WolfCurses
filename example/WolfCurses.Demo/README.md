@@ -1,6 +1,8 @@
 # WolfCurses.Demo
 
-The library tour: a guided walk through everything [WolfCurses](../../README.md) can draw. Menus, forms and dialogs, images and sprites, widgets and colour.
+A guided walk through the parts of [WolfCurses](../../README.md) a program is built out of: menus, forms and dialogs, a custom module, the whole graphics stack, the progress and graph widgets, and colour.
+
+It is deliberately **not** a catalogue of every control. The office suite next door is where the editor-shaped half of the library lives - the menu bar, the keypad, the calendar grid, the table viewport, the scroll bar, the document types - because those are worth seeing inside a program that needs them rather than in a screen that exists to show them off.
 
 ```cmd
 dotnet run --project example/WolfCurses.Demo
@@ -22,13 +24,15 @@ It is also the smallest demonstration of how colour degrades. The styles are lef
 | --- | --- |
 | **Slideshow** | The `media/` photographs, one per tick |
 | **Compositing** | A transparent penguin alpha-composited over those same photographs |
-| **Show animated GIF** | An animated GIF playing on loop |
+| **Show animated GIF** | An animated GIF playing on loop, with a scrub bar; SPACE pauses, LEFT/RIGHT step a frame |
 | **Image error handling** | Broken paths and truncated files becoming the magenta-and-black checkerboard |
 | **Force render type** | Overrides the whole graphics stack, then snaps back to the menu |
 
 ![An animated GIF playing on loop, with a progress bar filling while frames are pre-rendered](../../docs/demo-animated-gif.gif)
 
 **Show animated GIF** is the test rig for animated decoding. The library's own decoder walks all 91 frames, a `ProgressBar` fills while they are pre-rendered, and then playback is an array lookup at 0.00 ms/frame. The pre-render is spread across the tick loop a slice at a time rather than blocking, which is why the bar moves at all.
+
+It is also the only place you can watch a `PlaybackClock` and a `Timeline` without ffmpeg installed. Playback is a *position* rather than a pace, so a host that falls behind skips frames instead of slowing the animation down, and the 2.7-second loop takes 2.7 seconds anywhere. SPACE pauses, LEFT and RIGHT step a frame at a time and hold there, HOME rewinds. Stepping is what a rig for a file whose 83 of 91 frames are stored as a moved rectangle is actually for.
 
 **Force render type** is worth finding. It offers kitty, sixel, half blocks at true colour, 256 colours or grayscale, colourless ASCII, and *Auto* to hand it back to the startup probe. The choice is global, so whichever demo you open next is drawn that way. The colour modes reach further than the pictures do: widgets and styled prose resolve through the same setting, so forcing grayscale greys the graphs and the pride flags too. Forcing a protocol your terminal does not speak is instructive rather than harmful, since you get exactly the screenful of escape-sequence garbage that automatic detection exists to avoid.
 
@@ -42,7 +46,7 @@ It is also the smallest demonstration of how colour degrades. The styles are lef
 
 **Sprite Test (Advanced)** tests four things at once: sprite-over-sprite alpha blending, live scene mutation, random scaling, and animation. Five animated GIFs spawn at random sizes and bounce, one is removed every two seconds, the scene empties completely, then it refills with new ones. Animation needs nothing from the library, since `Sprite.Image` is settable and each sprite runs its own clock.
 
-**Sprite Test (Collision)** lets you walk one penguin into another with the arrow keys. It is the worked example for the trap in collision detection: touching stays true for hundreds of frames, so you act on the *transition*, not the state. It also shows modal pause for free, since the message box takes focus and only the focused window ticks.
+**Sprite Test (Collision)** lets you walk one penguin into another with the arrow keys, or pick either one up and drag it with the mouse. It is the worked example for the trap in collision detection: touching stays true for hundreds of frames, so you act on the *transition*, not the state. It also shows modal pause for free, since the message box takes focus and only the focused window ticks. The drag is the demo's worked example of mouse motion and release: a press takes hold, moves carrying the button move it, and a release puts it down. Dragging needs half blocks, since a sixel or kitty picture has no measurable rectangle to hit-test, and the status line says which you have got.
 
 All three read fps and ms/frame, which measure different things on purpose. ms/frame is what the work costs, and it moves when you change the canvas size. fps is how often it happened, gated by the frame budget and the host loop.
 

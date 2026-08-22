@@ -85,10 +85,32 @@ namespace WolfCurses.Demo.Screens
         private static readonly TimeSpan _loadBudgetPerTick = TimeSpan.FromMilliseconds(30);
 
         /// <summary>
-        ///     Paces playback on real elapsed time. The interval is passed per frame rather than set on the timer,
-        ///     because every frame of a GIF declares its own delay.
+        ///     Where playback has got to, which is a <b>position</b> and not a pace - and the difference is the
+        ///     whole reason this is a <see cref="PlaybackClock" /> rather than the <c>IntervalTimer</c> it used
+        ///     to be.
+        ///     <para>
+        ///         An <c>IntervalTimer</c> drops a late period on purpose, because a sprite that repaid its debt
+        ///         would teleport. A film must never drop anything: a frame's time is a fact about the media
+        ///         rather than about how often somebody asked, so falling behind means <i>skipping frames</i> and
+        ///         never slowing the animation down. Under the old timer this loop ran slow on any host that
+        ///         could not come back round inside thirty milliseconds, and its own documentation recorded that
+        ///         as an accepted fact. Under a clock the 2.7-second loop takes 2.7 seconds anywhere and the late
+        ///         frames are the ones that go.
+        ///     </para>
+        ///     <para>
+        ///         <b><see cref="PlaybackClock.FrameAt" /> is deliberately not used here</b>, and it is worth
+        ///         saying why rather than leaving it looking like an oversight: that method assumes a constant
+        ///         rate, and every frame of a GIF declares its own delay. <see cref="_starts" /> is the honest
+        ///         substitute and costs six lines.
+        ///     </para>
         /// </summary>
-        private readonly IntervalTimer _frame = new(_fastFrameDelay);
+        private readonly PlaybackClock _clock = new();
+
+        /// <summary>
+        ///     The scrub bar under the picture: where playback is, out of how long, and clickable. Both ends are
+        ///     exact, which is the off-by-one that type exists to get right.
+        /// </summary>
+        private readonly Timeline _timeline = new() {ShowTimes = true};
 
         /// <summary>
         ///     The same readout the sprite tests carry, and it says something different here — which is the useful part.
@@ -134,6 +156,13 @@ namespace WolfCurses.Demo.Screens
         private readonly RendererSwitch _renderer = new();
 
         private TimeSpan[] _delays = Array.Empty<TimeSpan>();
+
+        /// <summary>
+        ///     When each frame is due, as a running sum of the delays before it. Built once when the load
+        ///     finishes, because a position has to be turned back into a frame number and a GIF's frames are not
+        ///     evenly spaced.
+        /// </summary>
+        private TimeSpan[] _starts = Array.Empty<TimeSpan>();
         private string _error;
         private int _index;
         private TimeSpan _loadTime;
@@ -162,8 +191,13 @@ namespace WolfCurses.Demo.Screens
         {
             base.OnFormPostCreate();
 
-            ParentWindow.PromptText = "TAB to switch renderer, ENTER or ESC to return to the menu";
-            RestartOnActivate(_frame);
+            ParentWindow.PromptText =
+                "SPACE pauses, LEFT/RIGHT step a frame, HOME rewinds, TAB switches renderer, ENTER or ESC leaves";
+
+            // Nothing is registered with RestartOnActivate, and that is the difference a clock makes: a pacer
+            // coming back from a modal owes every period that fell due while it was up and would take them all at
+            // once, so it has to be restarted. A position is simply further along, which is what a film that kept
+            // running behind a dialog really is.
 
             // Only sets the load going; the frames are rendered a slice per tick from here. The playback clock is not
             // started here but in FinishLoad, so the wait at the door is never charged to the first frame's timing.
@@ -175,8 +209,34 @@ namespace WolfCurses.Demo.Screens
         {
             base.OnKeyPressed(key);
 
-            if (key != ConsoleKey.Tab)
-                return;
+            switch (key)
+            {
+                case ConsoleKey.Spacebar:
+                    // A space is printable, so it lands in the input buffer as well as arriving here. Scrubbing
+                    // it keeps the echoed prompt clean without this screen having to refuse buffered text
+                    // outright, which would cost it ENTER.
+                    if (_clock.IsRunning)
+                        _clock.Pause();
+                    else
+                        _clock.Resume();
+
+                    SimUnit?.InputManager?.ClearBuffer();
+                    return;
+                case ConsoleKey.LeftArrow:
+                    StepFrame(-1);
+                    return;
+                case ConsoleKey.RightArrow:
+                    StepFrame(1);
+                    return;
+                case ConsoleKey.Home:
+                    _clock.SeekTo(TimeSpan.Zero);
+                    _index = 0;
+                    return;
+                case ConsoleKey.Tab:
+                    break;
+                default:
+                    return;
+            }
 
             // One load at a time. While frames are still being rendered, TAB is ignored rather than tearing a half-done
             // load down and starting the other renderer from scratch; the switch is available again the moment the
@@ -205,13 +265,24 @@ namespace WolfCurses.Demo.Screens
                 return;
             }
 
-            // On the system tick, not the simulation tick: the simulation ticks once a second and the frames here last
-            // thirty milliseconds.
-            if (_slides.Length == 0 || !_frame.TryConsume(_delays[_index]))
+            if (_slides.Length == 0)
                 return;
 
+            // The loop, expressed as a seek rather than as an index wrapping round, so the clock and the picture
+            // cannot get out of step with each other.
+            if (_clock.HasEnded)
+                _clock.SeekTo(TimeSpan.Zero);
+
+            var wanted = FrameAt(_clock.Position);
+            if (wanted == _index)
+                return;
+
+            // CATCHING UP RATHER THAN STEPPING ON. A host that missed three frames' worth of time lands on the
+            // frame that is due now and the three in between are simply never shown, which is what skipping
+            // frames means and is the whole point of a clock. Stepping the index by one instead would let the
+            // animation run slow, which is exactly what the timer this replaced did.
             var started = Stopwatch.GetTimestamp();
-            _index = (_index + 1) % _slides.Length;
+            _index = wanted;
             _counter.Record(Stopwatch.GetElapsedTime(started));
         }
 
@@ -231,8 +302,14 @@ namespace WolfCurses.Demo.Screens
             sb.AppendLine("Animated GIF  —  media/animated.gif on loop");
             sb.AppendLine($"{_counter.Describe()} | {_renderer.Describe()} | " +
                           $"frame {_index + 1}/{_slides.Length} | " +
+                          $"{(_clock.IsRunning ? "playing" : "PAUSED")} | " +
                           $"cached in {_loadTime.TotalMilliseconds:F0}ms");
-            sb.AppendLine();
+
+            _timeline.Position = _clock.Position;
+            _timeline.Duration = _clock.Duration;
+            _timeline.Width = Math.Clamp(AnsiConsole.SafeWindowWidth() - 2, 24, 72);
+            sb.AppendLine(_timeline.Render());
+
             sb.Append(_slides[_index]);
             return sb.ToString();
         }
@@ -240,10 +317,34 @@ namespace WolfCurses.Demo.Screens
         /// <inheritdoc />
         public override void OnInputBufferReturned(string input)
         {
-            // Leaving mid-load abandons the walk. The file was already closed when the load was set up, so this only
-            // drops the in-memory cursor and the frames rendered so far; nothing is left open behind us.
-            DisposeCursor();
             ClearForm();
+        }
+
+        /// <summary>
+        ///     Abandons the walk when the screen goes away, however it goes away.
+        ///     <para>
+        ///         <b>This used to sit in <see cref="OnInputBufferReturned" />, and so only ran for ENTER.</b> ESC is
+        ///         this app's universal way back to the menu, done once as a <c>DemoWindow.OnKeyPressed</c> override
+        ///         that calls <c>ClearForm</c> - which never came anywhere near this teardown. So did quitting, and
+        ///         so did the window being removed. The comment that used to be here claimed "nothing is left open
+        ///         behind us", and that was true of exactly one of the four ways out.
+        ///     </para>
+        ///     <para>
+        ///         That is the whole shape <c>IForm.OnFormClosing</c> was added for: being dropped is no signal at
+        ///         all, so a form holding something the garbage collector will not tidy has nowhere to put its
+        ///         teardown. Here it is only an iterator and the bytes it eagerly read, held until a collection; the
+        ///         hook's own worked example is a media player leaving a child process making a noise with no window
+        ///         left to stop it from. One override covers every path, where a teardown call at each exit is
+        ///         something every future exit has to remember.
+        ///     </para>
+        /// </summary>
+        public override void OnFormClosing()
+        {
+            base.OnFormClosing();
+
+            // Safe to reach the form's own state: the library detaches the form before telling it, and this is
+            // idempotent besides, so the ENTER path disposing on its way through ClearForm costs nothing.
+            DisposeCursor();
         }
 
         /// <summary>
@@ -372,10 +473,62 @@ namespace WolfCurses.Demo.Screens
             // Built the arrays before this drops the lists it built them from.
             DisposeCursor();
 
+            // When each frame falls due, as a running sum. PlaybackClock.FrameAt would do this in one call and
+            // is deliberately not used: it assumes a constant rate, and a GIF's frames each declare their own
+            // delay - eighty-three of this file's ninety-one are stored as a moved rectangle with its own timing.
+            _starts = new TimeSpan[_slides.Length];
+            var running = TimeSpan.Zero;
+            for (var frame = 0; frame < _slides.Length; frame++)
+            {
+                _starts[frame] = running;
+                running += _delays[frame];
+            }
+
             // Playback, and the readout, begin now rather than when the form opened, so the load is not divided into the
             // first frame's timing. Restart leaves the counter's clock stopped until the first frame actually arrives.
-            _frame.Restart();
+            _index = 0;
+            _clock.Duration = running;
+            _clock.SeekTo(TimeSpan.Zero);
+            _clock.Start();
             _counter.Restart();
+        }
+
+        /// <summary>
+        ///     Which frame is due at a position, found in the running-sum table rather than by dividing.
+        /// </summary>
+        /// <param name="position">Where playback has got to.</param>
+        /// <returns>The frame index.</returns>
+        private int FrameAt(TimeSpan position)
+        {
+            if (_starts.Length == 0)
+                return 0;
+
+            var frame = 0;
+            while (frame + 1 < _starts.Length && position >= _starts[frame + 1])
+                frame++;
+
+            return frame;
+        }
+
+        /// <summary>
+        ///     Steps one frame either way and holds there.
+        ///     <para>
+        ///         Pausing is part of stepping rather than a separate thing the user has to remember: a step that
+        ///         left the clock running would be overwritten by the next tick before it could be looked at,
+        ///         which is the whole reason to step at all on a screen whose job is to let you inspect a frame.
+        ///     </para>
+        /// </summary>
+        /// <param name="by">How many frames, forward or back.</param>
+        private void StepFrame(int by)
+        {
+            if (_starts.Length == 0)
+                return;
+
+            _clock.Pause();
+            _index = Math.Clamp(_index + by, 0, _starts.Length - 1);
+
+            // Seeking neither starts nor stops playback, which is what makes this leave the clock paused.
+            _clock.SeekTo(_starts[_index]);
         }
 
         /// <summary>Abandons the load and shows why.</summary>

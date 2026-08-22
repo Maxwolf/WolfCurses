@@ -95,7 +95,11 @@ namespace WolfCurses.Games
         /// <summary>Forces the current simulation app to close and return control to the operating system.</summary>
         public static void Destroy()
         {
-            GamesSimulationApp.Instance.Destroy();
+            // Null-conditional because CTRL-C runs on its own thread and OnPreDestroy nulls Instance, so a CTRL-C
+            // landing while a menu Quit is queued reaches this line with nothing left to destroy and throws out of
+            // the tick loop. SimulationApp.Destroy is already idempotent (it returns at once when IsClosing), so the
+            // guard can only ever skip a call that would have thrown rather than one that would have done work.
+            GamesSimulationApp.Instance?.Destroy();
         }
     }
 }

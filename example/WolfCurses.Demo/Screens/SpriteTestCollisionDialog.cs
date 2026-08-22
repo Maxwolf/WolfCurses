@@ -59,6 +59,10 @@ namespace WolfCurses.Demo.Screens
         private readonly RendererSwitch _renderer = new();
 
         private string _current = string.Empty;
+
+        /// <summary>The whole frame, built on the paced tick and handed back unchanged by every render between.</summary>
+        private string _frameText = string.Empty;
+
         private string _error;
         private AnsiImageOptions _options;
         private Sprite _partner;
@@ -69,6 +73,35 @@ namespace WolfCurses.Demo.Screens
 
         /// <summary>Whether they were touching last frame, which is the whole of the edge trigger.</summary>
         private bool _wasTouching;
+
+        /// <summary>
+        ///     Where the picture landed in the frame the viewer is looking at, measured from what the renderer
+        ///     actually returned rather than assumed. Rebuilt every time the scene is composed, the same shape
+        ///     Missile Command's board map takes.
+        /// </summary>
+        private int _pictureTopRow = -1;
+
+        private int _pictureColumns;
+        private int _pictureRows;
+
+        /// <summary>
+        ///     Whether a cell of the picture can be turned back into a canvas pixel at all.
+        ///     <para>
+        ///         <b>Only half blocks can.</b> They are one pixel per column and two per row by definition, so the
+        ///         drawn rectangle is exactly the string that came back. A sixel or kitty payload is one row of
+        ///         escapes of no visible width that paints across many rows, so there is nothing to measure - and
+        ///         the renderer's own <c>CellPixelWidth</c> is what it <i>assumes</i> the terminal's cell is, never
+        ///         a measurement of it. TAB already switches renderers on this screen, so the honest answer is to
+        ///         say which one can be dragged rather than to guess a rectangle.
+        ///     </para>
+        /// </summary>
+        private bool _draggable;
+
+        /// <summary>Which penguin is being dragged, and where inside it the pointer took hold.</summary>
+        private Sprite _dragging;
+
+        private int _grabX;
+        private int _grabY;
 
         /// <summary>Initializes a new instance of the <see cref="SpriteTestCollisionDialog" /> class.</summary>
         /// <param name="window">The parent window.</param>
@@ -82,9 +115,34 @@ namespace WolfCurses.Demo.Screens
         {
             base.OnFormPostCreate();
 
-            ParentWindow.PromptText = "Arrow keys to move, TAB to switch renderer, ENTER/ESC for the menu";
+            ParentWindow.PromptText = AnsiConsole.MouseEnabled
+                ? "Drag a penguin with the mouse, or arrow keys move the left one; TAB switches renderer, ENTER/ESC for the menu"
+                : "Arrow keys to move, TAB to switch renderer, ENTER/ESC for the menu";
+
+            // Asked for by the screen that wants it, and handed back in OnFormClosing. Motion is one event for
+            // every cell the pointer crosses, so the other demos should not be paying for it while they are the
+            // ones on screen.
+            SimUnit.InputManager.ReportsMouseMotion = true;
+
             Build();
             RestartOnActivate(_frame);
+        }
+
+        /// <summary>
+        ///     Hands pointer reporting back, which is the half a form has nowhere else to put.
+        ///     <para>
+        ///         Being dropped is no signal at all, which is why <c>IForm.OnFormClosing</c> exists. Without this
+        ///         every later demo, and the menu itself, would go on receiving one event per cell the pointer
+        ///         crossed for the rest of the session, for nothing. The library fires it from every path a form is
+        ///         detached by, so ESC, ENTER, the window being removed and quitting are all covered by the one
+        ///         override.
+        ///     </para>
+        /// </summary>
+        public override void OnFormClosing()
+        {
+            base.OnFormClosing();
+
+            SimUnit.InputManager.ReportsMouseMotion = false;
         }
 
         /// <inheritdoc />
@@ -98,6 +156,13 @@ namespace WolfCurses.Demo.Screens
             base.OnFormActivate();
 
             _counter.Restart();
+
+            // Whatever was being dragged is dropped. The message box is a separate window and it takes focus, so
+            // the RELEASE that ended the drag was delivered to the box and this form never saw it - the penguin
+            // would otherwise still be stuck to the pointer when the box is dismissed. That is the trap in any
+            // drag built on a screen that can be interrupted, and it is why a drag needs both a release and a
+            // second way of being told it is over.
+            _dragging = null;
         }
 
         /// <inheritdoc />
@@ -153,6 +218,207 @@ namespace WolfCurses.Demo.Screens
             var started = Stopwatch.GetTimestamp();
             _current = _scene.ToAnsi(_options, _renderer.Current);
             _counter.Record(Stopwatch.GetElapsedTime(started));
+
+            Compose();
+        }
+
+        /// <summary>
+        ///     Builds the whole frame, and notes which row the picture starts on while it is building it.
+        ///     <para>
+        ///         <b>The row is counted from the builder, never written down as a constant.</b> A constant is
+        ///         right until somebody adds a line to the header, at which point every grab lands one row out and
+        ///         nothing anywhere reports a problem. Counting the breaks already in the builder cannot drift.
+        ///     </para>
+        ///     <para>
+        ///         Composing here rather than in <c>OnRenderForm</c> is the other half: the scene graph calls that
+        ///         method on every system tick, about a thousand times a second, and the picture only changes
+        ///         thirty times a second. It also means the render is a pure read, so nothing measures anything
+        ///         from inside it.
+        ///     </para>
+        /// </summary>
+        private void Compose()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine();
+            sb.AppendLine("Sprite Test (Collision)  —  arrow keys move the left penguin, or drag either one");
+
+            // Said out loud rather than left to be discovered, because "the drag does nothing" and "this terminal
+            // has no mouse" look identical from the other side of the screen. A true-pixel picture is one payload
+            // row of no measurable width, so there is no rectangle to hit-test and TAB is the way to get one.
+            var drag = !AnsiConsole.MouseEnabled
+                ? "no mouse"
+                : _draggable
+                    ? "drag: on"
+                    : "drag: needs half blocks (TAB)";
+
+            sb.AppendLine($"{_counter.Describe()} | {_renderer.Describe()} | {drag} | " +
+                          $"{(_wasTouching ? "TOUCHING" : "apart")} | {_touches} touches");
+            sb.AppendLine(_reaction);
+
+            Measure(CountLineBreaks(sb));
+
+            sb.Append(_current);
+            _frameText = sb.ToString();
+        }
+
+        /// <summary>How many line breaks are already in the builder, which is the row the next line will occupy.</summary>
+        /// <param name="builder">The frame being composed.</param>
+        /// <returns>The count.</returns>
+        private static int CountLineBreaks(StringBuilder builder)
+        {
+            var breaks = 0;
+            for (var i = 0; i < builder.Length; i++)
+            {
+                if (builder[i] == '\n')
+                    breaks++;
+            }
+
+            return breaks;
+        }
+
+        /// <summary>
+        ///     Records where the picture really landed, so a pointer can be turned back into a canvas pixel.
+        ///     <para>
+        ///         <b>Measured from what the renderer returned rather than from what it was asked for.</b> The fit
+        ///         keeps the canvas's proportions, so the picture is usually narrower than the columns it was
+        ///         offered; inverting a click against the offered width instead is wrong by more the further right
+        ///         the pointer is, which reads as the drag being broken rather than as the arithmetic being wrong.
+        ///     </para>
+        /// </summary>
+        private void Measure(int topRow)
+        {
+            _pictureTopRow = topRow;
+            _pictureRows = 0;
+            _pictureColumns = 0;
+            _draggable = false;
+
+            if (string.IsNullOrEmpty(_current))
+                return;
+
+            var rows = _current.Replace("\r\n", "\n").Split('\n');
+
+            // A true-pixel payload is one row of escapes of no visible width followed by placeholder rows, so there
+            // is no rectangle here to hit-test. The library publishes the question rather than leaving callers to
+            // know that the marker sits at index zero.
+            if (rows.Length == 0 || AnsiGraphics.IsPictureRow(rows[0]))
+                return;
+
+            foreach (var row in rows)
+                _pictureColumns = Math.Max(_pictureColumns, AnsiText.VisibleLength(row));
+
+            _pictureRows = rows.Length;
+            _draggable = _pictureColumns > 1 && _pictureRows > 1;
+        }
+
+        /// <summary>
+        ///     Picking a penguin up, dragging it and putting it down, which is the whole of what the pointer adds
+        ///     here and is not expressible in presses however many arrive.
+        ///     <para>
+        ///         <b>A drag is three different events.</b> The press says which sprite was taken hold of and
+        ///         where inside it, every move carrying that button says where it has got to, and the release
+        ///         says it is over.
+        ///     </para>
+        ///     <para>
+        ///         <b>What actually ends it is the button test on the move, not the release</b>, and that is
+        ///         worth knowing rather than glossing: a move arrives with whichever buttons are still held, so
+        ///         a hover already fails the test and the sprite is put down whether a release was seen or not.
+        ///         Handling the release is belt and braces - which is exactly why it survived being mutated
+        ///         away under this screen's own tests. It stays because it says what the code means, and
+        ///         because the self-healing half is the thing that saves a drag interrupted by a modal, where
+        ///         the release is delivered to the message box and this form never sees it at all.
+        ///     </para>
+        ///     <para>
+        ///         Miss the grab offset, though, and the sprite jumps so its corner sits under the pointer the
+        ///         moment you touch it. That one has no second line of defence.
+        ///     </para>
+        ///     <para>
+        ///         The sprite under the pointer is found by asking the scene rather than by comparing rectangles
+        ///         here: a one-pixel probe sprite is offered to <c>SpriteScene.SpritesTouching</c>, which answers in
+        ///         draw order, so the LAST one is the nearest. The probe is never added to the scene, which that
+        ///         method explicitly allows, so a position can be tried without anything moving there.
+        ///     </para>
+        /// </summary>
+        /// <param name="mouse">What the mouse did, and where.</param>
+        public override void OnMouseEvent(MouseEvent mouse)
+        {
+            if (_scene == null || !_draggable)
+                return;
+
+            if (mouse.Kind == MouseEventKindEnum.Release)
+            {
+                _dragging = null;
+                return;
+            }
+
+            if (mouse.Kind != MouseEventKindEnum.Move || _dragging == null ||
+                mouse.Button != MouseButtonEnum.Left)
+                return;
+
+            if (!ToCanvas(mouse.Row, mouse.Column, out var canvasX, out var canvasY))
+                return;
+
+            _dragging.X = Math.Clamp(canvasX - _grabX, 0, Math.Max(0, _scene.Width - _dragging.Width));
+            _dragging.Y = Math.Clamp(canvasY - _grabY, 0, Math.Max(0, _scene.Height - _dragging.Height));
+        }
+
+        /// <summary>
+        ///     Takes hold of whichever penguin is under the pointer, which is where a drag begins.
+        ///     <para>
+        ///         <b>This has to be its own override and cannot live in <see cref="OnMouseEvent" />.</b>
+        ///         <c>Window.OnMouseEvent</c> hands a press to <c>OnMousePressed</c> and returns, so a press never
+        ///         reaches the form's <c>OnMouseEvent</c> at all - which means a grab written there compiles, runs
+        ///         never, and leaves a drag that silently does nothing. That is the same shape as the library's own
+        ///         note about <c>case ConsoleKey.Enter:</c> being dead code in an override, and it cost a red test
+        ///         here before it cost anything else.
+        ///     </para>
+        /// </summary>
+        /// <param name="mouse">Where the press landed and which button it was.</param>
+        public override void OnMousePressed(MouseEvent mouse)
+        {
+            base.OnMousePressed(mouse);
+
+            if (_scene == null || !_draggable || mouse.Button != MouseButtonEnum.Left)
+                return;
+
+            if (!ToCanvas(mouse.Row, mouse.Column, out var canvasX, out var canvasY))
+                return;
+
+            // Asked of the scene rather than answered by comparing rectangles here. Last rather than first, because
+            // the scene answers in draw order, so the last one is the nearest and picking the first would take hold
+            // of whatever is buried under the penguin that was pointed at. The probe is never added to the scene,
+            // which SpriteScene.SpritesTouching explicitly allows.
+            var probe = new Sprite(new PixelBuffer(1, 1), canvasX, canvasY);
+            _dragging = _scene.SpritesTouching(probe).LastOrDefault();
+
+            if (_dragging == null)
+                return;
+
+            // Where inside the sprite the pointer took hold, so it does not jump to put its corner under the
+            // pointer the moment you touch it.
+            _grabX = canvasX - _dragging.X;
+            _grabY = canvasY - _dragging.Y;
+        }
+
+        /// <summary>Turns a screen cell into a canvas pixel, or answers false when that cell is not on the picture.</summary>
+        /// <param name="row">Screen row.</param>
+        /// <param name="column">Screen column.</param>
+        /// <param name="canvasX">Where that lands on the canvas.</param>
+        /// <param name="canvasY">Where that lands on the canvas.</param>
+        /// <returns>TRUE when the cell was on the picture.</returns>
+        private bool ToCanvas(int row, int column, out int canvasX, out int canvasY)
+        {
+            canvasX = 0;
+            canvasY = 0;
+
+            var cy = row - _pictureTopRow;
+            if (cy < 0 || cy >= _pictureRows || column < 0 || column >= _pictureColumns)
+                return false;
+
+            // The centre of the cell, because a cell of a half-block picture covers a BAND of canvas pixels rather
+            // than sampling one. Taking the near edge instead puts every grab half a cell high and left.
+            canvasX = (int) ((column + 0.5)/_pictureColumns*_scene.Width);
+            canvasY = (int) ((cy + 0.5)/_pictureRows*_scene.Height);
+            return true;
         }
 
         /// <inheritdoc />
@@ -161,14 +427,8 @@ namespace WolfCurses.Demo.Screens
             if (_error != null)
                 return $"{Environment.NewLine}{_error}";
 
-            var sb = new StringBuilder();
-            sb.AppendLine();
-            sb.AppendLine("Sprite Test (Collision)  —  arrow keys move the left penguin");
-            sb.AppendLine($"{_counter.Describe()} | {_renderer.Describe()} | " +
-                          $"{(_wasTouching ? "TOUCHING" : "apart")} | {_touches} touches");
-            sb.AppendLine(_reaction);
-            sb.Append(_current);
-            return sb.ToString();
+            // A pure read of what the paced tick built. This runs about a thousand times a second.
+            return _frameText;
         }
 
         /// <inheritdoc />

@@ -2,7 +2,6 @@
 // Timestamp 01/16/2016@5:33 PM
 
 using System;
-using System.Text;
 using WolfCurses.Window;
 using WolfCurses.Window.Form;
 
@@ -15,11 +14,6 @@ namespace WolfCurses.Demo.CustomInput
     public sealed class DialogCustomInput : Form<DemoWindowInfo>
     {
         /// <summary>
-        ///     Makes it easy to print and manage multiple lines of text.
-        /// </summary>
-        private readonly StringBuilder _inputNamesHelp;
-
-        /// <summary>
         ///     Initializes a new instance of the <see cref="Form{TData}" /> class.
         ///     This constructor will be used by the other one
         /// </summary>
@@ -27,7 +21,27 @@ namespace WolfCurses.Demo.CustomInput
         // ReSharper disable once UnusedMember.Global
         public DialogCustomInput(IWindow window) : base(window)
         {
-            _inputNamesHelp = new StringBuilder();
+        }
+
+        /// <summary>
+        ///     Ask the question on the prompt line so the name the user types echoes right after it, the same way the
+        ///     menu shows the typed number after "What is your choice?", instead of on a separate line below a second,
+        ///     redundant prompt.
+        ///     <para>
+        ///         Set here and not in <see cref="OnRenderForm" />, which is the rule this file exists to show:
+        ///         <see cref="OnRenderForm" /> is a pure read of state something else decided, called on every system
+        ///         tick at roughly a thousand times a second. Anything that changes state belongs on a tick or, when
+        ///         it is decided once like this prompt, in <see cref="OnFormPostCreate" />. Assigning from the render
+        ///         costs a thousand writes a second to show one string, and hides who owns the value: the window's own
+        ///         prompt is restored by <see cref="DemoWindow.OnFormChange" /> when this form goes away, which only
+        ///         reads correctly if nothing is quietly rewriting it every frame.
+        ///     </para>
+        /// </summary>
+        public override void OnFormPostCreate()
+        {
+            base.OnFormPostCreate();
+
+            ParentWindow.PromptText = "What is your name?";
         }
 
         /// <summary>
@@ -39,15 +53,7 @@ namespace WolfCurses.Demo.CustomInput
         /// </returns>
         public override string OnRenderForm()
         {
-            // Ask the question on the prompt line so the name the user types echoes right after it — the same way the
-            // menu shows the typed number after "What is your choice?" — instead of on a separate line below a
-            // second, redundant prompt.
-            ParentWindow.PromptText = "What is your name?";
-
-            _inputNamesHelp.Clear();
-            _inputNamesHelp.Append($"{Environment.NewLine}Dialog Custom Input{Environment.NewLine}");
-
-            return _inputNamesHelp.ToString();
+            return $"{Environment.NewLine}Dialog Custom Input{Environment.NewLine}";
         }
 
         /// <summary>Fired when the game Windows current state is not null and input buffer does not match any known command.</summary>

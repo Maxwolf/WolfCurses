@@ -3,6 +3,7 @@ using System.Threading;
 using WolfCurses.Core;
 using WolfCurses.Games.MissileCommand;
 using WolfCurses.Games.Tests.Support;
+using WolfCurses.Graphics;
 using Xunit;
 
 namespace WolfCurses.Games.Tests.MissileCommand
@@ -277,14 +278,52 @@ namespace WolfCurses.Games.Tests.MissileCommand
         {
             // A canvas that did not would draw circles as ovals, and the player would learn to aim at something
             // other than what the rules are testing.
+            IImageRenderer[] renderers = {new HalfBlockImageRenderer(), new SixelImageRenderer()};
+
+            foreach (var renderer in renderers)
             foreach (var rows in new[] {10, 24, 50, 80})
             {
-                var (width, height) = MissileFieldArt.SizeFor(rows);
+                var (width, height) = MissileFieldArt.SizeFor(rows, renderer);
 
                 var ratio = (double) width/height;
                 Assert.True(Math.Abs(ratio - MissileField.Aspect) < 0.02,
-                    $"{rows} rows gave a {width}x{height} canvas, whose ratio is {ratio:F3}");
+                    $"{rows} rows on {renderer.Name} gave a {width}x{height} canvas, ratio {ratio:F3}");
             }
+        }
+
+        [Fact]
+        public void ARendererWithRealPixelsGetsACanvasNearItsOwnGridRatherThanOneToMagnify()
+        {
+            // The bug this replaced was silent and affected every stroke on the screen. A fit defaults to
+            // Contain and ImageFit ENLARGES, so a canvas sized for half blocks was blown up on its way to a
+            // sixel terminal - and the strokes are chosen in OUTPUT pixels, so the deliberate two-pixel trail
+            // arrived several pixels thick. Asking the renderer how big its cell is removes the guess.
+            IImageRenderer half = new HalfBlockImageRenderer();
+            IImageRenderer sixel = new SixelImageRenderer();
+
+            var (_, halfHeight) = MissileFieldArt.SizeFor(18, half);
+            var (_, sixelHeight) = MissileFieldArt.SizeFor(18, sixel);
+
+            Assert.True(sixelHeight > halfHeight*1.5,
+                $"real pixels got {sixelHeight} rows of canvas against half blocks' {halfHeight}");
+
+            // And bounded, because every one of those pixels is base64 on its way out thirty times a second
+            // and every Fill and DrawLine is paid per pixel per frame.
+            Assert.InRange(sixelHeight, 1, 420);
+        }
+
+        [Fact]
+        public void TheHalfBlockCanvasIsStillExactlyTwiceWhatWillBeDrawn()
+        {
+            // The absolute half of the pair above. Half blocks draw two pixels a row and the canvas is a 2x
+            // supersample of that, which is what makes a one-cell-pixel trail survive being averaged down.
+            // Thirty rows, chosen because 30 * 2 * 2 is 120: inside the 100..200 clamp, so this measures
+            // the arithmetic and not the bound. At twenty-four it would be clamped up to 100 and the
+            // test would be about the floor instead, which is how the first version of it failed.
+            IImageRenderer renderer = new HalfBlockImageRenderer();
+            var (_, height) = MissileFieldArt.SizeFor(30, renderer);
+
+            Assert.Equal(30*renderer.CellPixelHeight*2, height);
         }
 
         /// <summary>Whether any pixel on a row is something other than the night sky the canvas is cleared to.</summary>

@@ -49,6 +49,12 @@ namespace WolfCurses.Games.Chess
         /// </summary>
         private static readonly TimeSpan _thinkSlice = TimeSpan.FromMilliseconds(15);
 
+        /// <summary>
+        ///     How many plies the move list under the board shows. Twice what it showed while it was squeezed
+        ///     onto the end of the status line, because it has the whole width to itself now.
+        /// </summary>
+        private const int RecentPlies = 8;
+
         private readonly ChessBoardArt _art = new();
 
         /// <summary>
@@ -319,6 +325,14 @@ namespace WolfCurses.Games.Chess
         /// <summary>Plays the player's move and sets the bot thinking about its reply.</summary>
         private void PlayPlayerMove(ChessMove move)
         {
+            // A hint the player did not wait for is about a position that has just stopped existing. The
+            // search runs sliced over more than a second of real time and nothing stops a move being played
+            // during it, so without this the adviser finishes against a board two plies on and overwrites the
+            // real message with a wrong one - visibly garbled rather than merely wrong, since ToSan reads the
+            // piece off the FROM square and that square is empty when the player has just played the very move
+            // being suggested. It reads "It would play .f3." NewGame already made this decision for the other
+            // way of abandoning a hint.
+            _adviser = null;
             _selected = -1;
             _lastMove = move;
             _message = $"You played {_game.ToSan(move)}.";
@@ -491,7 +505,18 @@ namespace WolfCurses.Games.Chess
             Refresh();
         }
 
-        /// <summary>Rebuilds the screen. Called when something changed, never from the render.</summary>
+        /// <summary>
+        ///     Rebuilds the screen. Called when something changed, never from the render.
+        ///     <para>
+        ///         <b>Every row here is always present, including the empty ones.</b> The move list used to be a
+        ///         second line of the status, conditional on there being any moves - so the whole board shifted
+        ///         down exactly one row the moment White played. A player sees that as a jolt; on a sixel or
+        ///         kitty terminal it is worse, because the payload row has moved, and the presenter then erases
+        ///         the picture's area and repaints the whole payload rather than leaving an unchanged picture
+        ///         alone. Putting the moves under the board also makes true what this class and the app notes
+        ///         both already claimed: status above, move list below, never in a column beside it.
+        ///     </para>
+        /// </summary>
         private void Refresh()
         {
             var sb = new StringBuilder();
@@ -499,12 +524,36 @@ namespace WolfCurses.Games.Chess
             sb.AppendLine(StatusLine());
             sb.AppendLine();
             sb.AppendLine(_useText || !_art.IsAvailable ? RenderTextBoard() : RenderPictureBoard());
-            sb.AppendLine();
+            sb.AppendLine(RecentMoves());
             sb.Append(_message);
             _rendered = sb.ToString();
         }
 
-        /// <summary>The line above the board: whose turn, what the bot is doing, and the last few moves.</summary>
+        /// <summary>
+        ///     The last few plies, drawn under the board on a row that is always there and is empty before the
+        ///     first move.
+        /// </summary>
+        /// <returns>The moves, or an empty line.</returns>
+        private string RecentMoves()
+        {
+            if (_game.Notation.Count == 0)
+                return string.Empty;
+
+            var recent = new StringBuilder("  ");
+            var from = Math.Max(0, _game.Notation.Count - RecentPlies);
+
+            for (var i = from; i < _game.Notation.Count; i++)
+            {
+                if (i % 2 == 0)
+                    recent.Append(i / 2 + 1).Append('.');
+
+                recent.Append(_game.Notation[i]).Append(' ');
+            }
+
+            return recent.ToString().TrimEnd();
+        }
+
+        /// <summary>The line above the board: whose turn, what the bot is doing, and the score. Always one line.</summary>
         private string StatusLine()
         {
             var turn = _game.IsOver
@@ -516,18 +565,7 @@ namespace WolfCurses.Games.Chess
                         : "black to move";
 
             var check = !_game.IsOver && _game.IsInCheck ? "  CHECK" : string.Empty;
-            var recent = new StringBuilder();
-            var from = Math.Max(0, _game.Notation.Count - 4);
-            for (var i = from; i < _game.Notation.Count; i++)
-            {
-                if (i % 2 == 0)
-                    recent.Append(i / 2 + 1).Append('.');
-
-                recent.Append(_game.Notation[i]).Append(' ');
-            }
-
-            return $"WolfChess 5000  ·  level {_level}  ·  {turn}{check}  ·  wins {UserData.ChessWins}" +
-                   (recent.Length > 0 ? Environment.NewLine + "  " + recent.ToString().TrimEnd() : string.Empty);
+            return $"WolfChess 5000  ·  level {_level}  ·  {turn}{check}  ·  wins {UserData.ChessWins}";
         }
 
         /// <summary>Which squares to highlight, most important last so it wins the square.</summary>

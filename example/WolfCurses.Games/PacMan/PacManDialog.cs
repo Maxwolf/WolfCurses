@@ -43,6 +43,25 @@ namespace WolfCurses.Games.PacMan
         /// <summary>How fast the power pellets and an expiring ghost blink.</summary>
         private static readonly TimeSpan _blinkLength = TimeSpan.FromMilliseconds(220);
 
+        /// <summary>
+        ///     Columns held for the score - seven, which is "999,999" with the thousands separator the <c>N0</c>
+        ///     format puts in. The bound is measured rather than guessed: this board carries 389 pellets and four
+        ///     power pellets, so it pays 4,090 in food and at most 16,090 with every ghost eaten on every pellet, and
+        ///     the extra life falls at ten thousand. Six columns looked plenty and was not - a good player clearing
+        ///     six boards is already at the far side of 99,999, and this field is one somebody watches climb.
+        /// </summary>
+        private const int ScoreColumns = 7;
+
+        /// <summary>Columns held for the board number. Two - nobody is clearing a hundred boards of this.</summary>
+        private const int BoardColumns = 2;
+
+        /// <summary>
+        ///     Columns held for the row of spare lives. Three, and that is a ceiling rather than a guess: the game
+        ///     starts on three lives and awards exactly one extra, once, so four is the most there can ever be and
+        ///     the ribbon draws one glyph fewer than that.
+        /// </summary>
+        private const int LivesColumns = 3;
+
         private readonly IntervalTimer _step = new(_stepLength);
         private readonly IntervalTimer _blink = new(_blinkLength);
 
@@ -177,11 +196,25 @@ namespace WolfCurses.Games.PacMan
         {
             PacManView.Paint(_board, _game, _blinkOn);
 
+            var lives = new string('<', Math.Max(0, _game.Lives - 1));
+
             var body = new StringBuilder();
             body.AppendLine();
-            body.AppendLine($"Score {_game.Score:N0}    Board {_game.Level}    " +
-                            $"Lives {new string('<', Math.Max(0, _game.Lives - 1))}    " +
-                            $"Best {UserData.PacManHighScore:N0}");
+
+            // Fixed-width fields. Every one of these changes width while the game is being played - the score climbs
+            // through 10, 100, 1,000 and gains a separator on the way, the board number rolls over, and the lives
+            // ribbon is one glyph per spare life so it narrows the instant one is lost. Unpadded, everything to the
+            // right of whichever changed slides across, and it does so at the moment nothing on screen should be
+            // moving except the game. "Best" is left ragged on purpose, being last on the line with nothing to shove.
+            //
+            // Plain composite-format widths rather than AnsiText.Fit, because nothing on this line carries an escape
+            // for PadRight to miscount - Fit is what the board's own rows would need, and is why TextColumns is used
+            // for those a few lines down. Padding on the right keeps the digits anchored under their own label, and
+            // it can only ever pad, so a score past its field pushes the line along as it does today rather than
+            // being trimmed to fit.
+            body.AppendLine(string.Create(CultureInfo.InvariantCulture,
+                $"Score {_game.Score,-ScoreColumns:N0}    Board {_game.Level,-BoardColumns}    " +
+                $"Lives {lives,-LivesColumns}    Best {UserData.PacManHighScore:N0}"));
 
             // TextColumns rather than PadRight, because the board's rows are a few hundred bytes of colour each and
             // padding them by character count would shred the panel diagonally down the screen.

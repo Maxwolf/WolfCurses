@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using WolfCurses.Core;
+using WolfCurses.Graphics;
 using WolfCurses.Games.Battlezone;
 using Xunit;
 
@@ -182,8 +183,8 @@ namespace WolfCurses.Games.Tests.Battlezone
             // or the picture is magnified and every line goes up with it. That is not theoretical: the wireframe
             // shipped fat on a terminal with real pixels and crisp on one without, because a canvas sized for half
             // blocks was being blown up about five times on its way to a sixel terminal.
-            var (halfWidth, halfHeight) = BattlezoneArt.SizeFor(198, 44, false);
-            var (trueWidth, trueHeight) = BattlezoneArt.SizeFor(198, 44, true);
+            var (halfWidth, halfHeight) = BattlezoneArt.SizeFor(198, 44, new HalfBlockImageRenderer());
+            var (trueWidth, trueHeight) = BattlezoneArt.SizeFor(198, 44, new SixelImageRenderer());
 
             Assert.True(trueWidth > halfWidth*1.5, $"real pixels got {trueWidth} against half blocks' {halfWidth}");
             Assert.True(trueHeight > halfHeight*1.5, $"real pixels got {trueHeight} against half blocks' {halfHeight}");
@@ -191,6 +192,39 @@ namespace WolfCurses.Games.Tests.Battlezone
             // And bounded, because every one of those pixels is base64 on its way to the terminal thirty times a
             // second - the cost on the other side of the same knob.
             Assert.InRange(trueWidth*trueHeight, 1, 500_000);
+        }
+
+        [Fact]
+        public void ACanvasIsSizedFromTheRenderersOwnCellRatherThanFromAGuessAboutIt()
+        {
+            // The reason the size is asked for rather than written down. A host is free to construct a renderer
+            // with the cell size its terminal really has - the library takes it as a constructor argument for
+            // exactly that - and the old arithmetic multiplied the columns by a constant chosen against the
+            // DEFAULT ten-by-twenty cell. So a smaller cell used to get the same canvas as a larger one, which
+            // silently changed the magnification and with it every stroke width on the screen.
+            var wide = BattlezoneArt.SizeFor(80, 24, new SixelImageRenderer(10, 20));
+            var narrow = BattlezoneArt.SizeFor(80, 24, new SixelImageRenderer(6, 13));
+
+            Assert.True(narrow.Width < wide.Width,
+                $"a six-pixel cell asked for {narrow.Width} against a ten-pixel cell's {wide.Width}");
+            Assert.True(narrow.Height < wide.Height,
+                $"a thirteen-pixel cell asked for {narrow.Height} against a twenty-pixel cell's {wide.Height}");
+        }
+
+        [Fact]
+        public void TheHalfBlockCanvasIsStillExactlyTwiceWhatWillBeDrawn()
+        {
+            // The absolute half of the pair above, because "smaller than the other one" is satisfied by any number
+            // of wrong answers. Half blocks draw one pixel per column and two per row, and the canvas is a 2x
+            // supersample of that - which is the whole reason a two-pixel line survives the average down to a cell.
+            // Below the clamp floors, so this is the arithmetic and not the bound.
+            // Typed as the interface deliberately: CellPixelWidth and CellPixelHeight are default interface
+            // members, so half blocks answer them without declaring them and they are only reachable this way.
+            IImageRenderer renderer = new HalfBlockImageRenderer();
+            var (width, height) = BattlezoneArt.SizeFor(198, 44, renderer);
+
+            Assert.Equal(198*renderer.CellPixelWidth*2, width);
+            Assert.Equal(44*renderer.CellPixelHeight*2, height);
         }
 
         [Fact]

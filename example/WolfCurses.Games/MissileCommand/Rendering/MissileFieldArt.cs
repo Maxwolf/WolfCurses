@@ -15,12 +15,22 @@ namespace WolfCurses.Games.MissileCommand
     ///         exercised just as hard by a picture the program invents as by one it reads.
     ///     </para>
     ///     <para>
-    ///         <b>Everything is drawn two pixels thick, and the canvas is deliberately larger than the terminal can
-    ///         show.</b> The picture is area-average resampled on its way to the screen, so a one-pixel trail arrives
-    ///         as roughly a quarter of a cell's worth of colour — a grey ghost of a line rather than a line. Drawing
-    ///         at twice the resolution the terminal will use and with strokes two pixels wide is what makes a trail
-    ///         survive the trip, and it is also what buys sub-cell motion: a warhead moving a third of a character
-    ///         cell shows up as shading rather than as a jump.
+    ///         <b>Everything is drawn two pixels thick, and the canvas is sized against the renderer that will
+    ///         draw it.</b> Under half blocks the picture is area-average resampled on its way to the screen, so a
+    ///         one-pixel trail arrives as roughly a quarter of a cell's worth of colour — a grey ghost of a line
+    ///         rather than a line. Drawing at twice the resolution that path will use, with strokes two pixels
+    ///         wide, is what makes a trail survive the trip, and it is also what buys sub-cell motion: a warhead
+    ///         moving a third of a character cell shows up as shading rather than as a jump.
+    ///     </para>
+    ///     <para>
+    ///         <b>That bargain is a fact about half blocks and used to be applied to every renderer, which was a
+    ///         live bug on any terminal with real pixels.</b> A fit defaults to <c>Contain</c> and
+    ///         <c>ImageFit</c> <i>enlarges</i>, so a canvas sized for half blocks was blown up on its way to a
+    ///         sixel terminal - at eighteen rows by seventy-eight columns, a 160x100 canvas into a 780x360 pixel
+    ///         area is a magnification of about three and a half, and the deliberate two-pixel trail arrived
+    ///         seven pixels thick. Every stroke on the screen was wrong by the same factor. That is the Battlezone
+    ///         play-test finding, unlearned; <see cref="SizeFor" /> now asks the renderer instead of assuming,
+    ///         and the enlarging resample disappears with it.
     ///     </para>
     ///     <para>
     ///         The one buffer is reused between frames and cleared with <see cref="PixelBuffer.Fill(Rgba32)" />,
@@ -81,14 +91,33 @@ namespace WolfCurses.Games.MissileCommand
         public int Height => _canvas.Height;
 
         /// <summary>
-        ///     Works out a canvas to fit the character rows the game has been given: twice the vertical resolution
-        ///     half blocks would use, so the resampling has something to average rather than something to lose.
+        ///     Works out a canvas for the character rows the game has been given, out of the renderer's own idea
+        ///     of how many pixels a cell holds.
+        ///     <para>
+        ///         Half blocks answer two pixels a row, so <c>rows * CellPixelHeight * Supersample</c> reproduces
+        ///         exactly the <c>rows * 4</c> and the 100..200 clamp this used to be written as. A renderer
+        ///         drawing real pixels answers something like twenty, and gets a canvas near its own grid instead
+        ///         of a half-block-sized one to magnify - which is the whole point, since the strokes are chosen
+        ///         in <i>output</i> pixels and a magnified canvas takes every one of them up with it.
+        ///     </para>
+        ///     <para>
+        ///         The cap is the cost on the other side of the same knob: every pixel is base64 on its way to
+        ///         the terminal thirty times a second, and <c>Fill</c> plus every <c>DrawLine</c> is paid per
+        ///         pixel per frame.
+        ///     </para>
         /// </summary>
         /// <param name="rows">How many character rows the picture may occupy.</param>
+        /// <param name="renderer">The renderer about to draw it; null asks the current default.</param>
         /// <returns>The canvas size.</returns>
-        public static (int Width, int Height) SizeFor(int rows)
+        public static (int Width, int Height) SizeFor(int rows, IImageRenderer renderer)
         {
-            var height = Math.Clamp(rows*4, 100, 200);
+            renderer ??= ImageRenderers.Default;
+
+            var cellHeight = Math.Max(1, renderer.CellPixelHeight);
+            var height = renderer.DrawsTruePixels
+                ? Math.Clamp(rows*cellHeight, 100, 420)
+                : Math.Clamp(rows*cellHeight*Supersample, 100, 200);
+
             return ((int) Math.Round(height*MissileField.Aspect), height);
         }
 
@@ -126,6 +155,12 @@ namespace WolfCurses.Games.MissileCommand
         private int ToY(double worldY) => (int) Math.Round((1.0 - worldY)*(_canvas.Height - 1));
 
         /// <summary>How thick a stroke is at this canvas size, never less than two.</summary>
+        /// <summary>
+        ///     How many canvas pixels the half-block path is drawn at per pixel it will really show. Two, which
+        ///     is what makes a one-cell-pixel line survive being area-averaged down.
+        /// </summary>
+        private const int Supersample = 2;
+
         private int Stroke => Math.Max(2, _canvas.Height/70);
 
         private void DrawGround()

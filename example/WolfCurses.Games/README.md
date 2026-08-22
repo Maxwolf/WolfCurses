@@ -13,10 +13,10 @@ These are terminal UIs, so run them from a real terminal window rather than by d
 | Game | Controls | What it demonstrates |
 | --- | --- | --- |
 | **Snake** | Arrows or WASD, ENTER or ESC to quit | Steering, paced off the system tick |
-| **Minesweeper** | Type `B4`, `F B4` to flag, `R` new board. With a mouse: click to open, right-click to flag, click the face for a new board | Typed input and the pointer, on a panel drawn the way Windows 95 drew it |
+| **Minesweeper** | Type `B4`, `F B4` to flag, `R` new board. With a mouse: the square under the pointer lights up, left opens, right flags, and clicking the face deals a new board | Typed input and the pointer, on a panel drawn the way Windows 95 drew it |
 | **Tetris** | Arrows or WASD, UP to turn, SPACE to drop, `R` for a new well | Layout: the only screen putting two things side by side |
 | **WolfChess 5000** | Type a move (`e4`, `Nf3`, `e2e4`) or arrows plus ENTER, `help` for commands | Real piece artwork composited into one image, and a bot that thinks in slices so the screen keeps moving |
-| **Missile Command** | Arrows or WASD aim, SPACE fires, `Z`/`X`/`C` picks a battery, TAB switches view. With a mouse: click to fire | 30 fps ballistics on a picture the program *draws* rather than decodes |
+| **Missile Command** | Arrows or WASD aim, SPACE fires, `Z`/`X`/`C` picks a battery, TAB switches view. With a mouse: move to aim, click to fire, hold the button and sweep for a barrage | 30 fps ballistics on a picture the program *draws* rather than decodes |
 | **Labyrinth** | Arrows or WASD, `R` for a new maze | A world bigger than the terminal, so it needs a camera |
 | **Pac-Man** | Arrows or WASD | Walls as a connected network of lines, and four ghosts with one line of targeting logic each |
 | **Blackjack** | `H` hit, `S` stand, ENTER deals again, TAB toggles pictures, ESC leaves | Card artwork, fanned so only each card's corner shows |

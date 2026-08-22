@@ -234,8 +234,11 @@ namespace WolfCurses.Games.Battlezone
             // Real pixels get a much larger canvas than half blocks do - see BattlezoneArt.SizeFor. The stroke
             // widths are the same either way; what changes is how much the picture is magnified on the way out,
             // and that is what decides how thick a line looks.
-            var truePixels = ImageRenderers.Default.DrawsTruePixels;
-            var (canvasWidth, canvasHeight) = BattlezoneArt.SizeFor(columns, rows, truePixels);
+            // Read once and handed on, so the canvas is sized from the same renderer that is about to draw it
+            // rather than from a second lookup that could in principle have been overridden in between.
+            var renderer = ImageRenderers.Default;
+            var truePixels = renderer.DrawsTruePixels;
+            var (canvasWidth, canvasHeight) = BattlezoneArt.SizeFor(columns, rows, renderer);
 
             // Rebuilt only when the terminal has really been resized; the buffer and the camera are reused between
             // frames, and rebuilding either per frame would be the cost of the game.

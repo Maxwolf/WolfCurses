@@ -7,12 +7,18 @@ namespace WolfCurses.Games.Minesweeper
     ///     Where the field landed in the frame the player is looking at, so a click can be turned back into a
     ///     square.
     ///     <para>
-    ///         <b>This is the whole of the mouse support, and it is arithmetic rather than hit-testing</b> — because
-    ///         the board is drawn as <i>characters</i>, every square occupies an exact, known rectangle of cells and
-    ///         a click is a division. That is the quiet argument for keeping this game's board out of a
-    ///         <c>PixelBuffer</c>: a sixel or kitty picture is drawn by the terminal against a cell size nothing can
-    ///         ask for, so Missile Command has to force half blocks the moment its mouse is switched on. Here there
-    ///         is nothing to force and nothing to be wrong about.
+    ///         <b>It is arithmetic rather than hit-testing</b> — because the board is drawn as <i>characters</i>,
+    ///         every square occupies an exact, known rectangle of cells and a click is a division. That is the quiet
+    ///         argument for keeping this game's board out of a <c>PixelBuffer</c>: a sixel or kitty picture is drawn
+    ///         by the terminal against a cell size the renderer only <i>assumes</i> and the terminal never confirms,
+    ///         so Missile Command has to force half blocks the moment its mouse is switched on. Here there is
+    ///         nothing to force and nothing to be wrong about.
+    ///     </para>
+    ///     <para>
+    ///         <b>The same answer serves both a click and a hover</b>, which is worth knowing before anybody
+    ///         optimises one of them: a pointer moving reports one event for every cell it crosses, so this is asked
+    ///         far more often than it was written for. It stays a division and holds no state, so the cost is the
+    ///         same either way; what the screen does with the answer is where the redraw is skipped.
     ///     </para>
     ///     <para>
     ///         It is rebuilt every time the screen is composed rather than worked out once, for the same reason

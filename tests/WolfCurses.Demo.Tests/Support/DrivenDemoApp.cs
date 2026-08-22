@@ -49,6 +49,19 @@ namespace WolfCurses.Demo.Tests.Support
             App.PumpInput();
         }
 
+        /// <summary>
+        ///     Presses a printable key, which reaches both the input buffer and the focused form. The two
+        ///     paths are deliberately separate in the library, so a screen bound to SPACE has to be driven
+        ///     this way rather than through <see cref="Press" />.
+        /// </summary>
+        /// <param name="character">The character to send.</param>
+        /// <param name="key">The key it arrives as.</param>
+        public void PressChar(char character, ConsoleKey key)
+        {
+            App.InputManager.SendConsoleKey(new ConsoleKeyInfo(character, key, false, false, false));
+            App.PumpInput();
+        }
+
         /// <summary>Ticks the simulation.</summary>
         /// <param name="ticks">How many system ticks to run.</param>
         public void Tick(int ticks = 1)

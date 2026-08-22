@@ -37,6 +37,12 @@ namespace WolfCurses.Games.Cards
         public const int CardRows = 3;
 
         /// <summary>
+        ///     How many columns sit inside a card's frame: <see cref="CardColumns" /> less its two edges. Stated
+        ///     once so the width the index is fitted to and the width the frame is drawn at cannot drift apart.
+        /// </summary>
+        private const int FaceColumns = CardColumns - 2;
+
+        /// <summary>
         ///     Draws a row of cards as three lines of text: a top edge, the index, and a bottom edge.
         /// </summary>
         /// <param name="cards">The hand, left to right. Face-down cards are drawn as a hatched back.</param>
@@ -69,14 +75,22 @@ namespace WolfCurses.Games.Cards
                     continue;
                 }
 
-                // Padded to three so a ten does not push the frame out and shear the row below it.
-                var label = entry.Card.Label;
-                var pad = 3 - AnsiText.VisibleLength(label);
+                // Fitted to the face width so a ten does not push the frame out and shear the row below it. This was
+                // a measure-then-pad pair, and the Math.Max(0, ...) that clamped the pad permitted exactly the
+                // failure the padding is here to prevent: a label wider than the face computed a negative pad,
+                // emitted no spaces at all, and drew a card a column too wide. Fit trims instead, so the interior is
+                // FaceColumns wide whatever arrives. Today Card.Label tops out at "10♠", so that was latent rather
+                // than live - it goes live the moment anything grows a second pip character or a joker turns up.
+                //
+                // Fit and not PadRight because the string being measured is already styled: two visible characters
+                // arrive wrapped in a few dozen bytes of SGR, and PadRight counts those bytes as columns and so pads
+                // by nothing at all. Fitting after styling rather than before is deliberate here - the padding then
+                // sits outside the card's own run, which costs nothing while the rank styles carry no background,
+                // and keeps the emitted bytes identical to what this drew before.
                 var style = entry.Card.IsRed ? _redStyle : _blackStyle;
 
                 middle.Append(_frameStyle.Apply("│"))
-                    .Append(style.Apply(label))
-                    .Append(new string(' ', Math.Max(0, pad)))
+                    .Append(AnsiText.Fit(style.Apply(entry.Card.Label), FaceColumns))
                     .Append(_frameStyle.Apply("│"));
             }
 

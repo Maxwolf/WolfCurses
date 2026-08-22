@@ -115,7 +115,29 @@ namespace WolfCurses.Games.Minesweeper
             _face = ChooseBoard(!AnsiConsole.MouseEnabled, AnsiConsole.SafeWindowWidth(),
                 AnsiConsole.SafeWindowHeight());
 
+            // Asked for by the screen that wants it and handed back in OnFormClosing. Motion is one event for every
+            // cell the pointer crosses, so an arcade whose other games only want clicks should not be paying for it
+            // while they are on screen, and the arcade's own menu certainly should not.
+            SimUnit.InputManager.ReportsMouseMotion = true;
+
             StartNewBoard();
+        }
+
+        /// <summary>
+        ///     Hands pointer reporting back, which is the half that is easy to leave out and impossible to see.
+        ///     <para>
+        ///         Nothing would look wrong: the menu and every later game would simply be paying for a flood none
+        ///         of them read. A form being dropped is no signal at all on its own, which is the whole reason
+        ///         <c>IForm.OnFormClosing</c> exists, and the library fires it from every path a form is detached
+        ///         by - ESC, ENTER, the window being removed and the program quitting - so there is no way out of
+        ///         this screen that skips it.
+        ///     </para>
+        /// </summary>
+        public override void OnFormClosing()
+        {
+            base.OnFormClosing();
+
+            SimUnit.InputManager.ReportsMouseMotion = false;
         }
 
         /// <inheritdoc />
@@ -148,6 +170,50 @@ namespace WolfCurses.Games.Minesweeper
         ///         type <c>R</c> on a screen they are driving with a pointer.
         ///     </para>
         /// </summary>
+        /// <summary>
+        ///     Lights the square the pointer is over, which is the one thing about this board a player cannot work
+        ///     out by looking.
+        ///     <para>
+        ///         Every line of the lattice is shared by two squares, so the click map hands each one to a square
+        ///         on purpose; on screen that boundary is a hairline and the player finds out which side of it they
+        ///         were on by clicking. See <see cref="MinesweeperFace.HoveredX" /> for the drawing half.
+        ///     </para>
+        ///     <para>
+        ///         <b>Nothing is recomposed for the pointer crossing a cell inside the square it was already on</b>,
+        ///         which is seven cells in eight for a tile four columns wide and two rows tall. Motion is one event
+        ///         per cell crossed, so a screen that redrew for each of them would be the <c>ChessDialog</c> fault
+        ///         of rebuilding the frame once per input event, which is what that game was measured doing a
+        ///         thousand times a second. The library states the same discipline in <c>MenuBar.HandleMouseMove</c>,
+        ///         which reports whether anything <i>moved</i> rather than whether the event was over the menu.
+        ///     </para>
+        /// </summary>
+        /// <param name="mouse">What the mouse did, and where.</param>
+        public override void OnMouseEvent(MouseEvent mouse)
+        {
+            // Presses go the old road, so OnMousePressed stays the single place a square is opened or flagged.
+            if (mouse.Kind == MouseEventKindEnum.Press)
+            {
+                OnMousePressed(mouse);
+                return;
+            }
+
+            if (mouse.Kind != MouseEventKindEnum.Move)
+                return;
+
+            if (!_map.TryToSquare(mouse.Row, mouse.Column, out var x, out var y))
+            {
+                x = -1;
+                y = -1;
+            }
+
+            if (x == _face.HoveredX && y == _face.HoveredY)
+                return;
+
+            _face.HoveredX = x;
+            _face.HoveredY = y;
+            _rendered = Compose();
+        }
+
         /// <param name="mouse">Where the press landed and which button it was.</param>
         public override void OnMousePressed(MouseEvent mouse)
         {

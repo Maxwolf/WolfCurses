@@ -38,7 +38,20 @@ namespace WolfCurses.Games.Tetris
         private const int WellHeight = 16;
 
         /// <summary>How wide one cell is drawn. Two, because a character cell is about twice as tall as it is wide.</summary>
-        private const int CellWidth = 2;
+        /// <summary>
+        ///     How wide the score panel's lines are, and how much of that the figure gets. Said once, because
+        ///     the alternative is the arithmetic that used to be here: a label plus a subtraction from a total
+        ///     that appeared nowhere. That version held only while every figure was short enough for the pad to
+        ///     bite, and a seven-figure score would have widened the line, pushed past the box's MinimumWidth
+        ///     and shifted the whole right-hand column of a frame this app measures to fit eighty by
+        ///     twenty-four.
+        /// </summary>
+        private const int PanelColumns = 12;
+
+        private const int FigureColumns = 7;
+
+        /// <summary>How big a box the preview is drawn in: the largest any piece needs, so it never changes.</summary>
+        private const int PreviewCells = 4;
 
         /// <summary>
         ///     Paces gravity on real elapsed time. The interval is passed per step rather than set on the timer,
@@ -47,6 +60,38 @@ namespace WolfCurses.Games.Tetris
         private readonly IntervalTimer _fall = new(TimeSpan.FromMilliseconds(800));
 
         /// <summary>The well's frame.</summary>
+        /// <summary>
+        ///     The well itself, as cells. <c>CellWidth</c> is two because a character cell is about twice as
+        ///     tall as it is wide, so a board meant to look square draws each cell two columns across.
+        ///     <para>
+        ///         This was the fourth copy of the <c>char[,]</c> plus per-row run-coalescing loop that put
+        ///         <see cref="TextGrid" /> in the library, and the last one left in this app. It is also the
+        ///         copy that broke a run when the <i>piece</i> changed rather than when the drawn escape did,
+        ///         which is the trap the grid closes: two colours can resolve to the same sequence, and
+        ///         comparing the source instead spends a reset and a re-open between two cells the terminal
+        ///         draws identically.
+        ///     </para>
+        ///     <para>
+        ///         <b>The clear is load-bearing here</b>, as it is in Snake and for the same reason: the
+        ///         falling piece and its ghost vacate cells every step, and a cell nobody repaints keeps
+        ///         whatever it had.
+        ///     </para>
+        /// </summary>
+        private readonly TextGrid _playfield = new(WellWidth, WellHeight) {CellWidth = 2};
+
+        /// <summary>
+        ///     The next piece, always drawn into the largest box any piece needs.
+        ///     <para>
+        ///         <b>A fixed four by four is the whole point</b>, and the comment this replaces claimed it
+        ///         without it being true. Pieces come in 2x2, 3x3 and 4x4 boxes, so drawing each piece's own box
+        ///         made the Next panel four, five or six rows tall - and since a seven-bag deals every piece
+        ///         every seven pieces, the Stats panel underneath it moved up and down several times a minute
+        ///         for the whole game. The grid is the shape the panel is supposed to be, rather than padding
+        ///         arithmetic bolted on afterwards.
+        ///     </para>
+        /// </summary>
+        private readonly TextGrid _preview = new(PreviewCells, PreviewCells) {CellWidth = 2};
+
         private readonly Box _frame = new() {Title = "Tetris", Padding = 0};
 
         /// <summary>The preview panel, sized so it and the stats panel line up as one column.</summary>
@@ -199,101 +244,74 @@ namespace WolfCurses.Games.Tetris
         }
 
         /// <summary>
-        ///     Draws the well: what has settled, the piece falling through it, and the outline showing where that
-        ///     piece would land. Runs of like cells are styled once rather than one escape per cell.
+        ///     Draws the well: what has settled, the piece falling through it, and the outline showing where
+        ///     that piece would land.
         /// </summary>
         private string ComposeWell()
         {
-            var glyphs = new char[WellHeight, WellWidth];
-            var kinds = new TetrominoEnum?[WellHeight, WellWidth];
+            _playfield.Clear();
 
             for (var y = 0; y < WellHeight; y++)
             for (var x = 0; x < WellWidth; x++)
             {
-                glyphs[y, x] = ' ';
-                kinds[y, x] = _well.SettledAt(x, y);
-                if (kinds[y, x] != null)
-                    glyphs[y, x] = '█';
+                var settled = _well.SettledAt(x, y);
+                if (settled != null)
+                    _playfield.Set(x, y, '█', StyleOf(settled.Value));
             }
 
             if (_well.Active != null)
             {
                 // The ghost first, so the piece itself paints over it where the two overlap.
-                Stamp(glyphs, kinds, _well.ActiveX, _well.GhostY, '░');
-                Stamp(glyphs, kinds, _well.ActiveX, _well.ActiveY, '█');
+                Stamp(_well.ActiveX, _well.GhostY, '░');
+                Stamp(_well.ActiveX, _well.ActiveY, '█');
             }
 
-            var sb = new StringBuilder();
-            for (var y = 0; y < WellHeight; y++)
-            {
-                if (y > 0)
-                    sb.AppendLine();
-
-                var runStart = 0;
-                for (var x = 1; x <= WellWidth; x++)
-                {
-                    var sameAsRun = x < WellWidth &&
-                                    glyphs[y, x] == glyphs[y, runStart] &&
-                                    kinds[y, x] == kinds[y, runStart];
-                    if (sameAsRun)
-                        continue;
-
-                    AppendRun(sb, glyphs[y, runStart], kinds[y, runStart], x - runStart);
-                    runStart = x;
-                }
-            }
-
-            return sb.ToString();
+            return _playfield.Render();
         }
 
-        /// <summary>Writes the active piece's cells into the drawing buffers at the given spot.</summary>
-        /// <param name="glyphs">The glyph buffer.</param>
-        /// <param name="kinds">The color buffer.</param>
+        /// <summary>
+        ///     Writes the active piece's cells into the well at the given spot. The four-way bounds test this
+        ///     used to carry is the grid's own contract now: a write that does not land is dropped.
+        /// </summary>
         /// <param name="px">The column the piece's box starts at.</param>
         /// <param name="py">The row the piece's box starts at.</param>
         /// <param name="glyph">Which glyph to write, solid for the piece and shaded for its ghost.</param>
-        private void Stamp(char[,] glyphs, TetrominoEnum?[,] kinds, int px, int py, char glyph)
+        private void Stamp(int px, int py, char glyph)
         {
             var piece = _well.Active;
+            var style = StyleOf(piece.Kind);
+
             for (var y = 0; y < piece.Size; y++)
             for (var x = 0; x < piece.Size; x++)
             {
-                if (!piece.IsFilled(x, y))
-                    continue;
-
-                var wx = px + x;
-                var wy = py + y;
-                if (wx < 0 || wx >= WellWidth || wy < 0 || wy >= WellHeight)
-                    continue;
-
-                glyphs[wy, wx] = glyph;
-                kinds[wy, wx] = piece.Kind;
+                if (piece.IsFilled(x, y))
+                    _playfield.Set(px + x, py + y, glyph, style);
             }
         }
 
-        /// <summary>Draws the previewed piece inside the panel, in its spawn orientation.</summary>
+        /// <summary>
+        ///     Draws the previewed piece inside the panel, in its spawn orientation and always in the same
+        ///     four-by-four box however small the piece is.
+        /// </summary>
         private string ComposeNext()
         {
             var piece = Tetromino.Create(_well.NextKind);
-            var sb = new StringBuilder();
+            var style = StyleOf(piece.Kind);
+
+            // Centred in the fixed box with the odd cell on the right, which is the convention AnsiText.Fit
+            // follows and the only one that is stable between calls.
+            var offset = (PreviewCells - piece.Size)/2;
+
+            _preview.Clear();
 
             for (var y = 0; y < piece.Size; y++)
+            for (var x = 0; x < piece.Size; x++)
             {
-                if (y > 0)
-                    sb.AppendLine();
-
-                // Every piece has at least one empty row in its box; skipping them would make the panel jump about
-                // as the preview changed, so the box is drawn whole and the panel stays a fixed height.
-                for (var x = 0; x < piece.Size; x++)
-                {
-                    if (piece.IsFilled(x, y))
-                        AppendRun(sb, '█', piece.Kind, 1);
-                    else
-                        sb.Append(' ', CellWidth);
-                }
+                if (piece.IsFilled(x, y))
+                    _preview.Set(offset + x, offset + y, '█', style);
             }
 
-            return sb.ToString();
+            return _preview.Render();
         }
 
         /// <summary>Draws the score panel.</summary>
@@ -313,24 +331,21 @@ namespace WolfCurses.Games.Tetris
         /// <returns>The formatted line.</returns>
         private static string Stat(string label, int value)
         {
-            return $"{label} {value.ToString(CultureInfo.InvariantCulture).PadLeft(11 - label.Length)}";
+            // AnsiText.Fit rather than PadLeft, because Fit is the one that also TRIMS: a figure too wide for
+            // its column is cut rather than allowed to push the line out, so the panel holds its width whatever
+            // the score reaches. The two calls also say the panel's width once, where the old subtraction from
+            // eleven said it nowhere.
+            return AnsiText.Fit(label, PanelColumns - FigureColumns) +
+                   AnsiText.Fit(value.ToString(CultureInfo.InvariantCulture), FigureColumns,
+                       AnsiHorizontalAlignmentEnum.Right);
         }
 
-        /// <summary>Writes one run of identical cells, styled once.</summary>
-        /// <param name="sb">Where to write.</param>
-        /// <param name="glyph">The glyph to repeat.</param>
-        /// <param name="kind">Which piece's color to use, or null for an empty cell.</param>
-        /// <param name="count">How many cells the run covers.</param>
-        private static void AppendRun(StringBuilder sb, char glyph, TetrominoEnum? kind, int count)
+        /// <summary>How each piece is drawn. A struct, so naming one per cell allocates nothing.</summary>
+        /// <param name="kind">Which piece.</param>
+        /// <returns>Its style.</returns>
+        private static TextStyle StyleOf(TetrominoEnum kind)
         {
-            var text = new string(glyph, count*CellWidth);
-            if (kind == null || glyph == ' ')
-            {
-                sb.Append(text);
-                return;
-            }
-
-            sb.Append(new TextStyle(ColorOf(kind.Value)).Apply(text));
+            return new TextStyle(ColorOf(kind));
         }
 
         /// <summary>

@@ -5,6 +5,7 @@ using System;
 using System.Text;
 using WolfCurses.Graphics;
 using WolfCurses.Window;
+using WolfCurses.Window.Control;
 using WolfCurses.Window.Form;
 
 namespace WolfCurses.Demo.Screens
@@ -163,43 +164,36 @@ namespace WolfCurses.Demo.Screens
         }
 
         /// <summary>
-        ///     Writes one row of the banner, coloring it cell by cell but emitting an escape only where the escape
-        ///     actually changes.
+        ///     Writes one row of the banner, coloring it cell by cell.
         ///     <para>
-        ///         Two things keep the frame small, and both are the library's own lessons about styled text. Runs are
-        ///         compared on the <b>resolved escape sequence</b> rather than on the color that produced it, because
-        ///         quantization happens downstream: neighbouring columns of a smooth ramp are distinct
-        ///         <see cref="Rgb24" /> values that a 256-color or grayscale terminal draws with the identical
-        ///         sequence, and comparing colors would spend a reset and an open between two cells that look the
-        ///         same. And a space is skipped entirely — a foreground color paints nothing on one — which matters
-        ///         here more than anywhere, since ASCII art is mostly space.
+        ///         <b>This was twenty lines of hand-rolled run coalescing until <see cref="TextRow" /> shipped, and
+        ///         deleting it is the point.</b> Every cell is simply appended with the color it wants and the row
+        ///         works out where the escapes go, because it breaks runs on the <b>resolved escape sequence</b>
+        ///         rather than on the color that produced it. That distinction is not a nicety: quantization happens
+        ///         downstream, so neighbouring columns of a smooth ramp are distinct <see cref="Rgb24" /> values that
+        ///         a 256-color or grayscale terminal draws with the identical sequence, and a version comparing
+        ///         colors spends a reset and an open between two cells the terminal draws the same way. This screen
+        ///         had that lesson written out locally; now it is the library's and this screen just uses it.
+        ///     </para>
+        ///     <para>
+        ///         A space is still appended with no style at all, which is the one thing worth keeping here: a
+        ///         foreground color paints nothing on a space, and ASCII art is mostly space. An unstyled run emits
+        ///         no escape whatsoever, so the saving survives the move.
         ///     </para>
         /// </summary>
         private static void AppendColoredRow(StringBuilder sb, string line, int row, double seconds)
         {
-            var open = string.Empty;
+            var built = new TextRow();
 
             for (var column = 0; column < line.Length; column++)
             {
                 var glyph = line[column];
-                var wanted = glyph == ' '
-                    ? string.Empty
-                    : new TextStyle(ColorRamp.Rainbow.Sample(Sweep(column, row, seconds))).OpenSequence();
-
-                if (!string.Equals(wanted, open, StringComparison.Ordinal))
-                {
-                    if (open.Length > 0)
-                        sb.Append(TextStyle.ResetSequence);
-
-                    sb.Append(wanted);
-                    open = wanted;
-                }
-
-                sb.Append(glyph);
+                built.Append(glyph, 1, glyph == ' '
+                    ? TextStyle.None
+                    : new TextStyle(ColorRamp.Rainbow.Sample(Sweep(column, row, seconds))));
             }
 
-            if (open.Length > 0)
-                sb.Append(TextStyle.ResetSequence);
+            sb.Append(built.Render());
         }
 
         /// <summary>

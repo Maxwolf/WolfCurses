@@ -2,6 +2,7 @@
 // Timestamp 08/17/2026
 
 using System;
+using System.Globalization;
 using System.Text;
 using WolfCurses.Games.Cards;
 using WolfCurses.Graphics;
@@ -28,6 +29,21 @@ namespace WolfCurses.Games.Blackjack
     [ParentWindow(typeof (GamesWindow))]
     public sealed class BlackjackDialog : Form<GamesWindowInfo>
     {
+        /// <summary>
+        ///     Columns held for the chip count. Five, because the only things that ever move the pile are the 25
+        ///     stake and the 37 a natural pays, so reaching five digits means winning several hundred rounds net at
+        ///     one keypress a round. Note the field only ever <i>pads</i>: a pile that somehow got past it shoves the
+        ///     rest of the line along exactly as it does today rather than being cut, which is the failure worth
+        ///     avoiding of the two.
+        /// </summary>
+        private const int ChipColumns = 5;
+
+        /// <summary>
+        ///     Columns held for the round counter. One round is one keypress, so four digits outlives any sitting
+        ///     somebody will actually have at this table.
+        /// </summary>
+        private const int RoundColumns = 4;
+
         private readonly CardImages _images = new();
 
         private BlackjackGame _game;
@@ -156,8 +172,19 @@ namespace WolfCurses.Games.Blackjack
         {
             var body = new StringBuilder();
             body.AppendLine();
-            body.AppendLine($"Chips {_game.Chips}    Bet {BlackjackGame.BetSize}    " +
-                            $"Rounds {_game.RoundsPlayed}    Best {UserData.BlackjackBestChips}");
+            // Fixed-width fields, and the chip count is the one that earns them: it moves on every single round, up
+            // and down across the three- and four-digit boundaries as a stake is won or lost, and this line sits
+            // directly on top of a table whose alignment is the whole point of the screen. Unpadded, "Bet", "Rounds"
+            // and "Best" all step sideways with every deal. "Best" itself is deliberately left ragged - it is last on
+            // the line and has nothing to shove.
+            //
+            // A plain composite-format width rather than AnsiText.Fit, because nothing on this line is styled: Fit
+            // measures visible columns and is what to reach for when the text carries escapes, where PadRight would
+            // count the SGR bytes as cells and under-pad a coloured run by hundreds of characters. Here there are no
+            // escapes to miscount, and a plain width is both simpler and incapable of trimming a real value.
+            body.AppendLine(string.Create(CultureInfo.InvariantCulture,
+                $"Chips {_game.Chips,-ChipColumns}    Bet {BlackjackGame.BetSize}    " +
+                $"Rounds {_game.RoundsPlayed,-RoundColumns}    Best {UserData.BlackjackBestChips}"));
             body.AppendLine();
 
             var dealer = _game.DealerTable();

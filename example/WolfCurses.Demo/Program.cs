@@ -3,6 +3,7 @@
 
 using System;
 using System.Threading;
+using WolfCurses.Graphics;
 
 namespace WolfCurses.Demo
 {
@@ -47,6 +48,17 @@ namespace WolfCurses.Demo
             // Entry point for the entire simulation.
             ConsoleSimulationApp.Create();
 
+            // Asked for AFTER the app is built, because the SimulationApp constructor probes the terminal for a
+            // graphics protocol and that probe reads standard input. Opt-in and host-owned on purpose: enabling it
+            // takes click-drag text selection away from the user and swaps the console read path, so the library
+            // never does it behind an application's back. It answers false on a terminal that has no mouse to give,
+            // and every demo here still works exactly as it did from the keyboard.
+            //
+            // Nothing here asks for mouse MOTION (InputManager.ReportsMouseMotion), which the library leaves off by
+            // default because motion is one event per cell the pointer crosses. It stays opt-in per screen, so a
+            // demo that wants a drawn pointer or a drag turns it on for itself.
+            AnsiConsole.EnableMouse();
+
             // Nothing draws the frames here, and that is the third deliberate absence: whenever a frame changes, the
             // scene graph presents it to this console itself — flicker-free, only changed rows rewritten, one write
             // per update. Subscribing to SceneGraph.ScreenBufferDirtyEvent is how a host that wants to draw frames
@@ -68,6 +80,13 @@ namespace WolfCurses.Demo
                 Thread.Sleep(1);
             }
 
+            // Handed back before anything else. On a classic console host the mouse mode belongs to the WINDOW rather
+            // than to this process, so a program that exits without restoring it leaves that window with the user's
+            // own text selection switched off until they close and reopen it. This host makes that worse than the two
+            // beside it by staying alive afterwards: the goodbye prompt below waits on Console.ReadKey, so without
+            // this line the user sits at a prompt unable to select the text on it.
+            AnsiConsole.DisableMouse();
+
             // Make user press any key to close out the simulation completely, this way they know it closed without error.
             Console.Clear();
             Console.WriteLine("Goodbye!");
@@ -84,6 +103,9 @@ namespace WolfCurses.Demo
         /// <param name="e">The e.</param>
         private static void Console_CancelKeyPress(object sender, ConsoleCancelEventArgs e)
         {
+            // Restored first, because CTRL-C at the goodbye prompt is the one exit that runs none of the code above.
+            AnsiConsole.DisableMouse();
+
             // Destroy the simulation, unless it is already gone (CTRL-C pressed at the goodbye prompt).
             ConsoleSimulationApp.Instance?.Destroy();
 
@@ -96,7 +118,11 @@ namespace WolfCurses.Demo
         /// </summary>
         public static void Destroy()
         {
-            ConsoleSimulationApp.Instance.Destroy();
+            // Null-conditional because CTRL-C runs on its own thread and OnPreDestroy nulls Instance, so a CTRL-C
+            // landing while a menu Quit is queued reaches this line with nothing left to destroy and throws out of
+            // the tick loop. SimulationApp.Destroy is already idempotent (it returns at once when IsClosing), so the
+            // guard can only ever skip a call that would have thrown rather than one that would have done work.
+            ConsoleSimulationApp.Instance?.Destroy();
         }
     }
 }

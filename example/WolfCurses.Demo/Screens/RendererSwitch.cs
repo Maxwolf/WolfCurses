@@ -42,32 +42,33 @@ namespace WolfCurses.Demo.Screens
             Forced = !Forced;
         }
 
-        /// <summary>Names what is drawing, and what pressing TAB would get instead.</summary>
+        /// <summary>
+        ///     Names what is drawing, and what pressing TAB would get instead.
+        ///     <para>
+        ///         <b>Both names are read off the renderers themselves</b>, which is worth stating because this
+        ///         method used to do neither. It matched on the three built-in classes, so a third-party renderer -
+        ///         precisely what the <c>IImageRenderer</c> seam exists to allow - came out as its own class name;
+        ///         and it named the alternative from a hard-coded literal, so changing what TAB offers would have
+        ///         made the label quietly lie. <see cref="IImageRenderer.Name" /> is a default interface member, so
+        ///         every renderer answers whether or not it was written to.
+        ///     </para>
+        ///     <para>
+        ///         Asked of the objects rather than by re-running detection: the probe's answer is what was
+        ///         installed and what would actually draw, and re-detecting from environment variables would
+        ///         disagree with it on exactly the terminals worth knowing about. That is the same lesson
+        ///         <c>DemoWindow.DescribeRenderer</c> already records; this was the copy the sweep missed.
+        ///     </para>
+        /// </summary>
         public string Describe()
         {
-            var probed = Name(ImageRenderers.Default);
+            var probed = ImageRenderers.Default.Name;
+            var alternative = DemoImages.AnimationRenderer.Name;
 
             // Naming the alternative as well as the current one, because a reader who does not already know what the
             // probe found cannot tell what TAB is going to do, and on a plain terminal the honest answer is "nothing".
             return Forced
-                ? $"half blocks (TAB: {probed})"
-                : $"{probed} (TAB: half blocks)";
-        }
-
-        /// <summary>
-        ///     What a renderer is, in a word. Asks the object rather than re-running detection: the probe's answer is
-        ///     what was installed and what would draw, and re-detecting from environment variables would disagree with
-        ///     it on exactly the terminals worth knowing about.
-        /// </summary>
-        private static string Name(IImageRenderer renderer)
-        {
-            return renderer switch
-            {
-                KittyImageRenderer => "kitty",
-                SixelImageRenderer => "sixel",
-                HalfBlockImageRenderer => "half blocks",
-                var other => other.GetType().Name
-            };
+                ? $"{alternative} (TAB: {probed})"
+                : $"{probed} (TAB: {alternative})";
         }
     }
 }

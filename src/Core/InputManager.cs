@@ -58,8 +58,10 @@ namespace WolfCurses.Core
         private Queue<ConsoleKeyInfo> _keyQueue;
 
         /// <summary>
-        ///     Holds mouse presses waiting to be handed to the focused window. Its own queue for the same reason the
-        ///     keys have one: the command queue drops a duplicate, and two clicks on the same cell are two shots.
+        ///     Holds what the mouse did, waiting to be handed to the focused window. Its own queue for the same
+        ///     reason the keys have one: the command queue drops a duplicate, and two clicks on the same cell are
+        ///     two shots. That matters more now than it did when a press was the only kind, since a pointer swept
+        ///     back and forth across one cell boundary produces the same two events over and over.
         /// </summary>
         private Queue<MouseEvent> _mouseQueue;
 
@@ -246,7 +248,7 @@ namespace WolfCurses.Core
             var mouseReader = WindowsConsoleInput.Active;
             if (mouseReader != null)
             {
-                mouseReader.Drain(SendConsoleKey, SendMousePress, ReportsMouseMotion);
+                mouseReader.Drain(SendConsoleKey, SendMouseEvent, ReportsMouseMotion);
                 return;
             }
 
@@ -452,21 +454,38 @@ namespace WolfCurses.Core
         }
 
         /// <summary>
-        ///     Reports a mouse press to the focused window on the next tick.
+        ///     Reports something the mouse did to the focused window on the next tick: a press, a move, a release or
+        ///     a wheel notch, whichever <see cref="MouseEvent.Kind" /> says.
         ///     <para>
         ///         Queued rather than delivered at once, for the same reason <see cref="SendKeyPress(ConsoleKeyInfo)" />
         ///         is: a form is free to answer a click by putting a window up, and doing that from the middle of the
         ///         host's read loop would be editing the window stack from outside the simulation's own turn.
         ///     </para>
         ///     <para>
-        ///         Public, so a host reading input itself gets identical behaviour by handing presses here. Not gated
+        ///         Public, so a host reading input itself gets identical behaviour by handing events here. Not gated
         ///         on <c>AcceptingInput</c> - that rule protects the text buffer, and a click is not text.
         ///     </para>
         /// </summary>
-        /// <param name="mouse">Where the press landed and which button it was.</param>
-        public void SendMousePress(MouseEvent mouse)
+        /// <param name="mouse">What the mouse did, and where.</param>
+        public void SendMouseEvent(MouseEvent mouse)
         {
             _mouseQueue.Enqueue(mouse);
+        }
+
+        /// <summary>
+        ///     The name this door had when a press was the only thing it could carry, kept because it is public
+        ///     surface a shipped package cannot take back.
+        ///     <para>
+        ///         <b>It was never restricted to presses</b>, which is exactly why it is worth having the other
+        ///         spelling: the console reader hands every kind through this one method, so a caller feeding a move
+        ///         or a wheel notch through something called <c>SendMousePress</c> reads as a mistake it is not.
+        ///         Prefer <see cref="SendMouseEvent" /> in new code.
+        ///     </para>
+        /// </summary>
+        /// <param name="mouse">What the mouse did, and where.</param>
+        public void SendMousePress(MouseEvent mouse)
+        {
+            SendMouseEvent(mouse);
         }
 
         /// <summary>

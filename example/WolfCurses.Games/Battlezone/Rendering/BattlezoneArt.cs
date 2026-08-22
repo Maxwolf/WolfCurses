@@ -95,16 +95,40 @@ namespace WolfCurses.Games.Battlezone
         ///         is the fix — enough to bring the strokes down without turning every frame into a megabyte of
         ///         base64 for the terminal to swallow, which is the cost on the other side of this knob.
         ///     </para>
+        ///     <para>
+        ///         <b>The renderer is asked how big a cell is rather than told</b>, which is the whole of what
+        ///         changed here. This used to read <c>columns*4</c> and <c>rows*8</c> for real pixels against
+        ///         <c>columns*2</c> and <c>rows*4</c> for half blocks — four constants that were only ever right
+        ///         because sixel and kitty happen to default to a ten-by-twenty cell and half blocks are one by
+        ///         two. <see cref="IImageRenderer.CellPixelWidth" /> and
+        ///         <see cref="IImageRenderer.CellPixelHeight" /> are exactly the question those constants were
+        ///         answering, so asking gives byte-identical sizes today and keeps giving the right ones to a host
+        ///         that installs, say, <c>new SixelImageRenderer(6, 13)</c> — where the old arithmetic silently
+        ///         changed the magnification from about two and a half times to one and a half and quietly stopped
+        ///         holding the finding above.
+        ///     </para>
+        ///     <para>
+        ///         <b>The two multipliers and both clamps are the load-bearing half and must survive.</b> Half
+        ///         blocks take twice their cell, which is the supersample the paragraph above is about; real pixels
+        ///         take two fifths of theirs, so a stroke is magnified enough to stay visible and not so much that
+        ///         every frame is a megabyte of base64 thirty times a second. Simplifying either to a plain 1:1
+        ///         deletes the supersample, and with it both the stroke weight and the sub-cell motion.
+        ///     </para>
         /// </summary>
         /// <param name="columns">How many character columns the picture may occupy.</param>
         /// <param name="rows">How many character rows the picture may occupy.</param>
-        /// <param name="truePixels">Whether the renderer draws real pixels rather than half blocks.</param>
+        /// <param name="renderer">The renderer about to draw it; null asks the current default.</param>
         /// <returns>The canvas size.</returns>
-        public static (int Width, int Height) SizeFor(int columns, int rows, bool truePixels)
+        public static (int Width, int Height) SizeFor(int columns, int rows, IImageRenderer renderer)
         {
-            return truePixels
-                ? (Math.Clamp(columns*4, 160, 900), Math.Clamp(rows*8, 96, 480))
-                : (Math.Clamp(columns*2, 80, 440), Math.Clamp(rows*4, 48, 240));
+            renderer ??= ImageRenderers.Default;
+
+            var cellWidth = Math.Max(1, renderer.CellPixelWidth);
+            var cellHeight = Math.Max(1, renderer.CellPixelHeight);
+
+            return renderer.DrawsTruePixels
+                ? (Math.Clamp(columns*cellWidth*2/5, 160, 900), Math.Clamp(rows*cellHeight*2/5, 96, 480))
+                : (Math.Clamp(columns*cellWidth*2, 80, 440), Math.Clamp(rows*cellHeight*2, 48, 240));
         }
 
         /// <summary>Draws the whole scene. The same buffer comes back every time, so a caller keeping a frame copies it.</summary>

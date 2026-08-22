@@ -429,6 +429,111 @@ namespace WolfCurses.Games.Tests.Minesweeper
             Assert.Equal('¶', Middle(face, rows, mx, my));
         }
 
+        [Fact]
+        public void AFaceNobodyIsPointingAtDrawsExactlyWhatItAlwaysDrew()
+        {
+            // The invariant that keeps every other test in this file meaning what it meant. Hovering was added
+            // afterwards, so at its resting value it has to be as if it were never there - not "nearly", since the
+            // bevel and palette tests below read exact cells and exact escape sequences.
+            var face = new MinesweeperFace(9, 9, true);
+            var field = Played();
+
+            var before = face.Render(field, 0);
+
+            face.HoveredX = 3;
+            face.HoveredY = 2;
+            face.Render(field, 0);
+
+            face.HoveredX = -1;
+            face.HoveredY = -1;
+
+            Assert.Equal(before, face.Render(field, 0));
+        }
+
+        [Fact]
+        public void PointingAtASquareChangesHowItIsDrawnAndNotWhatItSays()
+        {
+            // The rule the whole feature has to obey: a hover moves a STYLE and never a GLYPH. The closed-square
+            // hairline is what both a reader and MinesweeperScreen use to tell a raised square from an opened one,
+            // so a hover that dropped or replaced it would be changing what the board says rather than lighting it.
+            var face = new MinesweeperFace(9, 9, true);
+            var field = Played();
+
+            var plain = face.Render(field, 0);
+
+            face.HoveredX = 3;
+            face.HoveredY = 2;
+            var lit = face.Render(field, 0);
+
+            Assert.NotEqual(plain, lit);
+            Assert.Equal(AnsiText.StripEscapes(plain), AnsiText.StripEscapes(lit));
+        }
+
+        [Fact]
+        public void OnlyTheSquareUnderThePointerIsLit()
+        {
+            // "Something changed" would pass for a version that repainted the whole panel. The change has to be one
+            // square's own interior row, so every other row of the panel comes back untouched.
+            var face = new MinesweeperFace(9, 9, true);
+            var field = Played();
+
+            var plain = Rows(face.Render(field, 0));
+
+            face.HoveredX = 3;
+            face.HoveredY = 2;
+            var lit = Rows(face.Render(field, 0));
+
+            var hoveredRow = face.InteriorRow(2);
+
+            Assert.NotEqual(plain[hoveredRow], lit[hoveredRow]);
+
+            for (var row = 0; row < plain.Length; row++)
+            {
+                if (row == hoveredRow)
+                    continue;
+
+                Assert.Equal(plain[row], lit[row]);
+            }
+        }
+
+        [Fact]
+        public void PointingOffTheBoardLightsNothing()
+        {
+            // The screen answers -1 for a pointer that is over the panel but not over a square - the counters, the
+            // face, the border - and that has to be as quiet as never having pointed at all.
+            var face = new MinesweeperFace(9, 9, true);
+            var field = Played();
+
+            var plain = face.Render(field, 0);
+
+            face.HoveredX = 99;
+            face.HoveredY = 99;
+
+            Assert.Equal(plain, face.Render(field, 0));
+        }
+
+        [Fact]
+        public void AFinishedBoardIsNotLitAtAll()
+        {
+            // A lit square says something is about to happen, and on a board that is over nothing is.
+            var face = new MinesweeperFace(9, 9, true);
+            var field = new Minefield(9, 9, 10, new Randomizer(4));
+            field.Reveal(4, 4);
+
+            for (var x = 0; x < 9 && !field.IsOver; x++)
+            for (var y = 0; y < 9 && !field.IsOver; y++)
+                field.Reveal(x, y);
+
+            Assert.True(field.IsOver, "the board never finished, so this tests nothing");
+
+            var plain = face.Render(field, 0);
+
+            face.HoveredX = 3;
+            face.HoveredY = 2;
+
+            Assert.Equal(plain, face.Render(field, 0));
+        }
+
         private static Minefield Played()
         {
             var field = new Minefield(9, 9, 10, new Randomizer(4));

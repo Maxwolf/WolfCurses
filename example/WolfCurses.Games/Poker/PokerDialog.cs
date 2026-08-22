@@ -2,6 +2,7 @@
 // Timestamp 08/17/2026
 
 using System;
+using System.Globalization;
 using System.Text;
 using WolfCurses.Games.Cards;
 using WolfCurses.Graphics;
@@ -28,6 +29,15 @@ namespace WolfCurses.Games.Poker
     [ParentWindow(typeof (GamesWindow))]
     public sealed class PokerDialog : Form<GamesWindowInfo>
     {
+        /// <summary>
+        ///     Columns held for the chip count, matching the blackjack table's field so the two screens read the
+        ///     same way. Five digits is far past any sitting somebody will actually have at one keypress a hand.
+        /// </summary>
+        private const int ChipColumns = 5;
+
+        /// <summary>Columns held for the hand counter; one hand is one deal, so four digits outlives the session.</summary>
+        private const int HandColumns = 4;
+
         private readonly CardImages _images = new();
 
         private PokerGame _game;
@@ -142,8 +152,19 @@ namespace WolfCurses.Games.Poker
         {
             var body = new StringBuilder();
             body.AppendLine();
-            body.AppendLine($"Chips {_game.Chips}    Bet {PokerGame.BetSize}    " +
-                            $"Hands {_game.HandsPlayed}    Best {UserData.PokerBestChips}");
+            // Fixed-width fields, the same fix and the same reasoning as the blackjack table next door: the chip
+            // count moves on every hand, across the three- and four-digit boundaries as a stake is won or lost,
+            // and this line sits directly above five cards whose alignment is the point of the screen. Unpadded,
+            // "Bet" and "Hands" step sideways with every deal. "Best" is left ragged deliberately: it is last on
+            // the line and has nothing to shove.
+            //
+            // A plain composite-format width rather than AnsiText.Fit, because nothing on this line is styled.
+            // Fit is what to reach for when the text carries escapes; here there are none to miscount, and a
+            // plain width is simpler and can only ever pad, so a value that outgrew its field would degrade to
+            // today's shuffle rather than losing a digit.
+            body.AppendLine(string.Create(CultureInfo.InvariantCulture,
+                $"Chips {_game.Chips,-ChipColumns}    Bet {PokerGame.BetSize}    " +
+                $"Hands {_game.HandsPlayed,-HandColumns}    Best {UserData.PokerBestChips}"));
             body.AppendLine();
 
             var table = _game.Table();

@@ -99,17 +99,17 @@ namespace WolfCurses.Games.MissileCommand
         private MissileBoardMap _boardMap;
 
         /// <summary>
-        ///     The last click the game received, kept only so the status line can show it.
+        ///     The last thing the mouse did, kept only so the status line can show it.
         ///     <para>
         ///         This is a diagnostic and it earns its place: whether the mouse works at all depends on the
         ///         terminal, on the console host, and on whether something else has already claimed the pointer, and
         ///         none of that can be established from inside a test. Showing the received cell means "nothing
-        ///         happens when I click" can be told apart from "it fires in the wrong place" without a debugger.
+        ///         happens when I move it" can be told apart from "it aims in the wrong place" without a debugger.
         ///     </para>
         /// </summary>
-        private MouseEvent _lastClick;
+        private MouseEvent _lastPointer;
 
-        private bool _clicked;
+        private bool _sawPointer;
 
         /// <summary>Initializes a new instance of the <see cref="MissileCommandDialog" /> class.</summary>
         /// <param name="window">The parent window.</param>
@@ -135,11 +135,35 @@ namespace WolfCurses.Games.MissileCommand
             // The mouse is only advertised when the host actually got one - a prompt promising a click that the
             // terminal will never report is worse than saying nothing.
             ParentWindow.PromptText = AnsiConsole.MouseEnabled
-                ? "Click to fire, or arrows/WASD aim and SPACE fires; Z/X/C picks a battery, TAB switches board, ENTER quits"
+                ? "Move the mouse to aim and click to fire, or arrows/WASD and SPACE; Z/X/C picks a battery, TAB switches board, ENTER quits"
                 : "Arrows or WASD aim, SPACE fires, Z/X/C picks a battery, TAB switches board, ENTER or ESC quits";
+
+            // Asked for by the screen that wants it rather than by the host, and handed back in OnFormClosing.
+            // Motion is one event for every cell the pointer crosses, so an arcade whose other games only want
+            // clicks should not be paying for it while they are the ones on screen - and the arcade's own menu
+            // certainly should not. See OnFormClosing for the half that makes this safe.
+            SimUnit.InputManager.ReportsMouseMotion = true;
 
             RestartOnActivate(_frame);
             NewGame();
+        }
+
+        /// <summary>
+        ///     Hands pointer reporting back.
+        ///     <para>
+        ///         <b>This is the counterpart to the line in <see cref="OnFormPostCreate" />, and without it the
+        ///         flood outlives the screen that asked for it.</b> A form being dropped is no signal at all on its
+        ///         own, which is the whole reason <c>IForm.OnFormClosing</c> exists: leaving the arcade for the menu
+        ///         would leave every later screen, and the menu itself, receiving one event per cell the pointer
+        ///         crosses forever after, for nothing. The library fires this from every path a form is detached by,
+        ///         quitting included, so there is no way out of this screen that skips it.
+        ///     </para>
+        /// </summary>
+        public override void OnFormClosing()
+        {
+            base.OnFormClosing();
+
+            SimUnit.InputManager.ReportsMouseMotion = false;
         }
 
         /// <summary>
@@ -249,6 +273,61 @@ namespace WolfCurses.Games.MissileCommand
         }
 
         /// <summary>
+        ///     Everything the mouse does, and the one thing this game wanted that a click could never give it: the
+        ///     crosshair follows the pointer.
+        ///     <para>
+        ///         <b>This is the trackball the cabinet had.</b> Aiming with presses alone means the crosshair only
+        ///         ever exists where the last shot was fired, so a player lines up by firing, which spends the very
+        ///         ammunition the game is about. A pointer reports an absolute position, so the sight is simply
+        ///         wherever the hand is and the button is only the trigger. It needed
+        ///         <c>MouseEventKindEnum.Move</c>, which did not exist when this screen was written.
+        ///     </para>
+        ///     <para>
+        ///         <b>A move with the button still held keeps firing</b>, which is a drag and is the other thing
+        ///         only the new kinds can express. <see cref="FireAt" /> is already rate limited by
+        ///         <see cref="_shotPace" />, so sweeping across the sky with the button down lays down a barrage at
+        ///         the same cadence a held SPACE does rather than one shell per cell crossed.
+        ///     </para>
+        ///     <para>
+        ///         Releases are deliberately ignored. Nothing here is latched to a held button - the drag reads the
+        ///         button off each move - so there is no state a release would have to unwind, and a screen that
+        ///         handles an event it has no use for is a screen somebody later has to work out the purpose of.
+        ///     </para>
+        /// </summary>
+        /// <param name="mouse">What the mouse did, and where.</param>
+        public override void OnMouseEvent(MouseEvent mouse)
+        {
+            // Presses go the old road on purpose: OnMousePressed stays the single place a shot is decided, so the
+            // click path is byte-for-byte the one that was already pinned by tests.
+            if (mouse.Kind == MouseEventKindEnum.Press)
+            {
+                OnMousePressed(mouse);
+                return;
+            }
+
+            if (mouse.Kind != MouseEventKindEnum.Move)
+                return;
+
+            _lastPointer = mouse;
+            _sawPointer = true;
+
+            if (_field.IsOver)
+                return;
+
+            // Off the board is dropped rather than clamped, the same rule a click follows: sliding the pointer up
+            // over the status line must not drag the sight to the top of the sky.
+            if (!_boardMap.TryToWorld(mouse.Row, mouse.Column, out var worldX, out var worldY))
+                return;
+
+            SetAim(worldX, worldY);
+            _driftX.Release();
+            _driftY.Release();
+
+            if (mouse.Button == MouseButtonEnum.Left)
+                FireAt(_field.BestSilo(_aimX, _aimY));
+        }
+
+        /// <summary>
         ///     A click puts the crosshair on the clicked cell and fires from whichever battery can get there first.
         ///     <para>
         ///         <b>The drift is zeroed, and that is the whole of the arbitration between mouse and keyboard.</b>
@@ -267,8 +346,8 @@ namespace WolfCurses.Games.MissileCommand
         {
             base.OnMousePressed(mouse);
 
-            _lastClick = mouse;
-            _clicked = true;
+            _lastPointer = mouse;
+            _sawPointer = true;
 
             if (mouse.Button != MouseButtonEnum.Left || _field.IsOver)
                 return;
@@ -387,11 +466,15 @@ namespace WolfCurses.Games.MissileCommand
         ///     <para>
         ///         <b>Half blocks are forced while the mouse is enabled, and that is not a shortcut.</b> Aiming with
         ///         a pointer means knowing exactly which rectangle of the screen the board occupies, and for a
-        ///         true-pixel renderer nothing does: sixel emits pixel rows the terminal draws one-for-one against a
-        ///         character cell whose real size it has no way to ask for, so the game's idea of where the picture
-        ///         ends can be a quarter of the field out. Half blocks are exactly one pixel pair per cell by
-        ///         definition, so the board's rectangle is the string it returned. A player who would rather have the
-        ///         better picture than the mouse simply does not enable the mouse.
+        ///         true-pixel renderer nothing does. Sixel emits pixel rows the terminal draws against a character
+        ///         cell of its own; <see cref="IImageRenderer.CellPixelWidth" /> and
+        ///         <see cref="IImageRenderer.CellPixelHeight" /> will say what size the renderer <i>assumes</i> that
+        ///         cell is, which is a real and useful answer for sizing a canvas and is still not the one needed
+        ///         here - it is an assumption the terminal never confirms, so a click map built on it is wrong by
+        ///         however far the two disagree, silently, and can be a quarter of the field out. Half blocks are
+        ///         exactly one pixel pair per cell by definition, so the board's rectangle is the string it
+        ///         returned and the map is arithmetic rather than a guess. A player who would rather have the better
+        ///         picture than the mouse simply does not enable the mouse.
         ///     </para>
         /// </summary>
         /// <returns>The renderer to draw with.</returns>
@@ -488,7 +571,10 @@ namespace WolfCurses.Games.MissileCommand
         /// <summary>Draws the field as real pixels, through whatever the terminal turned out to support.</summary>
         private string PaintPicture(int rows, int columns)
         {
-            var (canvasWidth, canvasHeight) = MissileFieldArt.SizeFor(rows);
+            // Read once and handed to both, so the canvas is sized against the very renderer that is about to
+            // draw it. Sizing it for half blocks and then handing it to sixel is what magnified every stroke.
+            var renderer = BoardRenderer();
+            var (canvasWidth, canvasHeight) = MissileFieldArt.SizeFor(rows, renderer);
 
             // Rebuilt only when the terminal has actually been resized, since the buffer is reused between frames.
             if (_art == null || _art.Width != canvasWidth || _art.Height != canvasHeight)
@@ -501,7 +587,7 @@ namespace WolfCurses.Games.MissileCommand
                 RowMargin = 0
             };
 
-            return AnsiImage.FromPixels(_art.Paint(_field, _aimX, _aimY)).ToAnsi(options, BoardRenderer());
+            return AnsiImage.FromPixels(_art.Paint(_field, _aimX, _aimY)).ToAnsi(options, renderer);
         }
 
         /// <summary>
@@ -539,9 +625,9 @@ namespace WolfCurses.Games.MissileCommand
             // somewhere else", without anybody having to attach a debugger to find out which.
             var pointer = !AnsiConsole.MouseEnabled
                 ? "  ·  Mouse off"
-                : _clicked
+                : _sawPointer
                     ? string.Format(CultureInfo.InvariantCulture, "  ·  Mouse r{0}c{1}",
-                        _lastClick.Row, _lastClick.Column)
+                        _lastPointer.Row, _lastPointer.Column)
                     : "  ·  Mouse ready";
 
             return string.Format(CultureInfo.InvariantCulture,

@@ -145,7 +145,98 @@ namespace WolfCurses.Games.Tests.MissileCommand
             game.ChooseMenuItem((int) GamesCommandsEnum.MissileCommand);
 
             Assert.Contains("Mouse off", game.Screen, StringComparison.Ordinal);
-            Assert.DoesNotContain("Click to fire", game.Screen, StringComparison.Ordinal);
+            Assert.DoesNotContain("Move the mouse", game.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void MovingThePointerAimsAndSpendsNothing()
+        {
+            // The whole reason motion was worth adopting here, and the thing a press can never do: a click puts the
+            // sight where a shell is already going, so aiming by clicking spends the very ammunition the game is
+            // about. Moving the pointer aims for free, which is what the cabinet's trackball did.
+            using var game = new DrivenGamesApp();
+            game.ChooseMenuItem((int) GamesCommandsEnum.MissileCommand);
+
+            // Far from the opening position, which is the middle of the field.
+            const int column = 8;
+            game.App.InputManager.SendMouseEvent(new MouseEvent(column, BoardOriginRow + 4, MouseButtonEnum.None,
+                kind: MouseEventKindEnum.Move));
+            game.App.PumpInput();
+            Thread.Sleep(45);
+            game.Tick();
+
+            var crosshair = CrosshairColumn(game);
+            Assert.True(Math.Abs(crosshair - column) <= 1,
+                $"pointer moved to column {column} but the crosshair is at {crosshair}");
+
+            // Absolute, not "fewer than before": a hover that quietly fired would still move the crosshair.
+            Assert.Contains("Ammo 10/10/10", game.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void SweepingWithTheButtonHeldKeepsFiring()
+        {
+            // A move carrying a button is a drag, and a drag is the other thing presses cannot express however many
+            // of them arrive. The shot pace already rate-limits it, so a sweep lays down a barrage at the cadence a
+            // held SPACE does rather than one shell for every cell the pointer crosses.
+            using var game = new DrivenGamesApp();
+            game.ChooseMenuItem((int) GamesCommandsEnum.MissileCommand);
+            Assert.Contains("Ammo 10/10/10", game.Screen, StringComparison.Ordinal);
+
+            game.App.InputManager.SendMouseEvent(new MouseEvent(30, BoardOriginRow + 3, MouseButtonEnum.Left,
+                kind: MouseEventKindEnum.Move));
+            game.App.PumpInput();
+            Thread.Sleep(45);
+            game.Tick();
+
+            Assert.DoesNotContain("Ammo 10/10/10", game.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void ThePointerTakesTheCrosshairOffWhateverTheKeyboardWasDoing()
+        {
+            // The same arbitration a click has, asked of a bare hover: the pointer zeroes the drift, and nothing
+            // revives drift without a fresh key press. Worth its own test because a hover reaches the form by a
+            // different door from a press.
+            using var game = new DrivenGamesApp();
+            game.ChooseMenuItem((int) GamesCommandsEnum.MissileCommand);
+
+            game.Press(ConsoleKey.RightArrow);
+            Thread.Sleep(45);
+            game.Tick();
+
+            game.App.InputManager.SendMouseEvent(new MouseEvent(10, BoardOriginRow + 4, MouseButtonEnum.None,
+                kind: MouseEventKindEnum.Move));
+            game.App.PumpInput();
+            Thread.Sleep(45);
+            game.Tick();
+
+            var settled = CrosshairColumn(game);
+
+            // Several frames with no input at all. If the hover had left the keyboard drift running, the crosshair
+            // would keep sliding right for up to the 180 ms the game waits before inferring a key-up.
+            Thread.Sleep(250);
+            game.Tick();
+            game.Tick();
+
+            Assert.Equal(settled, CrosshairColumn(game));
+        }
+
+        [Fact]
+        public void TheScreenAsksForPointerReportingAndHandsItBackWhenItCloses()
+        {
+            // Motion is one event for every cell the pointer crosses, so it is asked for by the screen that wants
+            // it rather than switched on for the whole arcade. The handing back is the half that is easy to leave
+            // out and impossible to see: nothing would look wrong, the menu and every later game would simply be
+            // paying for a flood none of them read.
+            using var game = new DrivenGamesApp();
+            Assert.False(game.App.InputManager.ReportsMouseMotion);
+
+            game.ChooseMenuItem((int) GamesCommandsEnum.MissileCommand);
+            Assert.True(game.App.InputManager.ReportsMouseMotion);
+
+            game.Escape();
+            Assert.False(game.App.InputManager.ReportsMouseMotion);
         }
 
         /// <summary>Where the crosshair is on screen, read off the frame rather than out of the form.</summary>

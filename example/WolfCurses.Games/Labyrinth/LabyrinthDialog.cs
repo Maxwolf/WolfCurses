@@ -68,6 +68,24 @@ namespace WolfCurses.Games.Labyrinth
 
         private const int MinimumViewRows = 5;
 
+        /// <summary>
+        ///     Columns held for the step counter. Four: the maze is 325 cells and has no loops, so even a player who
+        ///     walked into every dead end and back would finish in three digits, and the fourth is room for somebody
+        ///     pacing a corridor.
+        /// </summary>
+        private const int StepColumns = 4;
+
+        /// <summary>Columns held for the explored reading, which runs "0%" to "100%" and so needs four.</summary>
+        private const int ExploredColumns = 4;
+
+        /// <summary>
+        ///     Columns held for the compass reading. Twelve is <c>"N (step out)"</c>, the widest thing
+        ///     <see cref="Compass" /> can say, against the two of the "NE" it says the rest of the time. It swings
+        ///     further than either number on this line, so leaving it ragged would shuffle the session counter beside
+        ///     it every time the player turned a corner.
+        /// </summary>
+        private const int CompassColumns = 12;
+
         /// <summary>The frame around the view, the same widget the snake and the minefield play inside.</summary>
         private readonly Box _frame = new() {Title = "Labyrinth", Padding = 0};
 
@@ -265,10 +283,24 @@ namespace WolfCurses.Games.Labyrinth
         /// <summary>The status line: how far they have walked, how much they have seen, and which way the exit lies.</summary>
         private string Heading()
         {
-            var explored = 100*_maze.SeenCount/(_maze.Width*_maze.Height);
+            // The percent sign travels with the number rather than sitting after the padding, or a low reading draws
+            // as "Explored 5   %" with the sign adrift from what it belongs to.
+            var explored = string.Create(CultureInfo.InvariantCulture,
+                $"{100*_maze.SeenCount/(_maze.Width*_maze.Height)}%");
 
-            return $"Steps {_maze.Steps}    Explored {explored}%    Exit {Compass()}    " +
-                   $"Escaped this session: {UserData.LabyrinthMazesEscaped}";
+            // Fixed-width fields, because this heading sits directly above a box whose whole claim is that it does
+            // not move - the frame is the same size in a corner as it is in the middle, and a heading shuffling over
+            // it on every step would undo that by eye. All three fields grow as the maze is walked: the steps through
+            // 9, 99 and 999, the reading through 9% and 99%, and the compass from "N" to "N (step out)". The session
+            // counter is left ragged deliberately, being last on the line with nothing to its right to displace.
+            //
+            // Plain composite-format widths rather than AnsiText.Fit: nothing here is styled, so there are no escape
+            // bytes for a plain width to miscount, and a width only ever pads where Fit would trim - a value that
+            // outgrew its field pushes the line along as it does today rather than losing a digit. At its widest this
+            // comes to 77 columns, inside the eighty this screen is built for and checked by the fits-80x24 test.
+            return string.Create(CultureInfo.InvariantCulture,
+                $"Steps {_maze.Steps,-StepColumns}    Explored {explored,-ExploredColumns}    " +
+                $"Exit {Compass(),-CompassColumns}    Escaped this session: {UserData.LabyrinthMazesEscaped}");
         }
 
         /// <summary>

@@ -14,7 +14,9 @@ namespace WolfCurses.Games.Chess
     ///         same from inside the game — the artwork not being beside the executable, the decoder refusing it, the
     ///         compositing putting pieces in the wrong squares, and the renderer producing something the terminal
     ///         cannot show. This prints the board as shaded ASCII, which every terminal can display and which shows
-    ///         up in a captured log, so the first three can be told apart from the fourth.
+    ///         up in a captured log, so the first three can be told apart from the fourth. The fourth is then named
+    ///         outright rather than left to be inferred, because it is the only one of the four a user cannot see
+    ///         for themselves: a payload the terminal refuses looks exactly like a board that was never drawn.
     ///         <c>dotnet run --project example/WolfCurses.Games -- board [fen]</c>.
     ///     </para>
     /// </summary>
@@ -31,8 +33,33 @@ namespace WolfCurses.Games.Chess
             // to survive. A running game gets this from the frame presenter; a bare command has to ask.
             AnsiConsole.Enable();
 
+            // Normally the SimulationApp constructor does this, and this command never builds one, so without it the
+            // report below would describe the half blocks every process starts with rather than what the game would
+            // get here. The probe reads the terminal's reply off standard input, so it has to happen before anything
+            // else reads a key: Program dispatches the "board" verb and returns long before the simulation exists,
+            // which is the only reason calling it from a command is safe.
+            ImageRenderers.AutoDetect();
+
             Console.WriteLine("WolfChess 5000 - render check");
             Console.WriteLine();
+
+            // The fourth way the pipeline goes wrong is the one the user cannot see for themselves: a payload the
+            // terminal will not draw looks exactly like a board that was never composited. Nothing below can test
+            // that from inside a piped command, so it is reported instead - which renderer the terminal actually
+            // got, what shape of pixels it wants, and whether a true-pixel payload would survive to the screen at
+            // all. SupportsPictures is the clause that reads false with virtual-terminal processing off, where
+            // ConsolePresenter strips every escape from a row and writes a picture out blank.
+            //
+            // The reference has to stay IImageRenderer-typed: Name, DrawsTruePixels and the two cell sizes are
+            // default interface members, so narrowing this to a concrete renderer stops compiling rather than
+            // quietly reporting something else.
+            var renderer = ImageRenderers.Default;
+            Console.WriteLine($"graphics       : {AnsiConsole.DetectGraphicsProtocol()}");
+            Console.WriteLine(
+                $"renderer       : {renderer.Name} - {(renderer.DrawsTruePixels ? "true pixels" : "character cells")}");
+            Console.WriteLine($"cell pixels    : {renderer.CellPixelWidth}x{renderer.CellPixelHeight} per cell");
+            Console.WriteLine(
+                $"pictures       : {(AnsiConsole.SupportsPictures() ? "yes" : "no - a payload row would be written out blank")}");
 
             var art = new ChessBoardArt();
             Console.WriteLine($"artwork folder : {art.Folder}");
@@ -57,6 +84,13 @@ namespace WolfCurses.Games.Chess
             Console.WriteLine($"canvas         : {pixels.Width}x{pixels.Height} pixels");
 
             // Shaded ASCII with no colour at all, because this output has to survive being piped into a file.
+            //
+            // So the renderer REPORTED above and the renderer DRAWN with here are deliberately different, and that is
+            // not an oversight to tidy up: the report has to name whatever the terminal actually got, while the
+            // drawing has to be something a log file can hold. Handing this ImageRenderers.Default would put a sixel
+            // or kitty payload in the capture, which is unreadable in a file and unreadable again on the next
+            // terminal somebody pastes it into - and the picture would then be the one thing in the report nobody
+            // could check.
             var options = new AnsiImageOptions
             {
                 MaxColumns = 64,
