@@ -8,20 +8,71 @@ dotnet run --project example/WolfCurses.Games
 
 These are terminal UIs, so run them from a real terminal window rather than by double-clicking, and give the window some room. Games that can draw pictures check the terminal first and fall back to a character view, which is never a consolation prize: every entity has its own glyph as well as its own colour, so an 80x24 console plays exactly the same game.
 
+![The arcade menu: eleven numbered choices with the best score for each game across the top](../../docs/games-menu.png)
+
 ## The games
 
-| Game | Controls | What it demonstrates |
-| --- | --- | --- |
-| **Snake** | Arrows or WASD, ENTER or ESC to quit | Steering, paced off the system tick |
-| **Minesweeper** | Type `B4`, `F B4` to flag, `R` new board. With a mouse: the square under the pointer lights up, left opens, right flags, and clicking the face deals a new board | Typed input and the pointer, on a panel drawn the way Windows 95 drew it |
-| **Tetris** | Arrows or WASD, UP to turn, SPACE to drop, `R` for a new well | Layout: two panels in a column beside the well, pinned so nothing shifts as you play |
-| **WolfChess 5000** | Type a move (`e4`, `Nf3`, `e2e4`) or arrows plus ENTER, `help` for commands | Real piece artwork composited into one image, and a bot that thinks in slices so the screen keeps moving |
-| **Missile Command** | Arrows or WASD aim, SPACE fires, `Z`/`X`/`C` picks a battery, TAB switches view. With a mouse: move to aim, click to fire, hold the button and sweep for a barrage | 30 fps ballistics on a picture the program *draws* rather than decodes |
-| **Labyrinth** | Arrows or WASD, `R` for a new maze. With a mouse: the wheel looks up and down the maze, and your next move re-centres it | A world bigger than the terminal, so it needs a camera |
-| **Pac-Man** | Arrows or WASD | Walls as a connected network of lines, and four ghosts with one line of targeting logic each |
-| **Blackjack** | `H` hit, `S` stand, ENTER deals again, TAB toggles pictures, ESC leaves | Card artwork, fanned so only each card's corner shows |
-| **Poker** | `1`-`5` hold, SPACE draws, ENTER deals again, TAB toggles pictures, ESC leaves | Five-card draw, jacks or better, with a paytable that lights the hand you were paid for |
-| **Battlezone** | `W`/`S` gear, `A`/`D` steer, `X` brakes, SPACE fires, TAB switches view, ENTER replays, ESC leaves. With a mouse: the wheel changes gear, left click fires | A first-person wireframe view rather than a map: a camera, a horizon and a radar |
+Every picture here is a real frame, taken from the game while it was being played, on a terminal that can draw real pixels.
+
+### Snake
+
+![Snake: a green snake and a red piece of food inside a bordered pen, with score, length and heading above it](../../docs/game-snake.png)
+
+Arrows or WASD, ENTER or ESC to quit. **Steering, paced off the system tick.**
+
+### Minesweeper
+
+![Minesweeper: a board part way through a game on a grey panel, with a mine counter, a smiling face and a planted flag](../../docs/game-minesweeper.png)
+
+Type `B4`, `F B4` to flag, `R` for a new board. With a mouse: the square under the pointer lights up, left opens, right flags, and clicking the face deals a new board. **Typed input and the pointer, on a panel drawn the way Windows 95 drew it.**
+
+### Tetris
+
+![Tetris: a well with four pieces settled at the bottom, a Next panel and a Stats panel beside it](../../docs/game-tetris.png)
+
+Arrows or WASD, UP to turn, SPACE to drop, `R` for a new well. **Layout: two panels in a column beside the well, pinned so nothing shifts as you play.**
+
+### WolfChess 5000
+
+![WolfChess 5000: a chess board drawn with real piece artwork, the last move highlighted in green and yellow](../../docs/game-chess.png)
+
+Type a move (`e4`, `Nf3`, `e2e4`) or arrows plus ENTER, `help` for commands. **Real piece artwork composited into one image, and a bot that thinks in slices so the screen keeps moving.**
+
+### Missile Command
+
+![Missile Command: cities and batteries along the ground, an explosion in the sky and two incoming warheads trailing behind them](../../docs/game-missile-command.png)
+
+Arrows or WASD aim, SPACE fires, `Z`/`X`/`C` picks a battery, TAB switches view. With a mouse: move to aim, click to fire, hold the button and sweep for a barrage. **30 fps ballistics on a picture the program *draws* rather than decodes.**
+
+### Labyrinth
+
+![Labyrinth: a few corridors uncovered out of a much larger maze, with a breadcrumb trail and the compass pointing north east](../../docs/game-labyrinth.png)
+
+Arrows or WASD, `R` for a new maze. With a mouse: the wheel looks up and down the maze, and your next move re-centres it. **A world bigger than the terminal, so it needs a camera.**
+
+### Pac-Man
+
+![Pac-Man: the maze drawn as a connected network of lines, with pellets, four coloured ghosts and their targets listed beside it](../../docs/game-pacman.png)
+
+Arrows or WASD. **Walls as a connected network of lines, and four ghosts with one line of targeting logic each.**
+
+### Blackjack
+
+![Blackjack: the dealer's up card and hole card above the player's two cards, drawn as real card artwork](../../docs/game-blackjack.png)
+
+`H` hit, `S` stand, ENTER deals again, TAB toggles pictures, ESC leaves. **Card artwork, fanned so only each card's corner shows.**
+
+### Poker
+
+![Poker: five cards fanned across a green table with three of them marked HELD, and the paytable underneath](../../docs/game-poker.png)
+
+`1`-`5` hold, SPACE draws, ENTER deals again, TAB toggles pictures, ESC leaves. **Five-card draw, jacks or better, with a paytable that lights the hand you were paid for.**
+
+### Battlezone
+
+![Battlezone: a first-person wireframe view of an enemy tank between two pyramids, with a radar above the horizon](../../docs/game-battlezone.png)
+
+`W`/`S` gear, `A`/`D` steer, `X` brakes, SPACE fires, TAB switches view, ENTER replays, ESC leaves. With a mouse: the wheel changes gear, left click fires. **A first-person wireframe view rather than a map: a camera, a horizon and a radar.**
 
 ## A few things worth knowing
 

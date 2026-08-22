@@ -12,15 +12,23 @@ That order is deliberate. Adding an application is meant to be a folder, a form 
 
 This is an interactive terminal UI, so run it from a real terminal window rather than by double-clicking, and give the window some room.
 
+Every picture below is a real frame from the running suite, on a terminal that can draw real pixels.
+
+![The suite menu: eight numbered choices, one per application, with Quit last](../../docs/apps-menu.png)
+
 ## The word processor
 
 Menus across the top, a framed blue field with the file name in its top edge, scrollbars down the right and along the bottom, and a key-hint strip underneath.
+
+![The word processor with RFC 1149 open: menus across the top, a blue field with the file name in its edge, scrollbars on two sides and a key-hint strip below](../../docs/app-word-processor.png)
 
 **Keyboard.** Arrows move and SHIFT selects; CTRL with left and right walks words; HOME and END take the line, and CTRL with them the document; PAGE UP and PAGE DOWN move a screen; TAB inserts a real tab; CTRL+A selects everything. **F10 opens the menus** (so does ALT with a menu's underlined letter, where the terminal passes ALT through), and ESC shuts an open menu or leaves the editor.
 
 **Clipboard.** CTRL+X cuts, CTRL+INS copies and CTRL+V pastes, and the MS-DOS Editor's own SHIFT+DEL and SHIFT+INS do the same two. Copy is CTRL+INS rather than CTRL+C because a console turns CTRL+C into the signal that quits the program before any application can read it as a key. The clipboard belongs to the suite rather than to the editor, so what you copy will still be there for the spreadsheet; it is not the operating system's clipboard, and nothing copied here leaves the program.
 
 **Mouse.** Click to place the caret, drag to sweep a selection, click a menu title or entry, hover an open menu to walk its highlight, drag the scrollbar thumb or click its arrows, and roll the wheel to scroll. The editor draws its own pointer, because a terminal stops drawing one the moment mouse reporting is switched on.
+
+![The Search menu pulled down over the document: Find Next and Find Previous greyed because nothing has been searched for yet, and Whole Word ticked](../../docs/app-word-processor-menu.png)
 
 **Search.** CTRL+F asks what to find and selects the first match; F3 and SHIFT+F3 walk to the next and previous, coming round the ends rather than stopping; CTRL+H asks what to change and what to change it to, and changes every one. Match Case and Whole Word are ticked entries on the Search menu rather than checkboxes in a dialog, so the setting is readable without opening anything.
 
@@ -34,6 +42,10 @@ Five pieces of it are in the library rather than here, which is the point of the
 
 A program in an editor, and the screen it draws on when you run it. **F5 runs**, ESC stops a running program and goes back to the listing, ESC again leaves; F3 opens another `.bas` from disk.
 
+![The BASIC editor with welcome.bas listed: REM comments, a FOR loop, PRINT statements and a key-hint strip below](../../docs/app-basic.png)
+
+![The same program's output after F5: a count, a times table, string functions and an odd-and-even loop, with "Program finished" on the strip below](../../docs/app-basic-run.png)
+
 The language covers expressions with BASIC's own precedence, variables and arrays, `PRINT` with its layout punctuation, `INPUT`, `IF` in both forms with `ELSEIF`, `FOR`/`NEXT` with `STEP`, `WHILE`/`WEND`, all four shapes of `DO`/`LOOP`, `SELECT CASE` with `IS` and `TO`, `GOTO`/`GOSUB`/`RETURN`, `DIM`, `SUB` and `FUNCTION` with `SHARED` and recursion, `EXIT FOR` and `EXIT DO`, `DATA`/`READ`/`RESTORE`, and the usual string and maths functions. **Graphics too**: `SCREEN` picks a mode and `PSET`, `LINE` (with `B` and `BF`), `CIRCLE` and `PAINT` draw into it, coming out as real pixels where the terminal supports them and half blocks where it does not. `GET` and `PUT` move sprites about, with XOR as the default so stamping twice rubs one out again. `SOUND` and `PLAY` make actual noise through the PC speaker, including PLAY's whole note language; the notes go to a thread of their own, because playing one blocks for its length and the screen has to stay answerable to ESC. Errors name the line they happened on.
 
 Seven sample programs ship, all written for this repository: `welcome.bas` walks through the language, `greet.bas` asks questions, `shapes.bas` draws with `LOCATE`, `procedures.bas` shows SUBs, FUNCTIONs and recursion, `drawing.bas` is the graphics demonstration, `sprite.bas` walks a face across the screen with GET and PUT, and `music.bas` works through PLAY and SOUND. The tunes in that last one are all long out of copyright: Grieg's *In the Hall of the Mountain King* of 1875, whose accelerando makes it the best demonstration of tempo there is, a Beethoven melody of 1824 and a French air of 1761, plus scales and a fanfare written here. **The QBasic samples everybody remembers are Microsoft's** and carry no redistribution licence, so they are not included; open your own copy with F3.
@@ -42,9 +54,13 @@ Seven sample programs ship, all written for this repository: `welcome.bas` walks
 
 A grid of cells with the same menus and frame round it, lettered columns, numbered rows, a cell entry line under the sheet and scrollbars on two sides. It opens on `sheets/spreadsheet.csv`, which is a joke ledger about a year of consulting income going out again on graphics cards and coffee.
 
+![The spreadsheet: lettered columns and numbered rows, a merged banner across the top, a year of figures and a Total row, with the selected cell's contents on the entry line below](../../docs/app-spreadsheet.png)
+
 **Editing.** Arrows move; typing anything starts editing the cell with that character already in it; **F2** keeps what is there instead. ENTER accepts and moves down, TAB accepts and moves right, ESC abandons the edit. DEL clears whatever is selected, and SHIFT with the arrows sweeps a rectangle. HOME and END take the row, CTRL with them the whole sheet, and CTRL+END goes to the end of the *data* rather than the end of the two-hundred-row grid.
 
 **Formulas.** A cell beginning with `=` is worked out: arithmetic with the usual precedence, brackets, powers, cell references, ranges, and `SUM`, `AVERAGE`, `MIN`, `MAX`, `COUNT`, `COUNTA`, `ROUND`, `ABS`, `INT` and `SQRT`. **A cell holds what you typed and is worth something else** - the entry line under the grid shows the formula while the cell shows the answer, which is the whole distinction a spreadsheet is built on and is why saving gives back the formula rather than the number. Mistakes are values rather than exceptions: `#DIV/0!`, `#NAME?`, `#VALUE!`, `#REF!` and `#CIRC!` for a cell that needs its own value to work out its own value. **Data > Total Selection** writes a `=SUM(...)` underneath whatever is selected.
+
+![A bar chart of B9 to B20 filling the sheet's frame, each bar labelled with its month and its value](../../docs/app-spreadsheet-chart.png)
 
 **Charts.** **F6** draws the selection as labelled bars and **F7** as a line graph, both of them the library's own widgets. Labels come from the cells beside the numbers, so a column of figures with the month names to its left charts itself with no configuration at all. A rectangle is charted by its first column and the caption says so, rather than quietly picking one.
 
@@ -61,6 +77,8 @@ Four pieces of this are in the library rather than here: `TableViewport` (which 
 ## The calculator
 
 A desk calculator with a paper tape: keys you can click, keys you can type, and a record of what you did.
+
+![The calculator: a display, five rows of keys with a double-width zero and two greyed memory keys, and a paper tape showing 128 + 64 = 192 then x 3 = 576](../../docs/app-calculator.png)
 
 **The keys.** Digits, the four operations, percent, square root, reciprocal, square, sign, rub out, clear entry, clear, and five memory keys. Click any of them, or type: **the number pad works**, and so does the top row of digits. ENTER totals, BACKSPACE rubs out, DEL clears the entry, C resets, and `%` `R` `N` are percent, root and sign. The memory keys are F5 to F8. Shortcuts here are function keys rather than control combinations for the same reason as in the spreadsheet: a combination the console keeps for itself never arrives, and a key that does nothing is worse than no key.
 
@@ -80,6 +98,8 @@ The keys themselves are the library's `Keypad`, which is what this application e
 
 A month you can walk around, the day's entries beside it, and a clock that moves while you look at it.
 
+![The planner: a month grid with marked days, the chosen day's entries beside it, and a clock ticking underneath](../../docs/app-planner.png)
+
 **Four ways of looking at it**, on TAB or on F5 to F8, and they are a zoom rather than four skins on the same thing: each answers a question the others cannot.
 
 | View | What only it answers |
@@ -90,6 +110,8 @@ A month you can walk around, the day's entries beside it, and a clock that moves
 | **Coming up** | What is next, with the empty days simply not there. |
 
 **The arrow keys mean something different in each, deliberately.** Stepping a day at a time through a year is useless and stepping a month at a time through a week is meaningless, so UP and DOWN are a week in the month view, a month in the year view, and the previous or next *entry* in the list. What never changes is that there is one chosen day and every view shows where it is, so choosing a date in the year view and pressing F5 lands on it in the month.
+
+![The year view: twelve strips of days, one per month, marked where something happens, with a count on the end of each](../../docs/app-planner-year.png)
 
 **The year is strips, not twelve little calendars**, because twelve of those need thirty-two rows and a terminal has twenty-four. A strip gives up which weekday a date falls on, which is exactly what the month view is for, and buys the whole year at once, which is exactly what it is not. Easter turning up on a different day of April each year is visible at a glance.
 
@@ -109,19 +131,9 @@ The sample is Maxwolf's own calendar, which is mostly moulting, tail maintenance
 
 An address book you can flip through: one card at a time with its fields laid out, or all of them at once as a table, with a row of letter tabs across the top.
 
-```
-┌─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┐  25 cards
-│A│B│C│D│E│F│G│H│I│J│K│L│M│N│O│P│Q│R│S│T│U│V│W│X│Y│Z│#│  Type a letter to
-└─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┘  flip to that tab.
-┌ contacts.csv ─────────────────────────────────────────── 4 of 25 ┐
-│Name     Coast Guard (Western Station)                            │
-│Kind     Institution                                              │
-│Phone    555-0100                                                 │
-│Address  Pier 4                                                   │
-│Notes    Written apology due the first of every month.            │
-│         They have a folder. The folder has a name and the name   │
-│         is mine.                                                 │
-```
+![The card file: a row of letter tabs with the empty ones greyed, and one card below it with its fields laid out and a note wrapped over three rows](../../docs/app-card-file.png)
+
+![The same deck as a table: one row per card, the columns the list is set to show, and a scroll bar down the side](../../docs/app-card-file-list.png)
 
 **It is the screen that has to distrust a file it wrote itself.** Everything else here reads a file somebody else made, or reads its own and gets away with assuming the shape. Save this one, open `contacts.csv` in the word processor two menu items up, move the columns about, delete one, hand-type a row that is a field short, and open it here again: it still reads, because **nothing is read by position**. The header row says what the columns are and every value is fetched by name. A file with no header at all is read positionally, which is the one case that has to be guessed at and the reason this program always writes one.
 
@@ -141,13 +153,9 @@ The sample is Maxwolf's address book, which is mostly people who tidy up afterwa
 
 Pick a film and watch it in the terminal, with the sound playing. It works over whatever [ffmpeg](https://ffmpeg.org) is already on the machine, and it is the one screen here with no dependency it could have taken instead: the library has no way to make a sound, and getting one means platform interop it does not have.
 
-```
- File  Play                                                               Help
- sample.mp4   h264 640x360 30fps + aac 2ch   drawn as sixel at 780x320
- ...the picture, full width...
- 1:15 ━━━━━━━━━●───────────────────────────────────────────────── 9:56
-  Playing  30fps   SPACE=Play/Pause  F3=Open  Arrows=Seek  F10=Menu
-```
+![The media player showing ffmpeg's own test pattern in the terminal as real pixels, with a scrub bar under it reading five seconds of thirty](../../docs/app-media-player-playing.png)
+
+![The player's idle page, reporting that ffmpeg, ffprobe and ffplay were all found and that pictures will be drawn as real pixels](../../docs/app-media-player.png)
 
 **It tells you what it found, and it degrades three different ways.** Without **ffmpeg** nothing can be decoded; without **ffprobe** files still play but with no known length to scrub along; without **ffplay** everything works silently. And separately from all of that, a terminal that cannot take pictures still gets the sound and the bars. The idle page says which of those you are in before you have done anything, and Help has the same report.
 

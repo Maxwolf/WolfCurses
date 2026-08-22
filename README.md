@@ -87,13 +87,29 @@ That is the whole setup. You don't register windows, read keys, or draw frames. 
 
 Menus are steerable with the arrow keys as well as by typing a number, and typed input always wins. Up and Down walk the items in numbered order and roll over at the ends; when a menu is too tall for the terminal it reflows into columns, and Left and Right cross between them.
 
+![A twenty-seven item menu reflowed into two columns, numbered top to bottom down each one](docs/demo-menu.png)
+
 ## See it running
 
-Three example apps live in this repo, each with its own README:
+Three example apps live in this repo, each with its own README. Every picture below is a real frame from one of them.
 
-- **[The library tour](example/WolfCurses.Demo/README.md)**: images, sprites, widgets, colour, every dialog, the menu bar, keypad, calendar, tables, text editing and mouse events.
-- **[The office suite](example/WolfCurses.Apps/README.md)**: small productivity applications. A word processor after the MS-DOS Editor, a BASIC environment after the one that shipped with DOS, a spreadsheet with formulas and charts, a desk calculator with a paper tape, and a calendar with a clock in it.
-- **[The arcade](example/WolfCurses.Games/README.md)**: ten games, each built on a different part of the library. Snake, Minesweeper, Tetris, WolfChess 5000, Missile Command, Labyrinth, Pac-Man, Blackjack, Poker and Battlezone.
+### [The library tour](example/WolfCurses.Demo/README.md)
+
+Images, sprites, widgets, colour, every dialog, the menu bar, keypad, calendar, tables, text editing and mouse events.
+
+![A progress bar, marquee, sparkline, bar chart, column chart and line graph animating together in one terminal screen](docs/demo-widgets.png)
+
+### [The office suite](example/WolfCurses.Apps/README.md)
+
+A word processor after the MS-DOS Editor, a BASIC environment after the one that shipped with DOS, a spreadsheet with formulas and charts, a desk calculator with a paper tape, a planner, a card file and a media player.
+
+![The word processor with the Search menu pulled down over the document, its unavailable entries greyed and its two settings ticked](docs/app-word-processor-menu.png)
+
+### [The arcade](example/WolfCurses.Games/README.md)
+
+Ten games, each built on a different part of the library. Snake, Minesweeper, Tetris, WolfChess 5000, Missile Command, Labyrinth, Pac-Man, Blackjack, Poker and Battlezone.
+
+![WolfChess 5000: a chess board drawn with real piece artwork, the last move highlighted, the bot's reply printed underneath](docs/game-chess.png)
 
 ```cmd
 dotnet run --project example/WolfCurses.Demo
@@ -108,6 +124,10 @@ Prebuilt, self-contained downloads for Windows, macOS and Linux are on the [rele
 ## Images in the terminal
 
 Images become a block of text and color escapes that you drop into your window's output like any other string.
+
+![A photograph filling most of a terminal window, drawn as real sixel pixels, with the file name above it](docs/demo-slideshow.png)
+
+*A JPEG, decoded by the library and drawn in the terminal. Nothing was installed to read it.*
 
 ![The demo's animated GIF demo: a progress bar fills while every frame is pre-rendered, then the animation plays on loop with fps and ms/frame readouts](docs/demo-animated-gif.gif)
 
@@ -223,6 +243,8 @@ Every widget takes colors and ramps, and anything you leave alone emits no escap
 
 Ready-made modals that push themselves on top of the current screen, take over input, and call you back before closing themselves.
 
+![A multiple-choice list of pizza toppings with two of them ticked and the arrow-key highlight on a third](docs/demo-multi-select.png)
+
 ```csharp
 using WolfCurses.Controls;
 using WolfCurses.Window.Control;
@@ -256,6 +278,8 @@ All of them ship inside the library and are discovered automatically. (If you ov
 ## Editable documents
 
 `WolfCurses.Documents` is what an editor-shaped screen would otherwise start by writing. The input buffer is append-only with no caret, which is right for a command prompt and useless for anything you can move around inside.
+
+![A document with a caret in it, tab stops lining a table up, a form feed drawn as a visible glyph, and a status line reporting the caret, the word count and the file's line ending](docs/demo-text-editor.png)
 
 - **`TextBuffer`** holds the lines, the caret and the selection. Vertical movement remembers the column it started in, so walking down through a short line and back does not drag the caret in with it. The file's line ending is remembered rather than normalized, so opening a file and saving it untouched gives back the same bytes.
 - **`TextViewport`** is the scrolling window onto it: `EnsureVisible` scrolls the least it can and reports whether it moved, `ToDocument` turns a click into a position, and `TryToScreen` says when a position is not on screen at all.

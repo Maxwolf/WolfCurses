@@ -16,6 +16,8 @@ This is an interactive terminal UI, so run it from a real terminal window rather
 
 The WolfCurses wordmark in ASCII art, with a rainbow sliding through it. There is no image file behind it: each cell takes a sample from `ColorRamp.Rainbow` where the position depends on column, row and elapsed time, so a gradient that slides is just arithmetic. Nothing was added to the library for it.
 
+![The WolfCurses wordmark in ASCII art with a rainbow gradient running through the letters](../../docs/demo-splash.png)
+
 It is also the smallest demonstration of how colour degrades. The styles are left on `Auto`, so `NO_COLOR` or the **Force render type** screen reach it, and at no colour the escapes vanish and the output is byte-identical to the plain art.
 
 ## Images
@@ -28,6 +30,8 @@ It is also the smallest demonstration of how colour degrades. The styles are lef
 | **Show animated GIF** | An animated GIF playing on loop, with a scrub bar; SPACE pauses, LEFT/RIGHT step a frame |
 | **Image error handling** | Broken paths and truncated files becoming the magenta-and-black checkerboard |
 | **Force render type** | Overrides the whole graphics stack, then snaps back to the menu |
+
+![A transparent penguin alpha-composited over one of the sample pictures, both drawn in the terminal](../../docs/demo-compositing.png)
 
 ![An animated GIF playing on loop, with a progress bar filling while frames are pre-rendered](../../docs/demo-animated-gif.gif)
 
@@ -61,22 +65,59 @@ All three read fps and ms/frame, which measure different things on purpose. ms/f
 
 **Pride flags** is the proof that widget colour is general rather than a special case. LEFT and RIGHT walk seventeen flags, and each one is an ordinary `BarChart` with empty labels, no separator, values hidden and all values equal, which leaves nothing on a row but a full-width bar. Give it the flag's stepped ramp in `Spread` mode and you have stripes. Nothing flag-specific was added to the library.
 
+![The six-stripe rainbow flag drawn as a bar chart inside a titled box, with its provenance printed underneath](../../docs/demo-pride-flags.png)
+
 ## Controls
 
-| Menu item | What it shows |
-| --- | --- |
-| **Menu bar** | Six pull-down menus over a document they change; F10 opens, ALT+letter often does not |
-| **Keypad** | A stamp pad of clickable keys: spans, hover, keys that go dead, the wheel to resize them |
-| **Calendar** | One month as a six-week grid; arrows and PGUP/PGDN move, a click picks a day |
-| **Record table** | A CSV read through named columns into a table viewport, a scroll bar and a record card |
-| **Text editor** | The document types: caret, tab stops, control characters drawn as pictures, find |
-| **Mouse events** | Press, move, release and wheel as they arrive, with the buttons held and the modifiers |
+### Menu bar
 
-**Text editor** is the only screen that sets `IForm.EditsText`, which is what lets ENTER and BACKSPACE reach a form at all. ENTER splits a line there, so ESC is the way out.
+![A pull-down menu open over a small styled document, with shortcuts down the right of the panel and the access letters underlined in the bar](../../docs/demo-menu-bar.png)
+
+Six pull-down menus over a document they change. F10 opens it; ALT plus an underlined letter often does not, which is why F10 is the one that is always advertised.
+
+### Keypad
+
+![A grid of labelled keys, two of them spanning two columns and greyed out, and one lit under the pointer](../../docs/demo-keypad.png)
+
+A stamp pad of clickable keys: spans, hover, keys that go dead, and the wheel to resize them. The key a press lands on cannot be a different key from the one drawn there, because one piece of arithmetic does both.
+
+### Calendar
+
+![One month as a six-week grid with the weekends marked, today boxed, and a readout of the cursor and what the grid was asked](../../docs/demo-calendar.png)
+
+Arrows and PGUP/PGDN move, a click picks a day. Six week rows always, so the grid never changes height as you page.
+
+### Record table
+
+![A table of ships in a scrolling viewport with a scroll bar beside it, the selected row highlighted, and that row's fields laid out as a card underneath](../../docs/demo-record-table.png)
+
+A CSV read through named columns into a table viewport, a scroll bar and a record card. One row in the file deliberately stops short, and asking it for a field it never reached answers empty rather than throwing.
+
+### Text editor
+
+![A document with a caret, a table lined up on tab stops, and a form feed drawn as a visible glyph, with the caret position and word count below](../../docs/demo-text-editor.png)
+
+The document types: caret, tab stops, control characters drawn as pictures, find. **The only screen that sets `IForm.EditsText`**, which is what lets ENTER and BACKSPACE reach a form at all. ENTER splits a line here, so ESC is the way out.
+
+### Mouse events
+
+![A live log of mouse events: a wheel notch, a release and two moves carrying the button, each with its kind, cell, modifiers and wheel travel](../../docs/demo-mouse-events.png)
+
+Press, move, release and wheel as they arrive, with the buttons held and the modifiers.
 
 ## Dialogs and prompts
 
 The rest of the menu covers the interaction pieces: a text prompt, a yes/no question, a custom input prompt, single and multi-select pickers, a message box, a validated text input, a masked password field, and the file and folder browsers.
+
+![A single-choice list inside a titled box, with the arrow-key highlight on the third entry](../../docs/demo-select-list.png)
+
+![A multiple-choice list of pizza toppings with two ticked and the arrow-key highlight on a third](../../docs/demo-multi-select.png)
+
+![A yes/no/cancel message box with the buttons drawn in a row and the first one highlighted](../../docs/demo-message-box.png)
+
+![A text input prompt showing its default value, ready to be accepted with ENTER or typed over](../../docs/demo-text-input.png)
+
+![The file browser listing the images folder, with the arrow-key highlight on the first entry and the letter commands underneath](../../docs/demo-file-dialog.png)
 
 ## Notes
 
