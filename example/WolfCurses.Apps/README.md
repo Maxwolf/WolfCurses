@@ -153,11 +153,15 @@ Pick a film and watch it in the terminal, with the sound playing. It works over 
 
 **Nothing is shipped to play**, because a video is megabytes and every one worth watching belongs to somebody. **F7** plays ffmpeg's own test pattern and **F8** a test tone: no file, no download, no licence, and they exercise the whole pipeline.
 
+**It downsamples as far as it has to and no further.** Resolution and size on screen are separate things: a true-pixel renderer stretches what it is handed, so fewer pixels in the same rectangle costs almost nothing. On a 4K60 file it measures the first frame while it buffers, works out how many pixels it can afford, and plays at thirty a second in the same space where every pixel would have managed eleven.
+
 **ffmpeg is asked for pixels exactly the size of the window.** That is the difference between thirty frames a second and three: resampling is the dominant cost in the rendering stack, so a 1920x1080 frame resized into a seventy-column window in managed code, thirty times a second, is where all the time goes. Asking the renderer how many pixels it puts in a character cell and having ffmpeg scale and letterbox to exactly that means nothing is ever resampled on this side.
 
 **Something with no picture in it gets a spectrum instead**, twenty-odd bars with peak markers that fall back slowly. The bars are the library's; the transform is this application's, and the three things that make it a spectrum rather than a picture of noise are written up where it happens.
 
-**Getting about.** **SPACE** plays and pauses, the arrows seek five seconds and thirty, **HOME** goes back to the start, and the bar can be clicked anywhere to seek there. **F3** opens a file, **F5** plays it again, **F6** closes it.
+**Getting about.** **SPACE** plays and pauses, the arrows seek five seconds and thirty, **HOME** goes back to the start, and the bar can be clicked anywhere to seek there. **M** mutes. **F3** opens a file, **F5** plays it again, **F6** closes it.
+
+**Nothing it starts outlives it.** ffmpeg and ffplay are stopped when you back out of the screen or quit, and - because the commonest way a console program ends is being killed outright, where none of that runs - they are also put in a job the operating system tears down with this process however it dies. That one was found by leaving a trailer playing to an empty desktop after closing the window.
 
 **Frames are dropped, never delayed.** A frame belongs at a moment, so a terminal that was busy when the moment came skips to the frame that belongs *now* rather than showing the late one. That is the whole reason `PlaybackClock` is deliberately the opposite of `IntervalTimer`, and it is why the picture stays with the sound instead of drifting further behind it for as long as the program runs.
 

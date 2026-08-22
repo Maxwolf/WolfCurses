@@ -84,7 +84,10 @@ namespace WolfCurses.Apps.MediaPlayer
 
             try
             {
-                return Process.Start(info);
+                // Adopted rather than merely started: a child that outlives this program is the user's problem
+                // afterwards, and the ways a program can die without running any of its own code are the usual
+                // ways it dies. See ChildProcesses.
+                return ChildProcesses.Adopt(Process.Start(info));
             }
             catch (Exception exception) when (exception is System.ComponentModel.Win32Exception
                                                   or InvalidOperationException

@@ -63,10 +63,22 @@ namespace WolfCurses.Apps.Tests
             }
         }
 
-        /// <summary>Starts the generated tone, which needs no file and no licence.</summary>
+        /// <summary>
+        ///     Starts the generated tone, muted, which needs no file and no licence.
+        ///     <para>
+        ///         <b>Muted first, and every one of these tests does it.</b> Running the suite should not play a
+        ///         440Hz tone at whoever is running it, fourteen times, through their speakers. Nothing here is
+        ///         about whether sound comes out - that is ffplay's job and it has its own tests somewhere - so the
+        ///         player's own mute is used, which leaves all three processes running exactly as they would be
+        ///         and turns only the volume down. The same stance the BASIC screen takes with <c>audible</c>.
+        ///     </para>
+        /// </summary>
         private static void PlayTone(DrivenSuite suite)
         {
             Assert.SkipUnless(FfmpegTools.HasFfmpeg, "ffmpeg is not on this machine.");
+
+            suite.PressChar('m', ConsoleKey.M);
+            Assert.Contains("Muted", suite.Screen, StringComparison.Ordinal);
 
             suite.Press(ConsoleKey.F8);
             Watch(suite, 1d);
@@ -366,6 +378,59 @@ namespace WolfCurses.Apps.Tests
 
             Assert.Contains("Nothing open", suite.Screen, StringComparison.Ordinal);
             Assert.Contains("Stopped", suite.Screen, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void QuittingTheProgramWhilePlayingStopsTheSound()
+        {
+            Assert.SkipUnless(FfmpegTools.HasFfmpeg, "ffmpeg is not on this machine.");
+            Assert.SkipUnless(AudioPlayer.IsAvailable, "ffplay is not on this machine.");
+
+            // The path reported from a real run: something playing, then the program quits. Tearing the
+            // simulation down is what the Quit menu and CTRL+C both do, and it has to reach the form.
+            var before = Playing();
+            var suite = new DrivenSuite();
+
+            try
+            {
+                suite.ChooseMenuItem((int) OfficeCommandsEnum.MediaPlayer);
+                suite.PressChar('m', ConsoleKey.M);
+                suite.Press(ConsoleKey.F8);
+
+                Watch(suite, 1d);
+
+                Assert.True(Settles(() => Playing() > before), "the sound never started");
+            }
+            finally
+            {
+                suite.Dispose();
+            }
+
+            // Counted rather than read off the screen: there is no screen any more, and the only thing that
+            // matters is whether a program is still making a noise somewhere.
+            Assert.True(Settles(() => Playing() <= before), "the sound outlived the program that started it");
+        }
+
+        /// <summary>How many copies of ffplay are running just now.</summary>
+        private static int Playing()
+        {
+            return System.Diagnostics.Process.GetProcessesByName("ffplay").Length;
+        }
+
+        /// <summary>Waits a few seconds for something to become true.</summary>
+        private static bool Settles(Func<bool> settled)
+        {
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+
+            while (clock.Elapsed < TimeSpan.FromSeconds(10d))
+            {
+                if (settled())
+                    return true;
+
+                System.Threading.Thread.Sleep(50);
+            }
+
+            return settled();
         }
 
         /// <summary>The raw row holding some text, escapes and all.</summary>

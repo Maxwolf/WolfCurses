@@ -42,8 +42,11 @@ namespace WolfCurses.Apps.MediaPlayer
     /// </summary>
     internal sealed class VideoPipe : IDisposable
     {
-        /// <summary>How many decoded frames may wait to be shown.</summary>
-        private const int QueueDepth = 4;
+        /// <summary>
+        ///     How many decoded frames may wait to be shown, which is about a third of a second of slack. Enough to
+        ///     ride out a slow moment without being so much that a seek has a wall of stale pictures to throw away.
+        /// </summary>
+        private const int QueueDepth = 8;
 
         /// <summary>How many lines of ffmpeg's complaints to keep for the status strip.</summary>
         private const int ErrorLines = 4;
@@ -105,6 +108,32 @@ namespace WolfCurses.Apps.MediaPlayer
 
             var complaints = new Thread(Drain) {IsBackground = true, Name = "wolfcurses-video-log"};
             complaints.Start();
+        }
+
+        /// <summary>
+        ///     How many frames this pipe should have handed over by a given moment.
+        ///     <para>
+        ///         <b>Counted from where the pipe was started, not from the beginning of the file.</b> ffmpeg was
+        ///         told to begin at <paramref name="from" />, so the first frame it produces is that moment rather
+        ///         than frame zero of the film. Comparing a count of frames taken against the clock's own frame
+        ///         number instead means that seeking twenty seconds into a thirty-a-second film makes the player
+        ///         believe it is six hundred frames behind, and the catching-up loop then drains the pipe as fast
+        ///         as ffmpeg can fill it - six hundred pictures decoded, scaled and thrown away, which presents as
+        ///         the player locking up for a moment after every seek.
+        ///     </para>
+        /// </summary>
+        /// <param name="position">Where the clock is.</param>
+        /// <param name="from">Where the pipe was started.</param>
+        /// <param name="fps">How many frames a second it was asked for.</param>
+        /// <returns>The number of frames due, which is at least one.</returns>
+        public static long FramesDue(TimeSpan position, TimeSpan from, double fps)
+        {
+            var into = position - from;
+
+            if (into <= TimeSpan.Zero || fps <= 0d)
+                return 1L;
+
+            return (long) (into.TotalSeconds * fps) + 1L;
         }
 
         /// <summary>How wide the frames are.</summary>
@@ -219,18 +248,19 @@ namespace WolfCurses.Apps.MediaPlayer
             list.Add("-sn");
             list.Add("-dn");
 
-            // Scaled down to fit and then padded back out to exactly the size asked for, so every frame is the
-            // same shape and the letterboxing costs nothing on this side.
+            // The rate limit goes FIRST in the chain, not as an output option. -r drops frames after the filters
+            // have run, so a sixty-a-second source has every one of its frames scaled down from 4K and then half of
+            // them thrown away; fps= drops them before, so the scaler only ever touches a frame that will be shown.
+            //
+            // Then scaled to fit and padded back out to exactly the size asked for, so every frame is the same
+            // shape and the letterboxing costs nothing on this side. The scaler is area averaging, which is both
+            // the right answer for a large reduction and cheaper than the default.
             list.Add("-vf");
             list.Add(string.Format(CultureInfo.InvariantCulture,
-                "scale={0}:{1}:force_original_aspect_ratio=decrease,pad={0}:{1}:(ow-iw)/2:(oh-ih)/2:black",
+                "{0}scale={1}:{2}:force_original_aspect_ratio=decrease:flags=area," +
+                "pad={1}:{2}:(ow-iw)/2:(oh-ih)/2:black",
+                fps > 0d ? "fps=" + fps.ToString("0.####", CultureInfo.InvariantCulture) + "," : string.Empty,
                 width, height));
-
-            if (fps > 0d)
-            {
-                list.Add("-r");
-                list.Add(fps.ToString("0.####", CultureInfo.InvariantCulture));
-            }
 
             list.Add("-f");
             list.Add("rawvideo");

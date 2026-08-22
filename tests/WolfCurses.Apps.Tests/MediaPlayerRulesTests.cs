@@ -320,6 +320,160 @@ namespace WolfCurses.Apps.Tests
         }
 
         [Fact]
+        public void FramesAreCountedFromWhereThePipeStartedAndNotFromTheFilm()
+        {
+            var from = TimeSpan.FromSeconds(20d);
+
+            // The bug this pins: comparing frames taken against the clock's own frame number makes a player that
+            // has just seeked twenty seconds in believe it is six hundred frames behind, so it drains the pipe as
+            // fast as ffmpeg can fill it and locks up for a moment after every seek.
+            Assert.Equal(1L, VideoPipe.FramesDue(from, from, 30d));
+            Assert.Equal(1L, VideoPipe.FramesDue(TimeSpan.FromSeconds(20.03d), from, 30d));
+            Assert.Equal(2L, VideoPipe.FramesDue(TimeSpan.FromSeconds(20.04d), from, 30d));
+            Assert.Equal(31L, VideoPipe.FramesDue(TimeSpan.FromSeconds(21d), from, 30d));
+        }
+
+        [Fact]
+        public void APipeStartedAtTheBeginningCountsFromTheBeginning()
+        {
+            Assert.Equal(1L, VideoPipe.FramesDue(TimeSpan.Zero, TimeSpan.Zero, 30d));
+            Assert.Equal(301L, VideoPipe.FramesDue(TimeSpan.FromSeconds(10d), TimeSpan.Zero, 30d));
+        }
+
+        [Fact]
+        public void AClockBehindThePipeAsksForTheFirstFrameRatherThanANegativeOne()
+        {
+            // Which happens for a moment after a seek, since the clock is moved before the new pipe is opened.
+            Assert.Equal(1L, VideoPipe.FramesDue(TimeSpan.FromSeconds(5d), TimeSpan.FromSeconds(20d), 30d));
+            Assert.Equal(1L, VideoPipe.FramesDue(TimeSpan.FromSeconds(30d), TimeSpan.FromSeconds(20d), 0d));
+        }
+
+        [Fact]
+        public void AskingForFewerPixelsKeepsThePictureTheSameSizeOnScreen()
+        {
+            var renderer = new SixelImageRenderer();
+
+            // The whole trick: the columns and rows never change, only how many pixels are put in them. A
+            // true-pixel renderer stretches what it is handed rather than resampling it, so this is nearly free
+            // and it is what makes a 4K film play at thirty a second instead of eleven.
+            var full = StageView.PixelSize(renderer, 78, 16);
+            var half = StageView.PixelSize(renderer, 78, 16, 2);
+            var third = StageView.PixelSize(renderer, 78, 16, 3);
+
+            Assert.Equal((780, 320), full);
+            Assert.Equal((390, 160), half);
+            Assert.Equal((260, 106), third);
+        }
+
+        [Fact]
+        public void EveryQualityStillGivesAnEvenSizeThatACodecWillAccept()
+        {
+            var renderer = new SixelImageRenderer();
+
+            for (var quality = 1; quality <= 8; quality++)
+            {
+                var size = StageView.PixelSize(renderer, 77, 15, quality);
+
+                Assert.Equal(0, size.Width % 2);
+                Assert.Equal(0, size.Height % 2);
+                Assert.True(size.Width >= 2 && size.Height >= 2, "quality " + quality + " gave " + size);
+            }
+        }
+
+        [Fact]
+        public void StoppingTheSoundReallyEndsTheProgramPlayingIt()
+        {
+            Assert.SkipUnless(AudioPlayer.IsAvailable, "ffplay is not on this machine.");
+
+            // The screen test that thought it covered this only ever looked at the screen, and Stop swallows the
+            // exceptions a failed kill would throw - so it would have passed against a player that stopped
+            // nothing. Counting the actual programs is the only assertion worth anything here.
+            var before = Running();
+
+            var player = new AudioPlayer {IsMuted = true};
+            player.PlayFrom("sine=frequency=440:duration=600", TimeSpan.Zero, true);
+
+            Assert.True(WaitUntil(() => Running() > before), "ffplay never started");
+
+            player.Stop();
+
+            Assert.True(WaitUntil(() => Running() <= before), "ffplay was still running after Stop");
+        }
+
+        [Fact]
+        public void AChildIsPutInAJobSoItCannotOutliveThisProcessHoweverThisProcessDies()
+        {
+            Assert.SkipUnless(AudioPlayer.IsAvailable, "ffplay is not on this machine.");
+            Assert.SkipUnless(OperatingSystem.IsWindows(), "job objects are a Windows thing.");
+
+            // Skipped when this process is already in somebody else's job - some build agents do that - because
+            // then the answer below would be yes whatever this code did, and a test that cannot fail is worse
+            // than no test.
+            Assert.SkipWhen(InAnyJob(Process.GetCurrentProcess()), "this process is already in a job.");
+
+            var player = new AudioPlayer {IsMuted = true};
+            player.PlayFrom("sine=frequency=440:duration=600", TimeSpan.Zero, true);
+
+            try
+            {
+                Assert.True(WaitUntil(() => Process.GetProcessesByName("ffplay").Length > 0), "ffplay never started");
+
+                // The layer that saves you when nothing of ours gets to run: the X button on a console window, a
+                // debugger being stopped, a kill from the task manager. The job is marked kill-on-close, so the
+                // operating system ends the child when this process dies for any reason at all.
+                foreach (var child in Process.GetProcessesByName("ffplay"))
+                    Assert.True(InAnyJob(child), "a child was started outside the job");
+            }
+            finally
+            {
+                player.Stop();
+            }
+        }
+
+        /// <summary>How many copies of ffplay are running just now.</summary>
+        private static int Running()
+        {
+            return Process.GetProcessesByName("ffplay").Length;
+        }
+
+        /// <summary>Waits a few seconds for something to become true, since starting a program is not instant.</summary>
+        private static bool WaitUntil(Func<bool> settled)
+        {
+            var clock = Stopwatch.StartNew();
+
+            while (clock.Elapsed < TimeSpan.FromSeconds(10d))
+            {
+                if (settled())
+                    return true;
+
+                Thread.Sleep(50);
+            }
+
+            return settled();
+        }
+
+        /// <summary>Whether a process belongs to any job object at all.</summary>
+        private static bool InAnyJob(Process process)
+        {
+            try
+            {
+                return IsProcessInJob(process.Handle, IntPtr.Zero, out var answer) && answer;
+            }
+            catch (Exception exception) when (exception is InvalidOperationException
+                                                  or System.ComponentModel.Win32Exception
+                                                  or NotSupportedException)
+            {
+                return false;
+            }
+        }
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+        [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+        private static extern bool IsProcessInJob(IntPtr process, IntPtr job,
+            [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+            out bool answer);
+
+        [Fact]
         public void WhatIsInstalledIsReportedAsThreeSeparateAnswers()
         {
             var report = FfmpegTools.Report();

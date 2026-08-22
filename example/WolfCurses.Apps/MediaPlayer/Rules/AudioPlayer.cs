@@ -43,6 +43,22 @@ namespace WolfCurses.Apps.MediaPlayer
         public bool IsPlaying => _process != null && !HasExited(_process);
 
         /// <summary>
+        ///     Whether the sound is turned down to nothing.
+        ///     <para>
+        ///         <b>ffplay is still started, at zero volume, rather than not started at all.</b> Muting a player
+        ///         is not the same as closing it: the sound has to be exactly where it was when it comes back, and
+        ///         a process that was never running has no position to come back to. It also keeps everything else
+        ///         about a muted player identical to a loud one, which is what makes the screen tests worth
+        ///         anything - they run muted, and still drive the same three processes a person would.
+        ///     </para>
+        ///     <para>
+        ///         Takes effect when the sound next starts, since ffplay cannot be told anything once it is
+        ///         running; the caller restarts it, which is the same thing pausing and seeking already do.
+        ///     </para>
+        /// </summary>
+        public bool IsMuted { get; set; }
+
+        /// <summary>
         ///     Plays a file from a position, stopping whatever was playing before.
         /// </summary>
         /// <param name="path">The file, or a filter description when <paramref name="generated" /> is set.</param>
@@ -56,6 +72,12 @@ namespace WolfCurses.Apps.MediaPlayer
                 return;
 
             var arguments = new List<string> {"-hide_banner", "-loglevel", "quiet", "-nodisp", "-autoexit"};
+
+            if (IsMuted)
+            {
+                arguments.Add("-volume");
+                arguments.Add("0");
+            }
 
             if (from > TimeSpan.Zero)
             {
@@ -83,6 +105,8 @@ namespace WolfCurses.Apps.MediaPlayer
 
             if (process == null)
                 return;
+
+            ChildProcesses.Release(process);
 
             try
             {

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using WolfCurses.Controls;
 using WolfCurses.Graphics;
@@ -54,6 +55,21 @@ namespace WolfCurses.Apps.MediaPlayer
         /// <summary>What a file with no frame rate of its own is played at.</summary>
         private const double DefaultFrameRate = 25d;
 
+        /// <summary>How few pixels the quality is allowed to fall to, as a divisor of what the renderer can use.</summary>
+        private const int WorstQuality = 6;
+
+        /// <summary>How many frames to draw before deciding the picture is too heavy after all.</summary>
+        private const int TuneEvery = 48;
+
+        /// <summary>
+        ///     How much of a frame's time may go on drawing it. The rest is for everything else the tick does, and
+        ///     for the terminal on the other end, which has to parse whatever was written to it.
+        /// </summary>
+        private const double DrawBudget = 0.6d;
+
+        /// <summary>How many times the quality may be measured and corrected while the first frames buffer.</summary>
+        private const int CalibrationTries = 3;
+
         /// <summary>Where the clock is in the media.</summary>
         private readonly PlaybackClock _clock = new();
 
@@ -84,8 +100,56 @@ namespace WolfCurses.Apps.MediaPlayer
         /// <summary>The stage, already drawn. Rebuilt when what it shows changes and not once per render.</summary>
         private IReadOnlyList<string> _stage;
 
-        /// <summary>How many frames have been taken off the pipe, which is what the clock is compared against.</summary>
+        /// <summary>
+        ///     How many frames have been taken off the pipe.
+        ///     <para>
+        ///         Counted from the pipe's own start rather than from the beginning of the file, which is the whole
+        ///         of <see cref="FramesDue" />: ffmpeg was told to begin at <see cref="_pipeFrom" />, so the first
+        ///         frame it hands over is that moment and not frame zero of the film.
+        ///     </para>
+        /// </summary>
         private long _shown;
+
+        /// <summary>Where in the media the video pipe was started, which is what its frame numbers count from.</summary>
+        private TimeSpan _pipeFrom;
+
+        /// <summary>Whether everything is set up and waiting for the first picture before it starts.</summary>
+        private bool _starting;
+
+        /// <summary>
+        ///     Whether that first picture should be shown and then left there, rather than played on from.
+        ///     <para>
+        ///         What a paused player being scrubbed wants: the moment dragged to has to appear, or the bar is
+        ///         being dragged along a picture that never changes, but nothing may start moving. Buffering and
+        ///         playing are separate things and this is the seam between them.
+        ///     </para>
+        /// </summary>
+        private bool _startPaused;
+
+        /// <summary>How long a frame has been taking to draw, smoothed, which is what the quality is tuned against.</summary>
+        private double _encodeMs;
+
+        /// <summary>How many frames have been drawn since the quality was last looked at.</summary>
+        private int _encoded;
+
+        /// <summary>How many times the quality has been corrected while waiting for the first frame.</summary>
+        private int _calibrations;
+
+        /// <summary>
+        ///     One pixel per pixel the renderer can use, two for half of them, and so on. Only ever raised above
+        ///     one for a renderer drawing real pixels, since those are the ones that can stretch what they are
+        ///     given without resampling it.
+        /// </summary>
+        private int _quality = 1;
+
+        /// <summary>The finished screen, kept so it is built when it changes rather than a thousand times a second.</summary>
+        private string _composed;
+
+        /// <summary>The stage the kept screen was built from, compared by reference.</summary>
+        private object _composedStage;
+
+        /// <summary>Everything else the kept screen was built from, as one string to compare.</summary>
+        private string _composedFrom;
 
         /// <summary>How many frames a second the file is being played at.</summary>
         private double _fps = DefaultFrameRate;
@@ -163,7 +227,17 @@ namespace WolfCurses.Apps.MediaPlayer
             Advance();
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        ///     Hands back the finished screen, building it only when it has actually changed.
+        ///     <para>
+        ///         <b>The cache is the point.</b> This runs about a thousand times a second and a frame of sixel is
+        ///         a quarter of a megabyte, so composing it every time is tens of megabytes a second of large-object
+        ///         allocation for a picture that changes thirty times a second at the very most - and not at all
+        ///         while paused. What it is built from is compared instead: the stage by reference, since a new one
+        ///         is only ever made when the picture moves, and everything else as one short string.
+        ///     </para>
+        /// </summary>
+        /// <returns>The screen.</returns>
         public override string OnRenderForm()
         {
             ParentWindow.PromptText = "F10 opens the menus, ESC returns to the suite:";
@@ -174,8 +248,28 @@ namespace WolfCurses.Apps.MediaPlayer
             _timeline.Row = PlayerChrome.TimelineRow;
             _timeline.Column = 0;
 
-            return Environment.NewLine +
-                   PlayerChrome.Compose(_menuBar, _stage, _timeline, InfoText(), StatusText(), _width);
+            var info = InfoText();
+            var status = StatusText();
+
+            var from = string.Concat(
+                info, "\u0001", status, "\u0001",
+                Timeline.Format(_clock.Position), "\u0001",
+                _timeline.MarkerColumn().ToString(CultureInfo.InvariantCulture), "\u0001",
+                _width.ToString(CultureInfo.InvariantCulture), "\u0001",
+                _menuBar.IsOpen
+                    ? _menuBar.OpenIndex + ":" + _menuBar.HighlightIndex
+                    : "-");
+
+            if (_composed != null && ReferenceEquals(_composedStage, _stage) &&
+                string.Equals(_composedFrom, from, StringComparison.Ordinal))
+                return _composed;
+
+            _composedStage = _stage;
+            _composedFrom = from;
+            _composed = Environment.NewLine +
+                        PlayerChrome.Compose(_menuBar, _stage, _timeline, info, status, _width);
+
+            return _composed;
         }
 
         /// <summary>Never called: <see cref="EditsText" /> puts ENTER on the key path instead.</summary>
@@ -236,6 +330,10 @@ namespace WolfCurses.Apps.MediaPlayer
 
                 case ConsoleKey.F8:
                     PlayTestTone();
+                    return;
+
+                case ConsoleKey.M:
+                    ToggleMute();
                     return;
             }
         }
@@ -301,6 +399,12 @@ namespace WolfCurses.Apps.MediaPlayer
         /// </summary>
         private void Advance()
         {
+            if (_starting)
+            {
+                Fill();
+                return;
+            }
+
             if (!_clock.IsRunning)
                 return;
 
@@ -313,10 +417,108 @@ namespace WolfCurses.Apps.MediaPlayer
                 Ended();
         }
 
-        /// <summary>Takes the frames that are due and encodes the last of them.</summary>
+        /// <summary>
+        ///     Waits for the first picture before anything starts moving, which is the whole of what a buffer is.
+        ///     <para>
+        ///         Opening a 4K file and finding the frame at a given moment takes ffmpeg a noticeable fraction of a
+        ///         second. Starting the clock before that arrives means the film is already late the instant it
+        ///         appears, and the catching-up loop throws away everything it missed. Starting the sound at the
+        ///         same moment as the clock rather than earlier is the other half, since ffplay has its own
+        ///         start-up cost and the two were racing.
+        ///     </para>
+        /// </summary>
+        private void Fill()
+        {
+            if (_video == null)
+            {
+                Begin();
+                return;
+            }
+
+            if (!_video.TryRead(out var frame))
+            {
+                // Nothing is coming at all, which is a file with no pictures ffmpeg would give us. Start anyway
+                // rather than waiting for something that will never arrive.
+                if (_video.IsFinished || _video.Failed)
+                    Begin();
+
+                return;
+            }
+
+            _frame = frame;
+            _shown = 1;
+
+            Draw();
+
+            // The first picture is also the measurement. Correcting now, while the clock has still not started,
+            // is what makes this invisible: the alternative is finding out during playback and restarting the
+            // decoder underneath a film that is already running, which stalls it for as long as a 4K seek takes
+            // and is worse than the judder it was trying to fix.
+            if (Calibrate())
+                return;
+
+            Begin();
+        }
+
+        /// <summary>
+        ///     Works out whether the picture can be drawn as fast as it will be played, and asks for fewer pixels
+        ///     when it cannot.
+        ///     <para>
+        ///         Cost falls with the square of the divisor, since it is a count of pixels, so the answer is
+        ///         arrived at in one step rather than by creeping downwards. Bounded tries all the same, because a
+        ///         machine slow enough to fail at the smallest size should start playing anyway rather than
+        ///         measuring forever.
+        ///     </para>
+        /// </summary>
+        /// <returns>TRUE when the pictures were restarted and the first frame has to be waited for again.</returns>
+        private bool Calibrate()
+        {
+            if (_video == null || !ImageRenderers.Default.DrawsTruePixels)
+                return false;
+
+            if (_calibrations >= CalibrationTries || _quality >= WorstQuality)
+                return false;
+
+            var budget = 1000d / Math.Max(1d, _fps) * DrawBudget;
+
+            if (_encodeMs <= budget)
+                return false;
+
+            var wanted = (int) Math.Ceiling(Math.Sqrt(_encodeMs / budget));
+
+            _quality = Math.Clamp(_quality * Math.Max(2, wanted), _quality + 1, WorstQuality);
+            _calibrations++;
+            _encodeMs = 0d;
+            _encoded = 0;
+
+            RestartVideo();
+
+            // Still starting: the clock and the sound have not begun, so nothing has been missed.
+            return _video != null;
+        }
+
+        /// <summary>
+        ///     Starts the clock and the sound together, once there is something to show - unless the picture was
+        ///     only ever wanted for a paused player to look at.
+        /// </summary>
+        private void Begin()
+        {
+            _starting = false;
+
+            if (_startPaused)
+            {
+                _startPaused = false;
+                return;
+            }
+
+            _clock.Resume();
+            _sound.PlayFrom(_media.Path, _clock.Position, _generated);
+        }
+
+        /// <summary>Takes the frames that are due and draws the last of them.</summary>
         private void AdvanceVideo()
         {
-            var wanted = _clock.FrameAt(_fps);
+            var wanted = VideoPipe.FramesDue(_clock.Position, _pipeFrom, _fps);
             var moved = false;
 
             while (_shown < wanted && _video.TryRead(out var frame))
@@ -329,10 +531,90 @@ namespace WolfCurses.Apps.MediaPlayer
                 moved = true;
             }
 
-            if (!moved)
-                return;
+            if (moved)
+                Draw();
+        }
+
+        /// <summary>Draws the frame on hand, timing it so the quality can be tuned against what it really costs.</summary>
+        private void Draw()
+        {
+            var started = Stopwatch.GetTimestamp();
 
             _stage = StageView.Picture(_frame, _width, PlayerChrome.StageRows);
+
+            var took = (Stopwatch.GetTimestamp() - started) * 1000d / Stopwatch.Frequency;
+
+            _encodeMs = _encodeMs <= 0d ? took : _encodeMs * 0.8d + took * 0.2d;
+            _encoded++;
+
+            Retune();
+        }
+
+        /// <summary>
+        ///     Gives up more resolution when the picture turns out to be heavier than the frame it was measured on.
+        ///     <para>
+        ///         <b>This only ever goes one way, and that is the whole design.</b> A version that could also go
+        ///         back up hunts: two resolutions sit either side of the boundary, and it shuttles between them for
+        ///         as long as the film plays, paying a decoder restart every time - measured at five restarts in
+        ///         twelve seconds and twenty frames a second, which is worse than either resolution on its own.
+        ///         Downwards only cannot hunt, because every step makes the next one less likely.
+        ///     </para>
+        ///     <para>
+        ///         The threshold is deliberately far below the target as well. The startup measurement has already
+        ///         chosen a size that fits; this is only for a film that gets harder later, and a picture merely a
+        ///         few frames short of its rate is not worth a stall to correct.
+        ///     </para>
+        /// </summary>
+        private void Retune()
+        {
+            if (_video == null || _media == null || !ImageRenderers.Default.DrawsTruePixels || _encoded < TuneEvery)
+                return;
+
+            _encoded = 0;
+
+            var sustainable = 1000d / Math.Max(0.1d, _encodeMs);
+
+            if (sustainable >= _fps * 0.5d || _quality >= WorstQuality)
+                return;
+
+            _quality++;
+            _encodeMs = 0d;
+
+            RestartVideo();
+        }
+
+        /// <summary>
+        ///     Starts the pictures again at the current moment, leaving the clock and the sound running.
+        ///     <para>
+        ///         A pipe cannot be told to change the size of what it produces, so changing quality means a new
+        ///         one. The sound is untouched on purpose: it is keyed to the clock rather than to the pipe, and
+        ///         restarting it would put a gap in the audio every time the picture was retuned.
+        ///     </para>
+        /// </summary>
+        private void RestartVideo()
+        {
+            if (_media == null)
+                return;
+
+            var at = _clock.Position;
+
+            _video?.Dispose();
+            _video = null;
+            _frame = null;
+            _shown = 0;
+            _pipeFrom = at;
+
+            var size = StageView.PixelSize(ImageRenderers.Default, Math.Max(8, _width), PlayerChrome.StageRows,
+                _quality);
+
+            _video = new VideoPipe(_media.Path, at, size.Width, size.Height, _fps, _generated);
+
+            if (!_video.Failed)
+                return;
+
+            _message = _video.Error;
+            _video.Dispose();
+            _video = null;
         }
 
         /// <summary>Looks at the sound that is due and moves the bars towards it.</summary>
@@ -487,8 +769,14 @@ namespace WolfCurses.Apps.MediaPlayer
                 return;
 
             _clock.Duration = _media.Duration;
+            _clock.SeekTo(from);
+
             _shown = 0;
             _frame = null;
+            _pipeFrom = from;
+            _encoded = 0;
+            _encodeMs = 0d;
+            _calibrations = 0;
 
             var columns = Math.Max(8, _width);
 
@@ -496,7 +784,7 @@ namespace WolfCurses.Apps.MediaPlayer
             {
                 _fps = _media.FrameRate > 0d ? Math.Min(_media.FrameRate, MaxFrameRate) : DefaultFrameRate;
 
-                var size = StageView.PixelSize(ImageRenderers.Default, columns, PlayerChrome.StageRows);
+                var size = StageView.PixelSize(ImageRenderers.Default, columns, PlayerChrome.StageRows, _quality);
 
                 _video = new VideoPipe(_media.Path, from, size.Width, size.Height, _fps, _generated);
 
@@ -517,12 +805,10 @@ namespace WolfCurses.Apps.MediaPlayer
                 _samples = new AudioPipe(_media.Path, from, _generated);
             }
 
-            _sound.PlayFrom(_media.Path, from, _generated);
+            // Nothing moves yet. The clock and the sound both start in Begin, once there is a picture in hand.
+            _starting = true;
+            _startPaused = false;
 
-            _clock.SeekTo(from);
-            _clock.Resume();
-
-            // Something on screen at once, rather than a blank stage until the first frame arrives.
             if (_video != null)
                 _stage = StageView.Picture(null, _width, PlayerChrome.StageRows);
             else if (_samples != null)
@@ -537,8 +823,10 @@ namespace WolfCurses.Apps.MediaPlayer
             if (!HasMedia)
                 return;
 
-            if (_clock.IsRunning)
+            if (_clock.IsRunning || _starting)
             {
+                // Still buffering: let it finish and show the picture, but do not let it start playing.
+                _startPaused = _starting;
                 _clock.Pause();
 
                 // The sound is a separate program with no way to be told anything, so pausing it is stopping it.
@@ -556,6 +844,29 @@ namespace WolfCurses.Apps.MediaPlayer
 
             Play(_clock.Position);
             _message = null;
+        }
+
+        /// <summary>
+        ///     Turns the sound off and on again.
+        ///     <para>
+        ///         ffplay cannot be told anything once it is running, so this restarts it where the clock is -
+        ///         which is what pausing and seeking already do, and is why a mute costs the same fraction of a
+        ///         second of silence they do. Nothing else moves: the clock keeps its place and the picture keeps
+        ///         playing, because muting a film is not pausing it.
+        ///     </para>
+        /// </summary>
+        private void ToggleMute()
+        {
+            _sound.IsMuted = !_sound.IsMuted;
+            _message = _sound.IsMuted ? "Muted." : "Sound on.";
+
+            if (!HasMedia)
+                return;
+
+            if (_clock.IsRunning)
+                _sound.PlayFrom(_media.Path, _clock.Position, _generated);
+            else
+                _sound.Stop();
         }
 
         /// <summary>Seeks by an amount from where the clock is.</summary>
@@ -578,16 +889,17 @@ namespace WolfCurses.Apps.MediaPlayer
             if (!HasMedia)
                 return;
 
-            var wasRunning = _clock.IsRunning;
+            var wasRunning = _clock.IsRunning || (_starting && !_startPaused);
 
             _clock.SeekTo(position);
             Play(_clock.Position);
 
+            // The pictures are filled either way, so a paused player dragged along its bar shows the moment it was
+            // dragged to; only the clock and the sound are held back.
+            _startPaused = !wasRunning;
+
             if (!wasRunning)
-            {
-                _clock.Pause();
                 _sound.Stop();
-            }
 
             _message = null;
         }
@@ -621,6 +933,8 @@ namespace WolfCurses.Apps.MediaPlayer
             _media = null;
             _frame = null;
             _shown = 0;
+            _starting = false;
+            _startPaused = false;
 
             Idle();
         }
@@ -694,6 +1008,8 @@ namespace WolfCurses.Apps.MediaPlayer
                 new MenuBarMenu("Play",
                     new MenuBarEntry("Play / Pause", TogglePause, "Space") {EnabledWhen = () => HasMedia},
                     new MenuBarEntry("Restart", Restart, "F5") {EnabledWhen = () => HasMedia},
+                    new MenuBarEntry("Mute", ToggleMute, "M")
+                        {CheckedWhen = () => _sound.IsMuted, EnabledWhen = () => AudioPlayer.IsAvailable},
                     MenuBarEntry.Separator(),
                     new MenuBarEntry("Back 5s", () => Skip(-_smallStep), "Left") {EnabledWhen = () => HasMedia},
                     new MenuBarEntry("On 5s", () => Skip(_smallStep), "Right") {EnabledWhen = () => HasMedia},
@@ -773,11 +1089,13 @@ namespace WolfCurses.Apps.MediaPlayer
 
             if (HasMedia && !AudioPlayer.IsAvailable)
                 state += "  silent";
+            else if (_sound.IsMuted)
+                state += "  muted";
 
             if (!string.IsNullOrEmpty(_message))
                 return "  " + state + "   " + _message;
 
-            return "  " + state + "   SPACE=Play/Pause  F3=Open  Arrows=Seek  F10=Menu";
+            return "  " + state + "   SPACE=Play/Pause  F3=Open  M=Mute  F10=Menu";
         }
     }
 }
