@@ -43,6 +43,7 @@ namespace WolfCurses.Apps
             AddCommand(OpenCalculator, OfficeCommandsEnum.Calculator);
             AddCommand(OpenPlanner, OfficeCommandsEnum.Planner);
             AddCommand(OpenCardFile, OfficeCommandsEnum.CardFile);
+            AddCommand(OpenMediaPlayer, OfficeCommandsEnum.MediaPlayer);
             AddCommand(Quit, OfficeCommandsEnum.Quit);
 
             RestoreMenuChrome();
@@ -145,6 +146,12 @@ namespace WolfCurses.Apps
         private void OpenCardFile()
         {
             SetForm(typeof (CardFile.CardFileDialog));
+        }
+
+        /// <summary>Shows the media player.</summary>
+        private void OpenMediaPlayer()
+        {
+            SetForm(typeof (MediaPlayer.MediaPlayerDialog));
         }
 
         /// <summary>Closes the suite and hands the terminal back.</summary>

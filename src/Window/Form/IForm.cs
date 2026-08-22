@@ -153,5 +153,27 @@ namespace WolfCurses.Window.Form
         ///     vehicle inventory.
         /// </summary>
         void OnFormActivate();
+
+        /// <summary>
+        ///     Fired once, as this form is being detached, whether that is because it was cleared, replaced by
+        ///     another, or its window is going away.
+        ///     <para>
+        ///         <b>The counterpart to <see cref="OnFormPostCreate" />, and it exists because a form can own
+        ///         something the garbage collector will not tidy up.</b> A file handle, a socket, a background
+        ///         thread, a child process: everything a form set up in <c>OnFormPostCreate</c> that has to be
+        ///         given back. Without this the only signal a form got was being dropped, which is no signal at
+        ///         all, and what leaks is not memory but something the user notices - a program still running with
+        ///         no window to close it from.
+        ///     </para>
+        ///     <para>
+        ///         A default interface member doing nothing, so every form written before this existed compiles and
+        ///         behaves exactly as it did. Safe to reenter: the form has already been detached by the time this
+        ///         runs, so clearing it again from in here does nothing rather than recursing.
+        ///     </para>
+        /// </summary>
+        void OnFormClosing()
+        {
+        }
+
     }
 }

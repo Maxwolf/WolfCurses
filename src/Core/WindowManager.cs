@@ -138,6 +138,8 @@ namespace WolfCurses.Core
         /// </summary>
         public override void Destroy()
         {
+            CloseAttachedForms();
+
             // Windows factory and list of modes in simulation.
             _windowFactory.Destroy();
             _windowFactory = null;
@@ -300,11 +302,32 @@ namespace WolfCurses.Core
         }
 
         /// <summary>
+        ///     Tells every attached form that it is going away, before the windows holding them are dropped.
+        ///     <para>
+        ///         Without this, tearing the simulation down is the one path where a form owning a background
+        ///         thread or a child process never hears about it - and a child process outliving the program that
+        ///         started it is exactly the sort of thing the user has to go and find in a task manager.
+        ///     </para>
+        /// </summary>
+        private void CloseAttachedForms()
+        {
+            List<IWindow> windows;
+
+            lock (_windowList)
+                windows = new List<IWindow>(_windowList.Values);
+
+            foreach (var window in windows)
+                window?.ClearForm();
+        }
+
+        /// <summary>
         ///     Removes every window and form from the simulation and makes it a blank slate. Use with caution, if there is an
         ///     operation in progress, or waiting for user input this will not respect that and just forcefully destroy everything.
         /// </summary>
         public void Clear()
         {
+            CloseAttachedForms();
+
             lock (_windowList)
             {
                 _windowList.Clear();

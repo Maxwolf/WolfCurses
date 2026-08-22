@@ -12,9 +12,10 @@ namespace WolfCurses.Apps
     ///     look like?", this one asks the same question about the other half of what a terminal used to be for: an
     ///     editor, a spreadsheet, a card file, a calculator, a diary.
     ///     <para>
-    ///         Three of them so far: a word processor, a BASIC environment and a spreadsheet. The scaffolding went
-    ///         in before any of them, on the claim that adding one would be a folder plus one <c>AddCommand</c>
-    ///         line in <see cref="OfficeWindow" /> with no registration step anywhere, and that has held.
+    ///         Seven of them now, from a word processor to a media player. The scaffolding went in before any of
+    ///         them, on the claim that adding one would be a folder plus one <c>AddCommand</c> line in
+    ///         <see cref="OfficeWindow" /> with no registration step anywhere, and seven applications later that
+    ///         has held every time.
     ///     </para>
     /// </summary>
     internal static class Program

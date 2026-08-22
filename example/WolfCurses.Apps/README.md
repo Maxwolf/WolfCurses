@@ -6,7 +6,7 @@ The other half of what a terminal used to be for. Where [the arcade](../WolfCurs
 dotnet run --project example/WolfCurses.Apps
 ```
 
-**Six applications**: a word processor laid out after the MS-DOS Editor, a BASIC environment after the one that shipped with MS-DOS, a spreadsheet, a desk calculator, a calendar and planner, and a card file. That is the whole of what was planned.
+**Seven applications**: a word processor laid out after the MS-DOS Editor, a BASIC environment after the one that shipped with MS-DOS, a spreadsheet, a desk calculator, a calendar and planner, a card file, and a media player.
 
 That order is deliberate. Adding an application is meant to be a folder, a form carrying `[ParentWindow(typeof(OfficeWindow))]`, a value on `OfficeCommandsEnum`, and one `AddCommand` line in `OfficeWindow`, with no registration step anywhere. It is worth proving that claim before writing anything that depends on it.
 
@@ -136,6 +136,30 @@ An address book you can flip through: one card at a time with its fields laid ou
 **The note is the interesting field.** It holds line breaks, which is the CSV case that settles the whole design of the reader: a record and a line stop being the same thing, so no line-by-line splitter can read the file at all. The card wraps it over several rows; the list flattens it onto one, because a row of a table is a row. A note longer than a single line is written in the word processor, since a one-line prompt gives back one line.
 
 The sample is Maxwolf's address book, which is mostly people who tidy up afterwards: a city planner with a stamp reading RETROACTIVELY PERMITTED, a roofer on retainer, a salvage firm whose invoices say "site tidying", and an optician who cannot help and is kind about it twice a year.
+
+## The media player
+
+Pick a film and watch it in the terminal, with the sound playing. It works over whatever [ffmpeg](https://ffmpeg.org) is already on the machine, and it is the one screen here with no dependency it could have taken instead: the library has no way to make a sound, and getting one means platform interop it does not have.
+
+```
+ File  Play                                                               Help
+ sample.mp4   h264 640x360 30fps + aac 2ch   drawn as sixel at 780x320
+ ...the picture, full width...
+ 1:15 ━━━━━━━━━●───────────────────────────────────────────────── 9:56
+  Playing  30fps   SPACE=Play/Pause  F3=Open  Arrows=Seek  F10=Menu
+```
+
+**It tells you what it found, and it degrades three different ways.** Without **ffmpeg** nothing can be decoded; without **ffprobe** files still play but with no known length to scrub along; without **ffplay** everything works silently. And separately from all of that, a terminal that cannot take pictures still gets the sound and the bars. The idle page says which of those you are in before you have done anything, and Help has the same report.
+
+**Nothing is shipped to play**, because a video is megabytes and every one worth watching belongs to somebody. **F7** plays ffmpeg's own test pattern and **F8** a test tone: no file, no download, no licence, and they exercise the whole pipeline.
+
+**ffmpeg is asked for pixels exactly the size of the window.** That is the difference between thirty frames a second and three: resampling is the dominant cost in the rendering stack, so a 1920x1080 frame resized into a seventy-column window in managed code, thirty times a second, is where all the time goes. Asking the renderer how many pixels it puts in a character cell and having ffmpeg scale and letterbox to exactly that means nothing is ever resampled on this side.
+
+**Something with no picture in it gets a spectrum instead**, twenty-odd bars with peak markers that fall back slowly. The bars are the library's; the transform is this application's, and the three things that make it a spectrum rather than a picture of noise are written up where it happens.
+
+**Getting about.** **SPACE** plays and pauses, the arrows seek five seconds and thirty, **HOME** goes back to the start, and the bar can be clicked anywhere to seek there. **F3** opens a file, **F5** plays it again, **F6** closes it.
+
+**Frames are dropped, never delayed.** A frame belongs at a moment, so a terminal that was busy when the moment came skips to the frame that belongs *now* rather than showing the late one. That is the whole reason `PlaybackClock` is deliberately the opposite of `IntervalTimer`, and it is why the picture stays with the sound instead of drifting further behind it for as long as the program runs.
 
 ## ESC
 

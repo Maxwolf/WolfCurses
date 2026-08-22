@@ -56,7 +56,14 @@ namespace WolfCurses.Apps
         /// </summary>
         [Description("Card file - an address book you can flip through.")] CardFile = 6,
 
+        /// <summary>
+        ///     A media player, over whatever ffmpeg the machine already has. The screen in the suite that has to
+        ///     keep up with a clock nothing here controls: a frame belongs at a moment, and a terminal that was
+        ///     busy when the moment came has to skip to the one that belongs now rather than show the late one.
+        /// </summary>
+        [Description("Media player - watch a film in the terminal.")] MediaPlayer = 7,
+
         /// <summary>Closes the suite and returns to the operating system.</summary>
-        [Description("Quit.")] Quit = 7
+        [Description("Quit.")] Quit = 8
     }
 }

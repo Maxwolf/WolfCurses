@@ -50,6 +50,33 @@ namespace WolfCurses.Graphics
         bool DrawsTruePixels => false;
 
         /// <summary>
+        ///     How many image pixels this renderer puts into one character cell, across and down.
+        ///     <para>
+        ///         The question a <b>source</b> asks rather than a caller drawing one picture: given a window this
+        ///         many columns by this many rows, what size should the pixels arrive at? Anything streaming -
+        ///         frames off a pipe, a camera, a plot being regenerated - can then produce them at that size and
+        ///         skip the resample entirely, and resampling is the dominant cost in this whole stack (see the
+        ///         measurements on <see cref="PixelBuffer.Resize" />). Handing a renderer a picture already the
+        ///         right size is not an optimisation so much as the difference between thirty frames a second and
+        ///         three.
+        ///     </para>
+        ///     <para>
+        ///         The defaults are half blocks' own numbers - one pixel across, <b>two</b> down, since that
+        ///         renderer's whole trick is an upper and a lower half in each cell - because that is what a
+        ///         renderer built out of character cells is, and because guessing small is the safe way to guess:
+        ///         too few pixels costs a coarser picture, too many costs an upscale nobody wanted. The true-pixel
+        ///         renderers already carry these as constructor knobs and answer with what they were told.
+        ///     </para>
+        /// </summary>
+        int CellPixelWidth => 1;
+
+        /// <summary>
+        ///     How many image pixels tall one character cell is. See <see cref="CellPixelWidth" />; two by default,
+        ///     which is half blocks' upper and lower half.
+        /// </summary>
+        int CellPixelHeight => 2;
+
+        /// <summary>
         ///     Renders the image, sized and colored according to <paramref name="options" />.
         /// </summary>
         /// <param name="image">The decoded image to draw. Implementations should throw on null.</param>

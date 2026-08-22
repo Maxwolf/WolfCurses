@@ -350,6 +350,23 @@ namespace WolfCurses.Window.Form
         ///     Determines if the simulation has force ticked without advancing time or down the trail. Used by
         ///     special events that want to simulate passage of time without actually any actual time moving by.
         /// </param>
+        /// <summary>
+        ///     Fired once, as this form is being detached: cleared, replaced, or its window removed.
+        ///     <para>
+        ///         <b>Where anything the form set up gets given back.</b> A form that started a thread, opened a
+        ///         file or launched a program has nowhere else to stop it, and being dropped is not a signal it can
+        ///         hear. Overriding this is the whole of the answer; the base does nothing, so a form owning only
+        ///         managed state can carry on ignoring it.
+        ///     </para>
+        ///     <para>
+        ///         The form is already detached by the time this runs, which makes it safe to clear the form or
+        ///         remove the window from inside it: both find nothing left to do rather than recursing.
+        ///     </para>
+        /// </summary>
+        public virtual void OnFormClosing()
+        {
+        }
+
         public virtual void OnTick(bool systemTick, bool skipDay)
         {
             // Nothing to see here, move along...

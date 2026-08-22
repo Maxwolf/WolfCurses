@@ -269,9 +269,14 @@ namespace WolfCurses.Window
         /// </summary>
         public void RemoveWindowNextTick()
         {
-            // Forcefully detaches any state that was active before calling Windows removed.
+            // Forcefully detaches any state that was active before calling Windows removed. Detached BEFORE the
+            // form is told, so a teardown that clears the form or removes the window again finds nothing to do
+            // rather than coming back round through here.
             ShouldRemoveMode = true;
+
+            var closing = Form;
             Form = null;
+            closing?.OnFormClosing();
 
             // Never leave a masked (password) value sitting in the shared input buffer where a later non-masked
             // window could echo it in cleartext once this window is torn down.
@@ -304,7 +309,11 @@ namespace WolfCurses.Window
             if (Form == null)
                 return;
 
+            // Detached first, then told, so a form that clears itself from its own teardown does not recurse.
+            var closing = Form;
             Form = null;
+            closing.OnFormClosing();
+
             OnFormChange();
         }
 

@@ -71,7 +71,7 @@ namespace WolfCurses.Graphics
         ///     True when <paramref name="line" /> is a row covered by a picture drawn above it rather than one holding
         ///     content of its own.
         /// </summary>
-        internal static bool IsRowPlaceholder(string line)
+        public static bool IsRowPlaceholder(string line)
         {
             return line != null && line.Length == 1 && line[0] == Marker;
         }
@@ -80,9 +80,34 @@ namespace WolfCurses.Graphics
         ///     True when <paramref name="line" /> carries a true-pixel escape payload, which must be written to the
         ///     terminal but never erased after. Use <see cref="PayloadOf" /> to get the escape sequence itself.
         /// </summary>
-        internal static bool IsPayloadRow(string line)
+        public static bool IsPayloadRow(string line)
         {
             return line != null && line.Length > 1 && line[0] == Marker;
+        }
+
+        /// <summary>
+        ///     True when <paramref name="line" /> belongs to a picture and so must be left exactly as it is: either
+        ///     the payload that paints one, or a row that payload covers.
+        ///     <para>
+        ///         <b>The question to ask before drawing anything over a composed screen.</b> A true-pixel picture is
+        ///         one escape blob of zero visible width that paints across a dozen rows, so it cannot be sliced by
+        ///         column the way a styled row can - cut it anywhere and what reaches the terminal is garbage, and
+        ///         nothing may sit beside it either. Anything compositing a dropped menu, a dialog or a drawn pointer
+        ///         onto rows that might hold a picture has to know which those are, and until this was public the
+        ///         only way to find out was to know that the marker sits at index zero.
+        ///     </para>
+        ///     <para>
+        ///         What a caller does about it is the caller's own decision, and it is a real one rather than an
+        ///         oversight: covering the row with its own content is right for a menu (the picture comes back when
+        ///         the menu shuts, because the frame changed and the payload is written again), and leaving the row
+        ///         alone is right for anything that would rather lose the overlay than the picture.
+        ///     </para>
+        /// </summary>
+        /// <param name="line">A line of a rendered frame.</param>
+        /// <returns>TRUE when the line is part of a picture.</returns>
+        public static bool IsPictureRow(string line)
+        {
+            return IsPayloadRow(line) || IsRowPlaceholder(line);
         }
 
         /// <summary>The escape sequence carried by a payload row, without its <see cref="Marker" />.</summary>
