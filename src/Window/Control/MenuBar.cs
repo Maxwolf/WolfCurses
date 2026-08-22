@@ -205,6 +205,12 @@ namespace WolfCurses.Window.Control
         /// <returns>TRUE when the menu bar consumed the key.</returns>
         public bool HandleKey(ConsoleKeyInfo keyInfo)
         {
+            // Worth knowing before wiring this up: the ENTER case below is only ever reached by a screen that has
+            // asked for ENTER, since the input manager otherwise spends it closing the input buffer and it never
+            // becomes a key press at all. A screen that has not asked gets a menu bar it can open and walk with
+            // the arrows and cannot choose anything on except with the pointer. Either return true from
+            // IForm.EditsText, or call Activate() from OnInputBufferReturned, which is where ENTER arrives instead.
+
             var alt = (keyInfo.Modifiers & ConsoleModifiers.Alt) != 0;
 
             if (alt && TryOpenByAccessKey(keyInfo.Key))

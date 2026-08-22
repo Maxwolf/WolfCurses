@@ -49,7 +49,14 @@ namespace WolfCurses.Apps
         /// </summary>
         [Description("Planner - a calendar with a clock in it.")] Planner = 5,
 
+        /// <summary>
+        ///     A card index of contacts. The screen in the suite that has to distrust a file it wrote itself: what
+        ///     it saves can be hand-edited in the word processor two menu items up and opened here again, so it
+        ///     reads its own columns by name rather than by position.
+        /// </summary>
+        [Description("Card file - an address book you can flip through.")] CardFile = 6,
+
         /// <summary>Closes the suite and returns to the operating system.</summary>
-        [Description("Quit.")] Quit = 6
+        [Description("Quit.")] Quit = 7
     }
 }

@@ -53,6 +53,12 @@
     <None Include="Assets\planner\*.csv" Link="planner\%(Filename)%(Extension)"
           CopyToOutputDirectory="PreserveNewest" />
 
+    <!-- The sample card file, in its own folder so the card file's Open dialog starts on it. Written for this
+         repository; it carries a note with real line breaks in it, which is the one CSV shape nothing else in this
+         solution exercises. See Assets/cards/README.md. -->
+    <None Include="Assets\cards\*.csv" Link="cards\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+
     <!-- The sample BASIC programs, in their own folder so the environment's Open dialog starts among them. All of
          them were written for this repository: the QBasic samples everybody remembers are Microsoft's and are not
          redistributable, so a program like GORILLA.BAS is opened from your own disk rather than shipped here. -->

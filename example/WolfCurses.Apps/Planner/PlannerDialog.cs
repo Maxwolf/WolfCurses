@@ -84,6 +84,13 @@ namespace WolfCurses.Apps.Planner
         {
         }
 
+        /// <summary>
+        ///     ENTER arrives as a key press rather than being spent on the input buffer, which is the only way the
+        ///     menu bar can be chosen from with the keyboard: its own ENTER handling is unreachable otherwise, so
+        ///     without this the menus open, walk with the arrows and do nothing at the end of it.
+        /// </summary>
+        public override bool EditsText => true;
+
         /// <summary>Typed characters do not go into the prompt underneath, since none of them are text here.</summary>
         public override bool InputFillsBuffer => false;
 
@@ -159,7 +166,10 @@ namespace WolfCurses.Apps.Planner
             _grid.Today = DateOnly.FromDateTime(_now);
         }
 
-        /// <summary>Never called: nothing here collects text into the input buffer.</summary>
+        /// <summary>
+        ///     Never called: <see cref="EditsText" /> is precisely the declaration that ENTER should arrive as a
+        ///     key press instead, which is where the menu bar hears it.
+        /// </summary>
         /// <param name="input">Unused.</param>
         public override void OnInputBufferReturned(string input)
         {

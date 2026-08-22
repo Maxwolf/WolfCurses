@@ -42,6 +42,7 @@ namespace WolfCurses.Apps
             AddCommand(OpenSpreadsheet, OfficeCommandsEnum.Spreadsheet);
             AddCommand(OpenCalculator, OfficeCommandsEnum.Calculator);
             AddCommand(OpenPlanner, OfficeCommandsEnum.Planner);
+            AddCommand(OpenCardFile, OfficeCommandsEnum.CardFile);
             AddCommand(Quit, OfficeCommandsEnum.Quit);
 
             RestoreMenuChrome();
@@ -138,6 +139,12 @@ namespace WolfCurses.Apps
         private void OpenPlanner()
         {
             SetForm(typeof (Planner.PlannerDialog));
+        }
+
+        /// <summary>Shows the card index.</summary>
+        private void OpenCardFile()
+        {
+            SetForm(typeof (CardFile.CardFileDialog));
         }
 
         /// <summary>Closes the suite and hands the terminal back.</summary>

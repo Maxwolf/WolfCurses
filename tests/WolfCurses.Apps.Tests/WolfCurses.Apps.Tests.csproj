@@ -33,4 +33,11 @@
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The sample card file, for the same reason and with the same hazard: the card file opens it at start-up, and
+       without this every test about what is in it would take the "could not open" path and still pass. -->
+  <ItemGroup>
+    <None Include="..\..\example\WolfCurses.Apps\Assets\cards\*.csv" Link="cards\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

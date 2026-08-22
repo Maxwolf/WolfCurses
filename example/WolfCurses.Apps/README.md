@@ -6,7 +6,7 @@ The other half of what a terminal used to be for. Where [the arcade](../WolfCurs
 dotnet run --project example/WolfCurses.Apps
 ```
 
-**Five applications so far**: a word processor laid out after the MS-DOS Editor, a BASIC environment after the one that shipped with MS-DOS, a spreadsheet, a desk calculator, and a calendar and planner. A card file is planned and unwritten.
+**Six applications**: a word processor laid out after the MS-DOS Editor, a BASIC environment after the one that shipped with MS-DOS, a spreadsheet, a desk calculator, a calendar and planner, and a card file. That is the whole of what was planned.
 
 That order is deliberate. Adding an application is meant to be a folder, a form carrying `[ParentWindow(typeof(OfficeWindow))]`, a value on `OfficeCommandsEnum`, and one `AddCommand` line in `OfficeWindow`, with no registration step anywhere. It is worth proving that claim before writing anything that depends on it.
 
@@ -105,11 +105,37 @@ A month you can walk around, the day's entries beside it, and a clock that moves
 
 The sample is Maxwolf's own calendar, which is mostly moulting, tail maintenance and apologising to a coast guard, with the occasional city.
 
-## Planned
+## The card file
 
-| Application | What only it will demonstrate |
-| --- | --- |
-| **Database** | Reading back what it wrote, so the only screen that has to distrust a file it created. Also where the four modal controls appear as a workflow rather than one at a time. |
+An address book you can flip through: one card at a time with its fields laid out, or all of them at once as a table, with a row of letter tabs across the top.
+
+```
+┌─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┐  25 cards
+│A│B│C│D│E│F│G│H│I│J│K│L│M│N│O│P│Q│R│S│T│U│V│W│X│Y│Z│#│  Type a letter to
+└─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┘  flip to that tab.
+┌ contacts.csv ─────────────────────────────────────────── 4 of 25 ┐
+│Name     Coast Guard (Western Station)                            │
+│Kind     Institution                                              │
+│Phone    555-0100                                                 │
+│Address  Pier 4                                                   │
+│Notes    Written apology due the first of every month.            │
+│         They have a folder. The folder has a name and the name   │
+│         is mine.                                                 │
+```
+
+**It is the screen that has to distrust a file it wrote itself.** Everything else here reads a file somebody else made, or reads its own and gets away with assuming the shape. Save this one, open `contacts.csv` in the word processor two menu items up, move the columns about, delete one, hand-type a row that is a field short, and open it here again: it still reads, because **nothing is read by position**. The header row says what the columns are and every value is fetched by name. A file with no header at all is read positionally, which is the one case that has to be guessed at and the reason this program always writes one.
+
+**Getting about.** LEFT and RIGHT flip cards, UP and DOWN walk the fields, and **typing a letter flips to that tab** the way a card index has always worked. **TAB** switches to the list, where up and down move through the cards instead and left and right scroll the table sideways. A tab with nothing behind it is drawn greyed and refuses both the pointer and the key, which is what a real drawer looks like; two letters are empty in the sample on purpose.
+
+**Cards.** **F2** or ENTER edits the field the cursor is on, **F7** starts a new card, **DEL** throws one away after asking, and **F9** finds text in any field of any card. Find starts *after* the card you are on and wraps round to it, and the prompt comes back holding the last search, so F9 and ENTER is Find Next.
+
+**Renaming a card moves it**, because the deck is an index rather than a list, and the cursor goes with it rather than staying on the position it used to be at.
+
+**Where the four modal controls turn up as a workflow.** Opening another file with unsaved changes asks whether to save first, which may ask for a folder and then a name, and only then asks which file to open. Which fields the list shows is a multiple-choice list of all six with the current ones already ticked.
+
+**The note is the interesting field.** It holds line breaks, which is the CSV case that settles the whole design of the reader: a record and a line stop being the same thing, so no line-by-line splitter can read the file at all. The card wraps it over several rows; the list flattens it onto one, because a row of a table is a row. A note longer than a single line is written in the word processor, since a one-line prompt gives back one line.
+
+The sample is Maxwolf's address book, which is mostly people who tidy up afterwards: a city planner with a stamp reading RETROACTIVELY PERMITTED, a roofer on retainer, a salvage firm whose invoices say "site tidying", and an optician who cannot help and is kind about it twice a year.
 
 ## ESC
 

@@ -523,5 +523,22 @@ namespace WolfCurses.Apps.Tests
                 Assert.True(width <= 80, "this row is " + width + " columns wide:\n" + row.TrimEnd('\r'));
             }
         }
+
+        [Fact]
+        public void AMenuEntryCanBeChosenWithTheKeyboard()
+        {
+            using var suite = OpenPlanner();
+
+            // This shipped broken. ENTER is spent closing the input buffer unless a screen asks for it, so the
+            // menu bar's own ENTER handling was unreachable: the menus opened, walked with the arrows, and did
+            // nothing at the end of it. The whole of the fix is IForm.EditsText.
+            suite.Press(ConsoleKey.F10);
+            suite.Press(ConsoleKey.RightArrow);
+            suite.Press(ConsoleKey.RightArrow);
+            suite.Press(ConsoleKey.DownArrow);
+            suite.Press(ConsoleKey.Enter);
+
+            Assert.Contains("Week of", suite.Screen, StringComparison.Ordinal);
+        }
     }
 }
