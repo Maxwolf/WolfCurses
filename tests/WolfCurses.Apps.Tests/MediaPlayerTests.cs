@@ -104,9 +104,20 @@ namespace WolfCurses.Apps.Tests
         {
             using var suite = OpenPlayer();
 
-            // A test host has no console to enable VT on, so this is the honest answer and the screen gives it.
-            Assert.False(AnsiConsole.SupportsPictures());
-            Assert.Contains("Pictures  not here", suite.Screen, StringComparison.Ordinal);
+            // What is under test is that the idle page tells the TRUTH about this terminal, not what the answer
+            // happens to be. It used to assert the answer was false, on the reasoning that a test host has no
+            // console to enable VT on - true on Windows, and not true on a Linux CI runner, where VT needs no
+            // enabling and TERM says there is colour. The screen was right in both cases and the test failed in one.
+            var supported = AnsiConsole.SupportsPictures();
+
+            Assert.Contains(
+                supported ? "Pictures  " + ImageRenderers.Default.Name : "Pictures  not here",
+                suite.Screen,
+                StringComparison.Ordinal);
+
+            // The one thing worse than a terminal that cannot show a film is one that shows a blank rectangle and
+            // says nothing, so the page must never be silent about it either way.
+            Assert.Contains("Pictures  ", suite.Screen, StringComparison.Ordinal);
         }
 
         [Fact]

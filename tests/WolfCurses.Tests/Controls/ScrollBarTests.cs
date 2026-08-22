@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using WolfCurses.Graphics;
 using WolfCurses.Window.Control;
 using Xunit;
@@ -179,5 +179,71 @@ namespace WolfCurses.Tests.Controls
             Assert.Equal(3, bar.Cells().Length);
             Assert.Equal(-1, bar.PositionForPress(1));
         }
+
+        [Fact]
+        public void ACellAppendedToARowKeepsTheRowsWidthHonest()
+        {
+            // The bug this pins shipped and reached CI. A styled cell is a dozen characters wide and one COLUMN
+            // wide, so appending Cells() output into a row as run text - whose length is its width by contract -
+            // left the row believing it was eleven columns wider than it was.
+            var bar = Bar(6, 100, 10, 0);
+            bar.TrackStyle = new TextStyle(ConsoleColor.Gray);
+            bar.ThumbStyle = new TextStyle(ConsoleColor.White);
+            bar.ArrowStyle = new TextStyle(ConsoleColor.DarkGray);
+            bar.ColorMode = AnsiColorModeEnum.Palette256;
+
+            var row = new TextRow {ColorMode = AnsiColorModeEnum.Palette256}.Append("ab", TextStyle.None);
+            bar.AppendCellTo(row, 3);
+
+            Assert.Equal(3, row.Width);
+            Assert.Equal(3, AnsiText.VisibleLength(row.Render()));
+        }
+
+        [Fact]
+        public void SlicingARowThatHasABarInItNeverCutsAnEscapeInHalf()
+        {
+            // The failure mode in full: something drawing a panel over a row renders the columns either side of it,
+            // the cut lands inside the scrollbar's escape sequence, and the row ends with a lone ESC. A bare ESC
+            // swallows whatever follows, which in a composed frame is the newline - so rows run together and the
+            // screen silently loses lines. Invisible without colour, which is why it passed on the machine it was
+            // written on.
+            var bar = Bar(6, 100, 10, 0);
+            bar.TrackStyle = new TextStyle(ConsoleColor.Gray);
+            bar.ThumbStyle = new TextStyle(ConsoleColor.White);
+            bar.ArrowStyle = new TextStyle(ConsoleColor.DarkGray);
+            bar.ColorMode = AnsiColorModeEnum.Palette256;
+
+            var row = new TextRow {ColorMode = AnsiColorModeEnum.Palette256}.Append("abcd", TextStyle.None);
+            bar.AppendCellTo(row, 2);
+
+            // Every prefix of the row, which is what an overlay asks for. None of them may end mid-sequence, and a
+            // dangling ESC is exactly what "ends mid-sequence" looks like.
+            for (var columns = 0; columns <= row.Width; columns++)
+            {
+                var drawn = row.Render(0, columns);
+
+                Assert.Equal(columns, AnsiText.VisibleLength(drawn));
+                Assert.False(drawn.Length > 0 && drawn[drawn.Length - 1] == (char) 27,
+                    "column " + columns + " ended on a bare ESC, which swallows whatever follows it");
+            }
+        }
+
+        [Fact]
+        public void AnAppendedCellDrawsTheSameGlyphTheStyledCellWouldHave()
+        {
+            // The two ways of asking must never disagree about what belongs in a cell, which is why they share one
+            // private decision rather than each working it out.
+            var bar = Bar(8, 100, 20, 40);
+            var cells = bar.Cells();
+
+            for (var i = 0; i < cells.Length; i++)
+            {
+                var row = new TextRow();
+                bar.AppendCellTo(row, i);
+
+                Assert.Equal(cells[i], row.Render());
+            }
+        }
+
     }
 }

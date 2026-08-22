@@ -98,11 +98,10 @@ namespace WolfCurses.Apps.Spreadsheet
                 width)).Append(Environment.NewLine);
 
             var bar = VerticalBar(sheet, viewport);
-            var cells = bar.Cells();
 
             for (var row = 0; row < viewport.Rows; row++)
             {
-                var line = GridRow(sheet, viewport, row, cursor, selection, pointer, bodyWidth, cells[row]);
+                var line = GridRow(sheet, viewport, row, cursor, selection, pointer, bodyWidth, bar);
 
                 // Two rows have already been drawn over by the panel: the border and the column headings.
                 sb.Append(Overlay(line, panel, row + 2, panelColumn, panelWidth, width)).Append(Environment.NewLine);
@@ -237,7 +236,7 @@ namespace WolfCurses.Apps.Spreadsheet
         /// <param name="scrollCell">This row's cell of the scrollbar, already styled.</param>
         /// <returns>The row.</returns>
         private static TextRow GridRow(Sheet sheet, TableViewport viewport, int screenRow, CellAddress cursor,
-            CellRange selection, CellAddress? pointer, int bodyWidth, string scrollCell)
+            CellRange selection, CellAddress? pointer, int bodyWidth, ScrollBar bar)
         {
             var sheetRow = viewport.RowAt(screenRow);
             var row = new TextRow().Append('│', 1, DosTheme.Frame);
@@ -292,7 +291,9 @@ namespace WolfCurses.Apps.Spreadsheet
 
             row.PadTo(bodyWidth + 1, DosTheme.Field);
 
-            return row.Append(scrollCell);
+            // Appended as a glyph and a style rather than as a styled string, or the row believes it is a dozen
+            // columns wider than it is and the menu overlay's cut lands inside an escape. See ScrollBar.AppendCellTo.
+            return bar.AppendCellTo(row, screenRow);
         }
 
         /// <summary>

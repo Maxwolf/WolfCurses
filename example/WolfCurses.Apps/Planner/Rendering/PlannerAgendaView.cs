@@ -1,4 +1,4 @@
-// Created by Maxwolf (bigmaxwolf.com)
+﻿// Created by Maxwolf (bigmaxwolf.com)
 // Timestamp 08/21/2026
 
 using System;
@@ -47,7 +47,6 @@ namespace WolfCurses.Apps.Planner
                 ThumbStyle = DosTheme.ScrollThumb
             };
 
-            var cells = bar.Cells();
             var previous = DateOnly.MinValue;
 
             for (var i = 0; i < visible; i++)
@@ -60,7 +59,7 @@ namespace WolfCurses.Apps.Planner
                         ? "  Nothing coming up in the next year."
                         : string.Empty;
 
-                    rows.Add(Bordered(AnsiText.Fit(hint, inner - 1), DosTheme.Field, cells[i]));
+                    rows.Add(Bordered(AnsiText.Fit(hint, inner - 1), DosTheme.Field, bar, i));
                     continue;
                 }
 
@@ -71,7 +70,7 @@ namespace WolfCurses.Apps.Planner
                 var date = line.Date == previous ? string.Empty : PlannerChrome.ShortDate(line.Date);
                 previous = line.Date;
 
-                rows.Add(Draw(line, date, line.Date == selected, inner - 1, cells[i]));
+                rows.Add(Draw(line, date, line.Date == selected, inner - 1, bar, i));
             }
 
             rows.Add(PlannerChrome.Bottom(width));
@@ -103,36 +102,43 @@ namespace WolfCurses.Apps.Planner
         /// <param name="date">The date to write, or empty to leave it out.</param>
         /// <param name="chosen">Whether this is the day the cursor is on.</param>
         /// <param name="inner">How wide the box's inside is, less the scrollbar.</param>
-        /// <param name="scrollCell">This row's cell of the scrollbar.</param>
+        /// <param name="bar">The scrollbar down the right-hand edge.</param>
+        /// <param name="index">Which of its cells belongs on this row.</param>
         /// <returns>The row.</returns>
-        private static string Draw(PlannerEntryLine line, string date, bool chosen, int inner, string scrollCell)
+        private static string Draw(PlannerEntryLine line, string date, bool chosen, int inner, ScrollBar bar,
+            int index)
         {
             var body = chosen ? DosTheme.Highlight : DosTheme.Field;
 
-            return new TextRow()
+            var row = new TextRow()
                 .Append("│", DosTheme.Frame)
                 .Append("  ", body)
                 .Append(AnsiText.Fit(date, 11), chosen ? DosTheme.Highlight : DosTheme.Title)
                 .Append(AnsiText.Fit(line.Entry.Time, 7), chosen ? DosTheme.Highlight : DosTheme.Title)
-                .Append(AnsiText.Fit(line.Entry.Title, Math.Max(1, inner - 20)), body)
-                .Append(scrollCell)
-                .Append("│", DosTheme.Frame)
-                .Render();
+                .Append(AnsiText.Fit(line.Entry.Title, Math.Max(1, inner - 20)), body);
+
+            // A glyph and a style rather than a styled string: see ScrollBar.AppendCellTo for what a pre-styled
+            // cell does to a row's idea of how wide it is.
+            bar.AppendCellTo(row, index);
+
+            return row.Append("│", DosTheme.Frame).Render();
         }
 
         /// <summary>A blank row with its share of the scrollbar on the end.</summary>
         /// <param name="content">What goes inside.</param>
         /// <param name="style">How to paint it.</param>
-        /// <param name="scrollCell">This row's cell of the scrollbar.</param>
+        /// <param name="bar">The scrollbar down the right-hand edge.</param>
+        /// <param name="index">Which of its cells belongs on this row.</param>
         /// <returns>The row.</returns>
-        private static string Bordered(string content, TextStyle style, string scrollCell)
+        private static string Bordered(string content, TextStyle style, ScrollBar bar, int index)
         {
-            return new TextRow()
+            var row = new TextRow()
                 .Append("│", DosTheme.Frame)
-                .Append(content, style)
-                .Append(scrollCell)
-                .Append("│", DosTheme.Frame)
-                .Render();
+                .Append(content, style);
+
+            bar.AppendCellTo(row, index);
+
+            return row.Append("│", DosTheme.Frame).Render();
         }
     }
 }

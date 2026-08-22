@@ -150,7 +150,12 @@ namespace WolfCurses.Apps.Tests
         public void SomethingGeneratedIsCalledWhatItWasNamedRatherThanItsFilterGraph()
         {
             var generated = new MediaInfo {Path = "sine=frequency=440", Title = "Test tone"};
-            var file = new MediaInfo {Path = @"C:\music\song.mp3"};
+
+            // Built rather than written out, because Name is Path.GetFileName and that answers for the platform it
+            // is running on. A literal "C:\music\song.mp3" has no separator at all to a Linux runtime, so the whole
+            // string came back as the file name and this test failed on CI while passing on the machine it was
+            // written on.
+            var file = new MediaInfo {Path = System.IO.Path.Combine("music", "song.mp3")};
 
             Assert.Equal("Test tone", generated.Name);
             Assert.Equal("song.mp3", file.Name);

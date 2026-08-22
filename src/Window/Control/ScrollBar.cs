@@ -120,21 +120,76 @@ namespace WolfCurses.Window.Control
             var length = Math.Max(2, Length);
             var cells = new string[length];
 
-            cells[0] = ArrowStyle.Apply(Horizontal ? "←" : "↑", ColorMode);
-            cells[length - 1] = ArrowStyle.Apply(Horizontal ? "→" : "↓", ColorMode);
-
-            var thumbStart = ThumbStart;
-            var thumbEnd = thumbStart + ThumbLength;
-
-            for (var i = 0; i < TrackLength; i++)
+            for (var i = 0; i < length; i++)
             {
-                var inThumb = i >= thumbStart && i < thumbEnd;
-                cells[i + 1] = inThumb
-                    ? ThumbStyle.Apply(ThumbGlyph.ToString(), ColorMode)
-                    : TrackStyle.Apply(TrackGlyph.ToString(), ColorMode);
+                CellAt(i, out var glyph, out var style);
+                cells[i] = style.Apply(glyph.ToString(), ColorMode);
             }
 
             return cells;
+        }
+
+        /// <summary>
+        ///     Appends one cell of the bar to a row as a plain glyph carrying its own style, which is the only safe
+        ///     way to put a scrollbar into a <see cref="TextRow" />.
+        ///     <para>
+        ///         <b>Appending <see cref="Cells" />' output to a row instead is a trap, and it has been walked into
+        ///         twice in this repository.</b> A run's text is plain by contract, so its length is its width; a
+        ///         styled cell is a dozen characters wide and one column wide, and the row then believes it is eleven
+        ///         columns wider than it is. Rendering the whole row hides that completely - the bytes come out
+        ///         right - so it surfaces only when something asks for a <i>range</i> of the row's columns, which
+        ///         lands inside an escape sequence and emits half of one.
+        ///     </para>
+        ///     <para>
+        ///         What that looked like in the wild: the spreadsheet drew a menu panel over its grid by rendering
+        ///         the columns either side of it, the cut fell inside the scrollbar cell, and each affected row ended
+        ///         with a lone ESC. A bare ESC swallows whatever follows it, which here was the newline, so six rows
+        ///         of the frame ran together and the screen lost six lines. None of it was visible without colour,
+        ///         which is why it passed on a test host and failed on CI.
+        ///     </para>
+        /// </summary>
+        /// <param name="row">The row being built.</param>
+        /// <param name="index">Which cell of the bar, counting from the leading arrow.</param>
+        /// <returns>The same row, so this can sit in a chain of appends.</returns>
+        public TextRow AppendCellTo(TextRow row, int index)
+        {
+            if (row == null)
+                return null;
+
+            CellAt(index, out var glyph, out var style);
+
+            return row.Append(glyph, 1, style);
+        }
+
+        /// <summary>
+        ///     Which glyph one cell of the bar is drawn with, and in which style. The single decision behind both
+        ///     <see cref="Cells" /> and <see cref="AppendCellTo" />, so a styled cell and a plain one can never
+        ///     disagree about what belongs there.
+        /// </summary>
+        /// <param name="index">Which cell, counting from the leading arrow.</param>
+        /// <param name="glyph">The character that cell shows.</param>
+        /// <param name="style">How it is drawn.</param>
+        private void CellAt(int index, out char glyph, out TextStyle style)
+        {
+            var length = Math.Max(2, Length);
+
+            // Both ends are arrows, and the leading one wins a bar so short that the two overlap - which is what a
+            // Length of two is, and is why Cells has always drawn the ends before the track.
+            if (index <= 0 || index >= length - 1)
+            {
+                glyph = index <= 0
+                    ? Horizontal ? '←' : '↑'
+                    : Horizontal ? '→' : '↓';
+
+                style = ArrowStyle;
+                return;
+            }
+
+            var track = index - 1;
+            var inThumb = track >= ThumbStart && track < ThumbStart + ThumbLength;
+
+            glyph = inThumb ? ThumbGlyph : TrackGlyph;
+            style = inThumb ? ThumbStyle : TrackStyle;
         }
 
         /// <summary>The bar as a single run of cells, which is what a horizontal one is drawn from.</summary>
