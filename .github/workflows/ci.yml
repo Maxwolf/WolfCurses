@@ -1,20 +1,27 @@
 name: CI
 
-# One matrix rather than one machine. Everything here is a terminal user interface, so the
-# things that break it are the operating system underneath it and the terminal in front of
-# it, and a single green ubuntu job says nothing about either.
+# Three jobs, because there are three different things a terminal user interface can be wrong about
+# and a single ubuntu runner sees one of them.
 #
-#   os        Windows is where the mouse reader, the console mode handling and the legacy
-#             conhost fallback live, and it was the only platform never built in CI. macOS
-#             is the third console this has to be polite on.
-#   mode      A run with NO_COLOR set is the text-only console: every widget resolves to
-#             ColorMode.None and must emit no escape at all, which is a promise made all
-#             over the library and was until now only ever checked by hand.
-#   tomorrow  The suite's own clock. A calendar app has tests that read the wall clock, and
-#             one running in a timezone fourteen hours ahead of the runner is on a different
-#             date for most of the day, which is what catches a test that quietly assumes
-#             today is the day somebody wrote it. .NET honours TZ on Unix only, so this job
-#             is deliberately a Linux one.
+#   build-and-test  The operating system underneath and the terminal in front. Windows is where the
+#                   mouse reader, the console mode handling and the legacy conhost fallback live and
+#                   it was the only platform never built here; the colour modes are what every widget
+#                   resolves through, and NO_COLOR in particular is a promise made all over the
+#                   library that was only ever checked by hand. The TZ entry is for the calendar: a
+#                   runner fourteen hours ahead is on a different date for most of the day, which is
+#                   what catches a test quietly assuming today is the day somebody wrote it.
+#
+#   containers      Environments a runner cannot be talked into being: musl instead of glibc, no
+#                   locale at all, and .NET's invariant globalization mode. All three are what a
+#                   containerised consumer actually runs this in, and all three are exactly where a
+#                   program that draws box characters and formats dates gets found out.
+#
+#   terminal        The half `dotnet test` structurally cannot reach. A test host always redirects
+#                   stdout, and this library reads exactly that to decide what it is talking to - so
+#                   every one of the ~2900 tests runs the branch where there is no terminal. Under a
+#                   pseudo-terminal the auto-detection runs for real against TERM, a real sixel or
+#                   kitty payload is emitted, and the application's own shutdown path runs to the
+#                   end. See docker/pty-render-check.sh.
 
 on:
   push:
@@ -28,21 +35,32 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     strategy:
-      # Every combination reports for itself. One red platform cancelling the others hides
-      # whether the break is everywhere or in one place, which is the first thing to know.
+      # Every combination reports for itself. One red platform cancelling the others hides whether
+      # the break is everywhere or in one place, which is the first thing to know.
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        mode: [color, no-color]
+        mode: [default]
         include:
-          # A mode the base matrix does not list, so this adds a job rather than decorating one.
+          # Modes the base matrix does not list, so each adds a job rather than decorating one. They
+          # are on Linux because that is the cheapest runner, and because what they vary is read from
+          # the environment rather than from the platform.
+          - os: ubuntu-latest
+            mode: no-color
+          - os: ubuntu-latest
+            mode: palette256
           - os: ubuntu-latest
             mode: tomorrow
 
     env:
-      # Any non-empty value means "no color"; an empty one is the same as not setting it.
+      # Any non-empty value means "no colour"; an empty one is the same as not setting it at all.
       NO_COLOR: ${{ matrix.mode == 'no-color' && '1' || '' }}
+      TERM: ${{ matrix.mode == 'palette256' && 'xterm-256color' || '' }}
       TZ: ${{ matrix.mode == 'tomorrow' && 'Pacific/Kiritimati' || '' }}
+
+      # A runner has no sound card and ffplay is SDL underneath, so without this it cannot start at
+      # all and the media player's process tests fail rather than proving anything.
+      SDL_AUDIODRIVER: dummy
 
     steps:
       - uses: actions/checkout@v7
@@ -52,8 +70,78 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      # The office suite's media player shells out to all three of these. Without them about twenty
+      # of its tests skip themselves, and a skipped test says so to nobody once the run is green.
+      # macOS is deliberately left without: brew's ffmpeg is a long build and this runner is here for
+      # the platform rather than for the media player, so those tests skip there and only there.
+      - name: Install ffmpeg (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install ffmpeg (Windows)
+        if: runner.os == 'Windows'
+        run: choco install ffmpeg -y --no-progress
+
+      - name: Check ffmpeg is really there
+        if: runner.os != 'macOS'
+        run: |
+          ffmpeg -version
+          ffprobe -version
+          ffplay -version
+
       - name: Build
         run: dotnet build WolfCurses.sln -c Release
 
       - name: Test
         run: dotnet test WolfCurses.sln -c Release --no-build
+
+  containers:
+    name: container / ${{ matrix.environment }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - environment: musl
+            dockerfile: Dockerfile.alpine
+            docker_env: ""
+          - environment: no-locale
+            dockerfile: Dockerfile
+            # What a container is by default, and where a program drawing box characters finds out
+            # whether it ever really needed a locale.
+            docker_env: "-e LANG= -e LC_ALL=POSIX -e TERM=dumb"
+          - environment: invariant-globalization
+            dockerfile: Dockerfile
+            # No ICU: the mode a great many containers are built with, and one that changes how every
+            # date and number this library formats comes out.
+            docker_env: "-e DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1"
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build the image
+        run: docker build -f docker/${{ matrix.dockerfile }} -t wolfcurses-test docker
+
+      # The working tree goes in read-only and the entrypoint copies it: a container's build output
+      # must not land in the checkout, and on a developer's machine it would be another operating
+      # system's.
+      - name: Test
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/src:ro" ${{ matrix.docker_env }} wolfcurses-test
+
+  terminal:
+    name: real terminal (pty)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build the image
+        run: docker build -f docker/Dockerfile -t wolfcurses-test docker
+
+      # Four terminals, four different things the library should decide to do, checked against what
+      # actually reached the pseudo-terminal rather than against what a redirected frame said.
+      - name: Check what a terminal receives
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/src:ro" wolfcurses-test pty-render-check

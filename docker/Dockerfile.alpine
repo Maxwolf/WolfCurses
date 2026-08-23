@@ -1,0 +1,19 @@
+# The same environment on musl instead of glibc, which is the one thing a GitHub runner cannot be
+# talked into being. Everything else about it is deliberately identical to the Debian image, so a
+# difference between the two runs is a difference about the C library and not about the setup.
+ARG SDK=10.0
+FROM mcr.microsoft.com/dotnet/sdk:${SDK}-alpine
+
+# bash and git are not in this image and the entrypoint needs both; the rest match the Debian one.
+RUN apk add --no-cache bash git tar ffmpeg util-linux
+
+ENV SDL_AUDIODRIVER=dummy
+ENV TERM=xterm-256color
+
+COPY entrypoint.sh /usr/local/bin/entrypoint
+COPY pty-render-check.sh /usr/local/bin/pty-render-check
+RUN chmod +x /usr/local/bin/entrypoint /usr/local/bin/pty-render-check
+
+WORKDIR /work
+ENTRYPOINT ["/usr/local/bin/entrypoint"]
+CMD ["dotnet", "test", "WolfCurses.sln", "-c", "Release"]

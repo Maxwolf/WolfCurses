@@ -401,7 +401,7 @@ namespace WolfCurses.Apps.Tests
 
             // The path reported from a real run: something playing, then the program quits. Tearing the
             // simulation down is what the Quit menu and CTRL+C both do, and it has to reach the form.
-            var before = Playing();
+            var before = SettledPlaying();
             var suite = new DrivenSuite();
 
             try
@@ -428,6 +428,37 @@ namespace WolfCurses.Apps.Tests
         private static int Playing()
         {
             return System.Diagnostics.Process.GetProcessesByName("ffplay").Length;
+        }
+
+        /// <summary>
+        ///     How many copies of ffplay are running, once that number has stopped moving.
+        ///     <para>
+        ///         <b>Reading the baseline once is what made this flaky, and only on a machine that has ffmpeg -
+        ///         which is why it survived until CI grew one.</b> A player an earlier test has just stopped is
+        ///         still in the process table for a moment, so a baseline read then is one too high; when it does
+        ///         go away the count is back where it started, "one more than before" is false for the whole
+        ///         window, and the failure reads as the sound never having started. Counting only what this test
+        ///         started is not on offer - there is no portable way to ask which process is whose child - so the
+        ///         honest fix is to wait for the machine to stop changing its mind first.
+        ///     </para>
+        /// </summary>
+        /// <returns>The count.</returns>
+        private static int SettledPlaying()
+        {
+            var count = Playing();
+            var stable = 0;
+
+            // Two agreeing intervals rather than one, since a process on its way out can survive a single read.
+            for (var attempt = 0; attempt < 100 && stable < 2; attempt++)
+            {
+                System.Threading.Thread.Sleep(50);
+                var again = Playing();
+
+                stable = again == count ? stable + 1 : 0;
+                count = again;
+            }
+
+            return count;
         }
 
         /// <summary>Waits a few seconds for something to become true.</summary>
