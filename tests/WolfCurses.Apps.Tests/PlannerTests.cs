@@ -460,26 +460,89 @@ namespace WolfCurses.Apps.Tests
             // Entries from several different days, which a calendar view could only show one of at a time.
             Assert.Matches(@"\w{3} \d{1,2} \w{3}", screen);
         }
-
         [Fact]
         public void InTheListTheArrowsStepBetweenEntriesRatherThanDays()
         {
             using var suite = OpenPlanner();
 
-            // Somewhere with nothing on it for a while, so stepping a day at a time would go nowhere useful.
             suite.Press(ConsoleKey.F8);
 
             var start = Selected(suite);
             suite.Press(ConsoleKey.DownArrow);
 
-            var moved = Selected(suite);
+            var first = Selected(suite);
 
             // It landed on a day that has something on it, which day-stepping would only manage by luck.
-            Assert.NotEqual(start, moved);
-            Assert.Contains(PlannerChrome.ShortDate(moved), suite.Screen, StringComparison.Ordinal);
+            Assert.True(first > start, Between(start, first));
+            Assert.Contains(PlannerChrome.ShortDate(first), suite.Screen, StringComparison.Ordinal);
 
+            suite.Press(ConsoleKey.DownArrow);
+
+            var second = Selected(suite);
+            Assert.True(second > first, Between(first, second));
+
+            // Down then up comes back where it started, which is the round trip worth writing for anything with a
+            // cursor in it. It is taken between two entries rather than from today on purpose: today usually has
+            // nothing on it, and the list holds no line above the day it starts from to come back to. Asserting
+            // otherwise is a test that passes only in the weeks the sample happens to have something on today,
+            // which is exactly how it went red on a runner whose clock had rolled over.
             suite.Press(ConsoleKey.UpArrow);
-            Assert.Equal(start, Selected(suite));
+            Assert.Equal(first, Selected(suite));
+        }
+
+        [Fact]
+        public void SteppingIntoTheListFromAQuietDayLandsOnTheFirstThingComingUp()
+        {
+            using var suite = OpenPlanner();
+
+            // A day with nothing on it, which is the ordinary case rather than an awkward one: most days are
+            // quiet, so the cursor is usually on a day the list holds no line for at all. Which day that is
+            // depends on when the test runs, so it is found on the screen rather than named.
+            var quiet = MoveToAQuietDay(suite);
+
+            suite.Press(ConsoleKey.F8);
+
+            // The list starts on the chosen day and that day is empty, so its topmost line is the first thing
+            // coming up, and stepping down must land on exactly that day rather than over it.
+            var top = suite.Screen.Split('\n')[PlannerChrome.BodyRow + 1];
+
+            suite.Press(ConsoleKey.DownArrow);
+
+            var moved = Selected(suite);
+
+            Assert.True(moved > quiet, Between(quiet, moved));
+            Assert.Contains(PlannerChrome.ShortDate(moved), top, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        ///     Walks the cursor on to the first day with nothing on it, read off the day panel rather than worked
+        ///     out, so the test is about a quiet day and not about a particular date.
+        /// </summary>
+        /// <param name="suite">The running suite, in the month view.</param>
+        /// <returns>The day it came to rest on.</returns>
+        private static DateOnly MoveToAQuietDay(DrivenSuite suite)
+        {
+            // Forty in a row would mean the sample had turned into something else entirely.
+            for (var i = 0; i < 40; i++)
+            {
+                if (suite.Screen.Contains("Nothing planned", StringComparison.Ordinal))
+                    return Selected(suite);
+
+                suite.Press(ConsoleKey.RightArrow);
+            }
+
+            Assert.Fail("forty days running had something on them:\n" + suite.Describe());
+            return default;
+        }
+
+        /// <summary>Says which way the cursor went, for a failure message.</summary>
+        /// <param name="from">Where it was.</param>
+        /// <param name="to">Where it ended up.</param>
+        /// <returns>The message.</returns>
+        private static string Between(DateOnly from, DateOnly to)
+        {
+            return "the list stepped from " + from.ToString("d MMM yyyy", CultureInfo.InvariantCulture) +
+                   " to " + to.ToString("d MMM yyyy", CultureInfo.InvariantCulture);
         }
 
         [Fact]

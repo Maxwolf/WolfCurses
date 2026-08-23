@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using WolfCurses.Apps.Planner;
@@ -303,6 +304,141 @@ namespace WolfCurses.Apps.Tests
 
             Assert.False(string.IsNullOrEmpty(error));
             Assert.Null(PlannerLibrary.TryLoad(null, out _));
+        }
+
+        [Fact]
+        public void TheListHoldsWhatFallsInsideItAndNothingBeforeTheDayItStartsOn()
+        {
+            var diary = new PlannerDiary();
+
+            diary.Add(new PlannerEvent(2026, 8, 21, string.Empty, "The day before it starts"));
+            diary.Add(new PlannerEvent(2026, 8, 24, "20:00", "Inside it"));
+            diary.Add(new PlannerEvent(2026, 9, 30, string.Empty, "Long after it ends"));
+
+            var from = new DateOnly(2026, 8, 23);
+            var agenda = PlannerAgenda.Build(diary, from, 7);
+
+            // Asserted about the range rather than about a count, since the holidays are computed and a week of
+            // any particular year may or may not have one in it.
+            foreach (var line in agenda)
+                Assert.InRange(line.Date, from, from.AddDays(6));
+
+            for (var i = 1; i < agenda.Count; i++)
+                Assert.True(agenda[i - 1].Date <= agenda[i].Date, "the list came back out of date order");
+
+            Assert.Contains(agenda, line => line.Entry.Title == "Inside it");
+            Assert.DoesNotContain(agenda, line => line.Entry.Title == "The day before it starts");
+            Assert.DoesNotContain(agenda, line => line.Entry.Title == "Long after it ends");
+        }
+
+        [Fact]
+        public void TheFirstThingComingUpIsNotSteppedOver()
+        {
+            var agenda = SampleAgenda();
+
+            // The cursor is on a day the list holds no line for, which is the ordinary case: most days have
+            // nothing on them. Stepping from "not in the list" as though it were the first line is what steps
+            // over the first thing coming up, and it hides itself whenever that day has a second entry, because
+            // both lines then say the same date.
+            Assert.Equal(new DateOnly(2026, 8, 24), PlannerAgenda.Step(agenda, new DateOnly(2026, 8, 23), 1));
+        }
+
+        [Fact]
+        public void ADayWithSeveralThingsOnItIsSteppedOverRatherThanThrough()
+        {
+            var agenda = SampleAgenda();
+
+            // The twenty-sixth has two lines and is one day, so one press leaves it in either direction.
+            Assert.Equal(new DateOnly(2026, 8, 28), PlannerAgenda.Step(agenda, new DateOnly(2026, 8, 26), 1));
+            Assert.Equal(new DateOnly(2026, 8, 24), PlannerAgenda.Step(agenda, new DateOnly(2026, 8, 26), -1));
+        }
+
+        [Fact]
+        public void BothEndsOfTheListAreWalls()
+        {
+            var agenda = SampleAgenda();
+
+            // There is nothing above the day the list starts from, so backing off the top stays put rather than
+            // jumping forward on to the first entry, which is what an index clamped at zero does.
+            Assert.Null(PlannerAgenda.Step(agenda, new DateOnly(2026, 8, 23), -1));
+            Assert.Null(PlannerAgenda.Step(agenda, new DateOnly(2026, 8, 24), -1));
+
+            Assert.Null(PlannerAgenda.Step(agenda, new DateOnly(2026, 8, 28), 1));
+            Assert.Null(PlannerAgenda.Step(agenda, new DateOnly(2026, 12, 25), 1));
+
+            Assert.Null(PlannerAgenda.Step(Array.Empty<PlannerEntryLine>(), new DateOnly(2026, 8, 23), 1));
+            Assert.Null(PlannerAgenda.Step(Array.Empty<PlannerEntryLine>(), new DateOnly(2026, 8, 23), -1));
+        }
+
+        [Fact]
+        public void SteppingDownAndBackUpWalksEveryDayTheListHoldsInOrder()
+        {
+            var agenda = SampleAgenda();
+            var days = new List<DateOnly>();
+            var at = new DateOnly(2026, 8, 23);
+
+            while (true)
+            {
+                var next = PlannerAgenda.Step(agenda, at, 1);
+
+                if (next == null)
+                    break;
+
+                at = next.Value;
+                days.Add(at);
+            }
+
+            Assert.Equal(
+                new[] {new DateOnly(2026, 8, 24), new DateOnly(2026, 8, 26), new DateOnly(2026, 8, 28)},
+                days);
+
+            var back = new List<DateOnly>();
+
+            while (true)
+            {
+                var previous = PlannerAgenda.Step(agenda, at, -1);
+
+                if (previous == null)
+                    break;
+
+                at = previous.Value;
+                back.Add(at);
+            }
+
+            back.Reverse();
+
+            // Everything the walk down visited except its last stop, which is where the walk back began.
+            Assert.Equal(days.GetRange(0, days.Count - 1), back);
+        }
+
+        /// <summary>
+        ///     A list with a quiet day in front of it, one entry on the twenty-fourth, two on the twenty-sixth and
+        ///     one on the twenty-eighth. Built by hand rather than out of a diary, so no computed holiday can turn
+        ///     up in the middle of it and no assertion here is about what year it is.
+        /// </summary>
+        /// <returns>The lines.</returns>
+        private static IReadOnlyList<PlannerEntryLine> SampleAgenda()
+        {
+            return new[]
+            {
+                Line(2026, 8, 24, "Eat a certain billionaire"),
+                Line(2026, 8, 26, "Return library books"),
+                Line(2026, 8, 26, "Savour every bite"),
+                Line(2026, 8, 28, "Grow forty feet for the afternoon")
+            };
+        }
+
+        /// <summary>One line of a list.</summary>
+        /// <param name="year">The year it falls in.</param>
+        /// <param name="month">The month it falls in.</param>
+        /// <param name="day">The day it falls on.</param>
+        /// <param name="title">What it is.</param>
+        /// <returns>The line.</returns>
+        private static PlannerEntryLine Line(int year, int month, int day, string title)
+        {
+            var date = new DateOnly(year, month, day);
+
+            return new PlannerEntryLine(date, new PlannerEvent(date, string.Empty, title));
         }
     }
 }

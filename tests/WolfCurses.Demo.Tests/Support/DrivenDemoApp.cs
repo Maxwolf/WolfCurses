@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using System.Text.RegularExpressions;
 using WolfCurses.Demo;
 using WolfCurses.Graphics;
 using Xunit;
@@ -76,6 +77,29 @@ namespace WolfCurses.Demo.Tests.Support
         public void DismissSplash()
         {
             Type(string.Empty);
+        }
+
+        /// <summary>
+        ///     Forces a render method through the demo's own <b>Force render type</b> menu, from the main menu,
+        ///     and leaves the application back on it.
+        ///     <para>
+        ///         Driven through the menu rather than by assigning <c>ImageRenderers.Default</c>, because the
+        ///         thing worth testing is what a person can actually reach: the assignment is what the demo does
+        ///         at the end of it. The choice is found by its own text rather than counted, so reordering the
+        ///         menu moves the tests with it. Note the caller still owns putting the global back - see
+        ///         <see cref="RenderTypeScope" />.
+        ///     </para>
+        /// </summary>
+        /// <param name="named">The start of the choice's label, such as "Sixel".</param>
+        public void ForceRenderType(string named)
+        {
+            ChooseMenuItem((int) DemoCommandsEnum.ForceRenderType);
+
+            var match = Regex.Match(Screen, @"(?m)^\W*(\d+)\. " + Regex.Escape(named));
+            Assert.True(match.Success,
+                "the render type menu has no choice called " + named + ":" + Environment.NewLine + Describe());
+
+            Type(match.Groups[1].Value);
         }
 
         /// <summary>Opens a menu item by number, from the menu.</summary>

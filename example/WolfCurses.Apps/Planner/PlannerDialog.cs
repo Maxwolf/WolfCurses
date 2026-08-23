@@ -293,34 +293,24 @@ namespace WolfCurses.Apps.Planner
             }
         }
 
-        /// <summary>Moves to the entry before or after the one the cursor is on.</summary>
+        /// <summary>
+        ///     Moves to the entry before or after the one the cursor is on.
+        ///     <para>
+        ///         The arithmetic is <see cref="PlannerAgenda.Step" />'s rather than this method's, because which
+        ///         line the cursor lands on is the one thing about this screen that cannot be read back off it.
+        ///     </para>
+        /// </summary>
         /// <param name="step">Which way; negative goes back.</param>
         private void StepAgenda(int step)
         {
-            if (_agenda.Count == 0)
+            var target = PlannerAgenda.Step(_agenda, _selected, step);
+
+            // Nothing that way. Both ends of the list are walls, and the top of it is a wall even when the cursor
+            // is on a day the list holds no line for: there is nothing above the day the list starts from.
+            if (target == null)
                 return;
 
-            var first = -1;
-            var last = -1;
-
-            for (var i = 0; i < _agenda.Count; i++)
-            {
-                if (_agenda[i].Date != _selected)
-                    continue;
-
-                if (first < 0)
-                    first = i;
-
-                last = i;
-            }
-
-            // Off the last line of the chosen day going forward and the first going back, so a day with three
-            // things on it is stepped over rather than stepped through three times.
-            var from = step > 0 ? last : first;
-
-            var target = Math.Clamp(Math.Max(0, from) + step, 0, _agenda.Count - 1);
-
-            GoTo(_agenda[target].Date);
+            GoTo(target.Value);
             _message = null;
         }
 
@@ -471,16 +461,7 @@ namespace WolfCurses.Apps.Planner
             if (_view != PlannerViewEnum.Agenda)
                 return;
 
-            for (var offset = 0; offset < AgendaDays; offset++)
-            {
-                if (_agendaFrom.DayNumber + offset > DateOnly.MaxValue.DayNumber)
-                    break;
-
-                var date = _agendaFrom.AddDays(offset);
-
-                foreach (var entry in _diary.On(date))
-                    _agenda.Add(new PlannerEntryLine(date, entry));
-            }
+            _agenda.AddRange(PlannerAgenda.Build(_diary, _agendaFrom, AgendaDays));
         }
 
         /// <summary>Scrolls whichever view scrolls so that the chosen day is on screen.</summary>

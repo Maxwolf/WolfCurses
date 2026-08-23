@@ -1,5 +1,21 @@
 name: CI
 
+# One matrix rather than one machine. Everything here is a terminal user interface, so the
+# things that break it are the operating system underneath it and the terminal in front of
+# it, and a single green ubuntu job says nothing about either.
+#
+#   os        Windows is where the mouse reader, the console mode handling and the legacy
+#             conhost fallback live, and it was the only platform never built in CI. macOS
+#             is the third console this has to be polite on.
+#   mode      A run with NO_COLOR set is the text-only console: every widget resolves to
+#             ColorMode.None and must emit no escape at all, which is a promise made all
+#             over the library and was until now only ever checked by hand.
+#   tomorrow  The suite's own clock. A calendar app has tests that read the wall clock, and
+#             one running in a timezone fourteen hours ahead of the runner is on a different
+#             date for most of the day, which is what catches a test that quietly assumes
+#             today is the day somebody wrote it. .NET honours TZ on Unix only, so this job
+#             is deliberately a Linux one.
+
 on:
   push:
     branches: [master]
@@ -8,7 +24,26 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    name: ${{ matrix.os }} / ${{ matrix.mode }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      # Every combination reports for itself. One red platform cancelling the others hides
+      # whether the break is everywhere or in one place, which is the first thing to know.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        mode: [color, no-color]
+        include:
+          # A mode the base matrix does not list, so this adds a job rather than decorating one.
+          - os: ubuntu-latest
+            mode: tomorrow
+
+    env:
+      # Any non-empty value means "no color"; an empty one is the same as not setting it.
+      NO_COLOR: ${{ matrix.mode == 'no-color' && '1' || '' }}
+      TZ: ${{ matrix.mode == 'tomorrow' && 'Pacific/Kiritimati' || '' }}
+
     steps:
       - uses: actions/checkout@v7
 
