@@ -1,4 +1,5 @@
 using System;
+using System.Text.RegularExpressions;
 using System.Threading;
 using WolfCurses.Demo.Tests.Support;
 using Xunit;
@@ -94,7 +95,10 @@ namespace WolfCurses.Demo.Tests
             var screen = game.Screen;
 
             Assert.Contains("0:0", screen, StringComparison.Ordinal);
-            Assert.Contains("frame ", screen, StringComparison.Ordinal);
+
+            // The frame number rather than the word, since the frame RATE beside it also says "frame" and this
+            // would pass on that alone - see FrameNumber for what that cost.
+            Assert.True(FrameNumber(game) > 0, "the screen did not say which frame it was on:" + game.Describe());
         }
 
         /// <summary>Opens the GIF screen and waits out the load, which renders every frame up front.</summary>
@@ -119,24 +123,32 @@ namespace WolfCurses.Demo.Tests
         }
 
         /// <summary>
-        ///     Which frame is showing, read off the screen's own readout rather than out of the form, or -1 while it
-        ///     is still loading.
+        ///     Which frame is showing, read off the screen's own readout rather than out of the form, or -1 when
+        ///     the animation is not playing yet.
+        ///     <para>
+        ///         <b>Two things on this screen say "frame" and only one of them is this one.</b> Searching for the
+        ///         word found the frame <i>rate</i> first - <c>FrameCounter.Describe()</c> writes
+        ///         "31.2 fps | 1.21 ms/frame" the moment it has a sample to report, and it sits to the left of the
+        ///         frame number on the same line - so the next character was a space rather than a digit and the
+        ///         answer came back as -1. It reads as the animation having stopped dead, and it only happens once
+        ///         the counter has something to say: fast machine, no problem for a whole second, then no problem
+        ///         ever again on a slow one. The first macOS runner this suite ever ran on found it.
+        ///     </para>
+        ///     <para>
+        ///         The pattern also tells the playing readout from the loading one, which counts up
+        ///         "frame 7 / 91" with spaces as it renders each frame up front. Matching that was the other half
+        ///         of the same bug: a test could start measuring playback before playback had begun.
+        ///     </para>
         /// </summary>
         /// <param name="game">The running demo.</param>
-        /// <returns>The one-based frame number the screen reports.</returns>
+        /// <returns>The one-based frame number the screen reports, or -1 when it is not playing.</returns>
         private static int FrameNumber(DrivenDemoApp game)
         {
-            var screen = game.Screen;
-            var at = screen.IndexOf("frame ", StringComparison.Ordinal);
-            if (at < 0)
-                return -1;
+            var match = Regex.Match(game.Screen, @"frame (\d+)/(\d+)");
 
-            at += "frame ".Length;
-            var end = at;
-            while (end < screen.Length && char.IsDigit(screen[end]))
-                end++;
-
-            return end > at ? int.Parse(screen[at..end], System.Globalization.CultureInfo.InvariantCulture) : -1;
+            return match.Success
+                ? int.Parse(match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture)
+                : -1;
         }
     }
 }

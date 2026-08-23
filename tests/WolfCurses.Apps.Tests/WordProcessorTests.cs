@@ -261,8 +261,17 @@ namespace WolfCurses.Apps.Tests
             using var suite = OpenEditor();
             Assert.DoesNotContain("selected", suite.Screen, StringComparison.Ordinal);
 
-            suite.Press(ConsoleKey.RightArrow, ConsoleModifiers.Shift);
-            suite.Press(ConsoleKey.RightArrow, ConsoleModifiers.Shift);
+            // Two characters this test typed, rather than the first two in the sample. The sample opens on
+            // three empty lines, so selecting rightwards from the start selects two LINE ENDINGS - and the
+            // buffer deliberately remembers whichever ending the file arrived with rather than normalizing
+            // it, so the same two presses select two characters from a checkout with LF and four from one
+            // with CRLF. That is the editor being right and the test being wrong: it went red on the first
+            // Windows runner this suite ever ran on, where git checks files out with CRLF, and nowhere else.
+            suite.PressChar('a', ConsoleKey.A);
+            suite.PressChar('b', ConsoleKey.B);
+
+            suite.Press(ConsoleKey.LeftArrow, ConsoleModifiers.Shift);
+            suite.Press(ConsoleKey.LeftArrow, ConsoleModifiers.Shift);
 
             Assert.Contains("2 selected", suite.Screen, StringComparison.Ordinal);
         }
