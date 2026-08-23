@@ -21,6 +21,7 @@ RUN apt-get update \
 # SDL_Init fails. The dummy driver is what makes "stopping the sound really ends the program playing
 # it" runnable on a machine that has no sound at all, which is every CI runner.
 ENV SDL_AUDIODRIVER=dummy
+ENV SDL_AUDIO_DRIVER=dummy
 
 # The default is a terminal that speaks 256 colours and no graphics protocol, which is the ordinary
 # case; every interesting run overrides it.

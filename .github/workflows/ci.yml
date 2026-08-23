@@ -29,6 +29,11 @@ on:
   pull_request:
     branches: [master]
 
+  # So the whole matrix can be run against a branch from the Actions tab. The macOS job is the one
+  # that cannot be rehearsed anywhere else - there is no macOS to borrow short of Apple hardware -
+  # so being able to ask for it before merging is the difference between checking it and hoping.
+  workflow_dispatch:
+
 jobs:
   build-and-test:
     name: ${{ matrix.os }} / ${{ matrix.mode }}
@@ -59,8 +64,15 @@ jobs:
       TZ: ${{ matrix.mode == 'tomorrow' && 'Pacific/Kiritimati' || '' }}
 
       # A runner has no sound card and ffplay is SDL underneath, so without this it cannot start at
-      # all and the media player's process tests fail rather than proving anything.
+      # all and the media player's process tests fail rather than proving anything. Both spellings
+      # are set on purpose: SDL3 renamed the variable, and macOS gets ffmpeg linked against
+      # sdl2-compat, which is SDL3 wearing SDL2's interface.
       SDL_AUDIODRIVER: dummy
+      SDL_AUDIO_DRIVER: dummy
+
+      # brew spends longer updating itself than installing a bottle, and neither is wanted here.
+      HOMEBREW_NO_AUTO_UPDATE: 1
+      HOMEBREW_NO_INSTALL_CLEANUP: 1
 
     steps:
       - uses: actions/checkout@v7
@@ -70,10 +82,11 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      # The office suite's media player shells out to all three of these. Without them about twenty
-      # of its tests skip themselves, and a skipped test says so to nobody once the run is green.
-      # macOS is deliberately left without: brew's ffmpeg is a long build and this runner is here for
-      # the platform rather than for the media player, so those tests skip there and only there.
+      # The office suite's media player shells out to all three of these, and without them about
+      # twenty of its tests skip themselves - which a green run says nothing about. None of the three
+      # runner images ship ffmpeg, so all three install it, each through what the platform already
+      # has. On macOS that is a bottle rather than a build (and the formula depends on sdl2-compat,
+      # which is what makes ffplay part of it).
       - name: Install ffmpeg (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
@@ -82,8 +95,13 @@ jobs:
         if: runner.os == 'Windows'
         run: choco install ffmpeg -y --no-progress
 
-      - name: Check ffmpeg is really there
-        if: runner.os != 'macOS'
+      - name: Install ffmpeg (macOS)
+        if: runner.os == 'macOS'
+        run: brew install --quiet ffmpeg
+
+      # Loudly rather than silently: the tests these unlock skip themselves when a binary is missing,
+      # so without this step a failed install reads exactly like a green run.
+      - name: Check all three are really there
         run: |
           ffmpeg -version
           ffprobe -version
