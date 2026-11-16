@@ -1,7 +1,7 @@
 # The same environment on musl instead of glibc, which is the one thing a GitHub runner cannot be
 # talked into being. Everything else about it is deliberately identical to the Debian image, so a
 # difference between the two runs is a difference about the C library and not about the setup.
-ARG SDK=10.0
+ARG SDK=11.0
 FROM mcr.microsoft.com/dotnet/sdk:${SDK}-alpine
 
 # bash and git are not in this image and the entrypoint needs both; the rest match the Debian one.

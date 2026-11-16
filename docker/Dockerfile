@@ -3,7 +3,7 @@
 # Nothing about the source is baked in: the working tree arrives as a bind mount and the entrypoint
 # copies it in. That keeps one image good for every run, and keeps a container's build artifacts out
 # of the host's tree, which matter because they are a different operating system's.
-ARG SDK=10.0
+ARG SDK=11.0
 FROM mcr.microsoft.com/dotnet/sdk:${SDK}
 
 # ffmpeg   - what the office suite's media player shells out to. Without it a dozen of its tests

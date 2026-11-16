@@ -11,7 +11,7 @@
   <ItemGroup>
     <!-- The root .globalconfig is discovered automatically (the SDK probes ancestor directories);
          do not also add it as a GlobalAnalyzerConfigFiles item, or the duplicate entries cancel out. -->
-    <PackageReference Include="Meziantou.Analyzer" Version="3.0.123" PrivateAssets="all" />
+    <PackageReference Include="Meziantou.Analyzer" Version="3.0.341" PrivateAssets="all" />
   </ItemGroup>
 
 </Project>

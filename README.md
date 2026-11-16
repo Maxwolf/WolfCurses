@@ -18,7 +18,7 @@ Windows and forms, menus, dialogs, file pickers, progress bars and graphs, plus 
 dotnet add package WolfCurses
 ```
 
-Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download). [NuGet gallery page.](https://www.nuget.org/packages/WolfCurses/)
+Requires the [.NET 11 SDK](https://dotnet.microsoft.com/download). [NuGet gallery page.](https://www.nuget.org/packages/WolfCurses/)
 
 ## Quick start
 

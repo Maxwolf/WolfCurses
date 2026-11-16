@@ -32,7 +32,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: 11.0.x
 
       - name: Compute version
         id: version
@@ -86,7 +86,7 @@ jobs:
       # package also pushes a same-named symbols package from the same folder unless
       # --no-symbols is passed. Pack produces both (IncludeSymbols + SymbolPackageFormat=snupkg
       # in src/WolfCurses.csproj), so the library ships with its debug symbols and nothing else -
-      # the .nupkg holds lib/net10.0/WolfCurses.dll and the readme, the .snupkg the matching PDB.
+      # the .nupkg holds lib/net11.0/WolfCurses.dll and the readme, the .snupkg the matching PDB.
       # The tests and both example apps are IsPackable=false and are never packed at all.
       - name: Push
         run: >

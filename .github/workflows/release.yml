@@ -40,7 +40,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: 11.0.x
 
       - name: Compute version
         id: version
@@ -69,7 +69,7 @@ jobs:
       # The portable build is the answer for architectures with no runtime pack to be
       # self-contained with (linux-loongarch64 and linux-riscv64 have .NET support but ship
       # no Microsoft.NETCore.App.Runtime.* package, so `-r` cannot target them). It needs a
-      # .NET 10 runtime already installed and is launched with `dotnet <app>.dll`, but it is
+      # .NET 11 runtime already installed and is launched with `dotnet <app>.dll`, but it is
       # ~7 MB instead of ~75 and runs on anything the runtime does, including future targets.
       - name: Publish portable (framework-dependent) demos
         env:
@@ -93,7 +93,7 @@ jobs:
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------------------
-  # A self-contained download per platform. The matrix is every RID .NET 10 publishes a
+  # A self-contained download per platform. The matrix is every RID .NET 11 publishes a
   # runtime pack for that makes sense for a console app - verified against nuget.org rather
   # than assumed. Deliberately absent: linux-bionic-* (Android; a runtime pack exists, but
   # there is no unpack-and-run terminal story for it) and the browser/iOS targets, which
@@ -128,7 +128,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: 11.0.x
 
       # Single-file so each app is one executable beside its own asset folder, resolved
       # through AppContext.BaseDirectory - the one path property single-file keeps honest,
@@ -216,7 +216,7 @@ jobs:
           | macOS | \`osx-arm64\` (Apple silicon), \`osx-x64\` (Intel) (.tar.gz) |
           | Linux (glibc) | \`linux-x64\`, \`linux-arm64\`, \`linux-arm\` (.tar.gz) |
           | Linux (musl / Alpine) | \`linux-musl-x64\`, \`linux-musl-arm64\`, \`linux-musl-arm\` (.tar.gz) |
-          | Anything else | \`portable\` (.zip) - needs .NET 10 installed |
+          | Anything else | \`portable\` (.zip) - needs .NET 11 installed |
 
           Every file is named \`WolfCurses-demos-v$VERSION-<platform>\`.
 

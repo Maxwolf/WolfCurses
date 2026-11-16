@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
     <Nullable>disable</Nullable>
@@ -16,12 +16,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="xunit.v3" Version="3.2.2" />
+    <!-- The mtp-off flavour on purpose. From 4.0 the plain xunit.v3 package brings Microsoft.Testing.Platform v2,
+         whose build targets refuse a VSTest `dotnet test` outright on the .NET 10 SDK and later. This one is the
+         same xunit with that left out, so `dotnet test` and its filter syntax keep working as documented. Moving
+         to the platform runner instead means the plain package plus a global.json opting `dotnet test` into it. -->
+    <PackageReference Include="xunit.v3.mtp-off" Version="4.0.3" />
   </ItemGroup>
 
   <!-- The chess artwork, so ChessBoardArt finds it beside the test binary exactly as it does beside the game.

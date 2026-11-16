@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <OutputType>Library</OutputType>
     <Description>Console control library</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -9,7 +9,7 @@
     <PackageProjectUrl>https://bigmaxwolf.com</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Maxwolf/WolfCurses</RepositoryUrl>
     <Authors>Maxwolf</Authors>
-    <Version>10.0.0</Version>
+    <Version>11.0.0</Version>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
